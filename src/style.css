@@ -3522,3 +3522,36 @@ kbd {
 .brand-target-grid small {
   font-size: 11px;
 }
+
+.vehicle-view-controls {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  display: flex;
+  gap: 5px;
+  padding: 5px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 3px 14px #17344b15;
+  z-index: 3;
+}
+.vehicle-view-controls button {
+  border: 0;
+  background: #edf4f9;
+  color: #315e7c;
+  border-radius: 7px;
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.vehicle-view-controls button:hover {
+  background: #d8eafa;
+}
+@media (max-width: 650px) {
+  .vehicle-view-controls {
+    top: auto;
+    bottom: 22px;
+    right: 10px;
+  }
+}

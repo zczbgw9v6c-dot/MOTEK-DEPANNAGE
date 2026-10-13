@@ -1,3 +1,5 @@
+import { occludesTarget } from "./camera-occlusion";
+import { vehicleView, isRendered, shortestTurn } from "./camera-navigation";
 import { portoLayout, type DealershipLayout } from "./dealership-layout";
 import * as THREE from "three";
 import { team } from "./team-data";
@@ -5,7 +7,14 @@ import { isPresent } from "./dashboard-domain";
 import { loadVehicleAsset, disposeObject, supportedAsset } from "./assets";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { bayPosition, vehiclePosition, zones, type Vehicle } from "./domain";
-import { walls, doors, blocked, findPath, type Box } from "./navigation";
+import {
+  walls,
+  doors,
+  blocked,
+  findPath,
+  nearestWalkable,
+  type Box,
+} from "./navigation";
 export type Selection = {
   kind:
     | "vehicle"
@@ -38,6 +47,7 @@ export class GarageScene {
   reduced = false;
   quality = "standard";
   private frame = 0;
+  private occlusionBounds = new Map<THREE.Object3D, THREE.Box3>();
   private cameraFlight: {
     position: THREE.Vector3;
     target: THREE.Vector3;
@@ -62,6 +72,8 @@ export class GarageScene {
   private cohortHighlight = new THREE.Group();
   private cohortIDs: string[] = [];
   private selected: string | null = null;
+  private focusedVehicle: string | null = null;
+  private focusRear = false;
   private currentCars: Vehicle[] = [];
   private down = [0, 0];
   private disposed = false;
@@ -92,6 +104,9 @@ export class GarageScene {
     this.scene.fog = new THREE.Fog("#dde5e4", 65, 135);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
+    this.controls.enablePan = false;
+    this.controls.rotateSpeed = 0.55;
+    this.controls.zoomSpeed = 0.65;
     this.controls.addEventListener("start", () => {
       this.cameraFlight = null;
     });
@@ -112,6 +127,13 @@ export class GarageScene {
     this.scene.add(sun);
     this.scene.add(sun.target);
     this.build();
+    for (const object of this.scene.children) {
+      if (object.userData.occluder)
+        this.occlusionBounds.set(
+          object,
+          new THREE.Box3().setFromObject(object),
+        );
+    }
     this.scene.add(this.cars, this.highlight, this.cohortHighlight);
     this.setMode("overview");
     this.ro = new ResizeObserver(() => this.resize());
@@ -267,6 +289,7 @@ export class GarageScene {
     );
     s.position.set(x, y, z);
     s.scale.set(width, width / 6, 1);
+    s.userData.sceneLabel = true;
     parent.add(s);
     return s;
   }
@@ -280,7 +303,9 @@ export class GarageScene {
     tag?: Selection,
   ) {
     this.furniture.push({ x, z, w, d });
-    return this.box(this.scene, x, h / 2, z, w, h, d, color, tag);
+    const object = this.box(this.scene, x, h / 2, z, w, h, d, color, tag);
+    object.userData.occluder = true;
+    return object;
   }
   private get depth() {
     return 17 + 7 * (this.layout.workshopSpacing || 5);
@@ -357,6 +382,7 @@ export class GarageScene {
         b.d,
         palette.wall,
       );
+      wall.userData.occluder = true;
       if (b.z === 18) {
         wall.material = new THREE.MeshPhysicalMaterial({
           color: "#adcdd3",
@@ -771,7 +797,7 @@ export class GarageScene {
       });
     vehicles.filter(isPresent).forEach((v) => {
       const [x, z] = vehiclePosition(v, vehicles, this.layout);
-      this.label(
+      const vehicleLabel = this.label(
         v.plate + " · " + (live[v.id]?.blocked ? "Bloqué" : v.status),
         x,
         2.65,
@@ -793,6 +819,7 @@ export class GarageScene {
               : "#f6faf4",
         this.cars,
       );
+      vehicleLabel.userData.vehicleLabel = v.id;
     });
     this.setSelected(this.selected);
     this.setFocusIds(this.cohortIDs);
@@ -887,6 +914,7 @@ export class GarageScene {
   }
   setSelected(id: string | null) {
     this.selected = id;
+    if (!id) this.focusedVehicle = null;
     this.clear(this.highlight);
     if (!id) return;
     const v = this.currentCars.find((v) => v.id === id);
@@ -960,23 +988,28 @@ export class GarageScene {
     }
     if (exploded) {
       this.setMode("free");
+      this.focusedVehicle = id;
       this.camera.position.set(car.position.x - 5, 2.7, car.position.z - 3.8);
       this.controls.target.set(car.position.x - 1, 0.6, car.position.z - 1.2);
       this.controls.update();
     }
   }
-  focusVehicle(id: string) {
+  focusVehicle(id: string, rear = false) {
     const vehicle = this.currentCars.find((v) => v.id === id);
-    if (!vehicle) return;
+    if (!vehicle || !isPresent(vehicle)) return;
     const [x, z] = vehiclePosition(vehicle, this.currentCars, this.layout);
     const start = this.camera.position.clone();
     const target = this.controls.target.clone();
     this.setMode("free");
     this.camera.position.copy(start);
     this.controls.target.copy(target);
+    this.focusedVehicle = id;
+    this.focusRear = rear;
+    const view = vehicleView(x, z, this.camera.aspect, rear);
+    this.controls.maxDistance = Math.max(18, 8 / this.camera.aspect);
     this.cameraFlight = {
-      position: new THREE.Vector3(x - 5.8, 3.2, z + 6.6),
-      target: new THREE.Vector3(x, 0.9, z),
+      position: new THREE.Vector3(...view.position),
+      target: new THREE.Vector3(...view.target),
     };
     if (this.reduced) {
       this.camera.position.copy(this.cameraFlight.position);
@@ -987,6 +1020,8 @@ export class GarageScene {
   }
   setMode(mode: Mode) {
     this.cameraFlight = null;
+    this.focusedVehicle = null;
+    this.controls.maxDistance = mode === "overview" ? 120 : 85;
     this.path = [];
     if (document.pointerLockElement) document.exitPointerLock();
     this.mode = mode;
@@ -1033,12 +1068,16 @@ export class GarageScene {
     doors.forEach((d) => {
       if (this.closed.has(d.id)) this.toggleDoor(d.id);
     });
-    const path = findPath(
-      [this.camera.position.x, this.camera.position.z],
-      [zone.x, zone.z],
-      this.boxes(),
-      this.depth,
-    );
+    const boxes = this.boxes();
+    const destination = nearestWalkable([zone.x, zone.z], boxes, this.depth);
+    const path = destination
+      ? findPath(
+          [this.camera.position.x, this.camera.position.z],
+          destination,
+          boxes,
+          this.depth,
+        )
+      : [];
     if (!path.length) {
       this.hint("Aucun passage disponible vers cette zone.");
       return;
@@ -1051,6 +1090,8 @@ export class GarageScene {
     this.camera.aspect = w / Math.max(h, 1);
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
+    if (this.focusedVehicle && !this.inspectedId)
+      this.focusVehicle(this.focusedVehicle, this.focusRear);
   }
   private pick(x: number, y: number, click: boolean) {
     const r = this.renderer.domElement.getBoundingClientRect();
@@ -1061,7 +1102,7 @@ export class GarageScene {
     this.ray.setFromCamera(this.pointer, this.camera);
     const hit = this.ray
       .intersectObjects(this.scene.children, true)
-      .find((h) => !(h.object instanceof THREE.Sprite));
+      .find((h) => isRendered(h.object) && !(h.object instanceof THREE.Sprite));
     const s = hit ? this.selection(hit.object) : null;
     if (click && s) this.activate(s);
     this.renderer.domElement.style.cursor = s ? "pointer" : "grab";
@@ -1102,7 +1143,7 @@ export class GarageScene {
     this.ray.setFromCamera(new THREE.Vector2(0, 0), this.camera);
     const hit = this.ray
       .intersectObjects(this.scene.children, true)
-      .find((h) => !(h.object instanceof THREE.Sprite));
+      .find((h) => isRendered(h.object) && !(h.object instanceof THREE.Sprite));
     const target = hit && hit.distance < 5 ? this.selection(hit.object) : null;
     if (target) this.activate(target);
     else
@@ -1140,10 +1181,7 @@ export class GarageScene {
           dx = diff.x;
           dz = diff.y;
           if (!this.reduced) {
-            const angle = Math.atan2(-dx, -dz) - this.yaw;
-            this.yaw +=
-              Math.atan2(Math.sin(angle), Math.cos(angle)) *
-              (1 - Math.exp(-6 * dt));
+            this.yaw = shortestTurn(this.yaw, Math.atan2(-dx, -dz), dt);
           }
         }
       } else {
@@ -1226,8 +1264,26 @@ export class GarageScene {
         object.visible = !detailed;
       });
     }
+    const focused = this.mode === "free" && !!this.focusedVehicle;
+    const aim = this.controls.target;
     for (const object of this.scene.children) {
       if (object.userData.overhead) object.visible = this.mode !== "free";
+      if (object.userData.sceneLabel) object.visible = !focused;
+      if (object.userData.occluder) {
+        object.visible = true;
+        if (this.mode !== "walk") {
+          const bounds =
+            this.occlusionBounds.get(object) ||
+            new THREE.Box3().setFromObject(object);
+          object.visible = !occludesTarget(bounds, this.camera.position, aim);
+        }
+      }
+    }
+    for (const object of this.cars.children) {
+      if (object instanceof THREE.Sprite) {
+        object.visible =
+          !focused || object.userData.vehicleLabel === this.focusedVehicle;
+      }
     }
     this.renderer.render(this.scene, this.camera);
     this.frame = requestAnimationFrame((n) => this.tick(n));

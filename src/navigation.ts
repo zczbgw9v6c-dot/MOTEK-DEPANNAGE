@@ -117,3 +117,28 @@ export function findPath(
   }
   return [];
 }
+
+/** A viewpoint may coincide with a parked car: walk to the nearest clear spot. */
+export function nearestWalkable(
+  to: [number, number],
+  boxes: Box[],
+  depth = 52,
+): [number, number] | null {
+  const origin = to.map(Math.round) as [number, number];
+  for (let radius = 0; radius <= 4; radius++) {
+    const candidates: [number, number][] = [];
+    for (let dx = -radius; dx <= radius; dx++)
+      for (let dz = -radius; dz <= radius; dz++) {
+        if (Math.max(Math.abs(dx), Math.abs(dz)) === radius)
+          candidates.push([origin[0] + dx, origin[1] + dz]);
+      }
+    candidates.sort(
+      (a, b) =>
+        Math.hypot(a[0] - to[0], a[1] - to[1]) -
+        Math.hypot(b[0] - to[0], b[1] - to[1]),
+    );
+    const point = candidates.find((p) => !blocked(...p, boxes, 0.45, depth));
+    if (point) return point;
+  }
+  return null;
+}

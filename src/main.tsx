@@ -652,6 +652,29 @@ function App() {
                 </div>
                 <div className="scene-viewport">
                   <div ref={host} className="canvas-host" />
+                  {car && isPresent(car) && mode !== "walk" && (
+                    <div
+                      className="vehicle-view-controls"
+                      aria-label="Points de vue du véhicule"
+                    >
+                      {[false, true].map((rear) => (
+                        <button
+                          key={String(rear)}
+                          onClick={() => {
+                            setInspect(false);
+                            scene.current?.inspect(car.id, false);
+                            scene.current?.focusVehicle(car.id, rear);
+                            setMode("free");
+                          }}
+                        >
+                          {rear ? "Autre côté" : "Recentrer"}
+                        </button>
+                      ))}
+                      <button onClick={() => changeMode("overview")}>
+                        Vue atelier
+                      </button>
+                    </div>
+                  )}
                   <div className="zone-menu">
                     <label htmlFor="destination">SE DÉPLACER VERS</label>
                     <select
@@ -823,7 +846,7 @@ function App() {
                   <span>
                     <span className="dot" />{" "}
                     {hint ||
-                      "Véhicules, ponts, techniciens et rayonnages : cliquez pour interagir."}
+                      "Cliquez un véhicule pour le cadrer. Glissez pour tourner autour, utilisez la molette pour zoomer."}
                   </span>
                   <span>GLB génériques · freins illustratifs</span>
                 </div>
