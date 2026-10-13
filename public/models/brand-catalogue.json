@@ -28,6 +28,24 @@
   ],
   "models": [
     {
+      "make": "Audi",
+      "model": "A4",
+      "year": null,
+      "generation": null,
+      "assetId": null,
+      "status": "awaiting_download",
+      "license": "unverified"
+    },
+    {
+      "make": "Audi",
+      "model": "Q5",
+      "year": null,
+      "generation": null,
+      "assetId": null,
+      "status": "awaiting_download",
+      "license": "unverified"
+    },
+    {
       "make": "BMW",
       "model": "Série 3",
       "year": null,
@@ -82,24 +100,6 @@
       "license": "unverified"
     },
     {
-      "make": "Jaguar",
-      "model": "XE",
-      "year": null,
-      "generation": null,
-      "assetId": null,
-      "status": "awaiting_download",
-      "license": "unverified"
-    },
-    {
-      "make": "Jaguar",
-      "model": "F-Pace",
-      "year": null,
-      "generation": null,
-      "assetId": null,
-      "status": "awaiting_download",
-      "license": "unverified"
-    },
-    {
       "make": "Land Rover",
       "model": "Range Rover",
       "year": null,
@@ -118,5 +118,5 @@
       "license": "unverified"
     }
   ],
-  "note": "Objectifs de collecte, aucun modèle de marque téléchargé. Année et génération à vérifier lors de l’import."
+  "note": "Modèles réels et courants uniquement. Aucun concept-car ni modèle fictif. Import après téléchargement autorisé, contrôle visuel, identification de génération et vérification de licence."
 }
