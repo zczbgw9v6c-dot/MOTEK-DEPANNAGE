@@ -121,3 +121,23 @@ Prototype local : pas d’authentification, droits fiables par rôle, isolation 
 - `src/scene.ts`, `src/assets.ts`, `src/AssetLibrary.tsx` : garage et modèles ; `tests/v2.test.ts` et `scripts/verify-api.mjs` : preuves de cohérence.
 
 Prochaine étape : essai manuel tablette / micro / parcours 3D, puis authentification et accès distant sécurisé. Ensuite : modèles de marques sous licences confirmées, tâches relationnelles, sorties de stock, absences, mémoire de réparation enrichie et connecteurs professionnels autorisés. ORIA demeure hors du périmètre.
+
+### Maquette Porto et navigation (13 octobre 2026)
+
+La disposition s’inspire des deux photos JOP et de l’enregistrement de visite fourni : façade vitrée, enseigne Jaguar à gauche / Land Rover à droite, accueil et espaces clients en façade, huit ponts rouges alignés à droite dans l’atelier arrière, huit emplacements du parc à gauche. Les dimensions sont une proposition de maquette, pas un relevé architectural de la concession. Les voitures présentes restent les 14 dossiers du CRM ; aucun véhicule décoratif non suivi n’est ajouté.
+
+Dans Paramètres, les enseignes, la présence de la salle d’attente et trois espacements des postes (5/6/7 mètres) sont enregistrés dans la base et dans les sauvegardes. La profondeur de bâtiment, les positions des véhicules, la carte et les collisions suivent ce réglage. Les autres salles conservent leurs dimensions dans ce prototype.
+
+Cliquer sur un véhicule rapproche progressivement la caméra et ouvre son dossier. Les destinations offrent des cadrages fixes en vue globale/libre ; en immersion elles conservent le déplacement par les portes. La caméra suit le chemin angulaire le plus court. Les poutres sont masquées en vue libre pour conserver la visibilité. Les mouvements réduits s’appliquent au rapprochement et aux cadrages. Les interventions sont rouges, les devis ambre, les véhicules prêts verts. La restitution promise du rendez-vous est affichée avec une alerte à moins de deux heures et après dépassement ; une heure seule sans date n’est pas artificiellement déclarée en retard.
+
+### Agent WhatsApp : boîte de brouillons locale
+
+Un passage à « Prêt à livrer » après contrôle qualité prépare un brouillon de restitution. Un devis enregistré « À valider » avec des lignes prépare une demande d’accord avec montant TTC et opérations. Des boutons permettent aussi la préparation depuis le dossier. Les brouillons identiques ne sont pas dupliqués ; ils sont conservés en base et consultables/copiables dans Activité. Aucun fournisseur WhatsApp, envoi, réception de réponse, ni consentement client automatique n’est connecté. Une réponse du client doit encore être saisie et validée par l’atelier.
+
+### Collection de marques en cours
+
+`public/models/brand-catalogue.json` recense les 25 marques demandées et dix objectifs de collecte (BMW Série 3/X5, Renault Clio/Mégane, Volkswagen Golf/Tiguan, Jaguar XE/F-Pace, Land Rover Range Rover/Defender). `research/porto/catalogue-marques.csv` fournit le fichier initial. Ces objectifs restent explicitement non téléchargés et ne sont pas comptés parmi les GLB importés. Année et génération restent vides avant vérification. La bibliothèque propose les recherches Sketchfab correspondantes.
+
+Le téléchargement Sketchfab a affiché une connexion obligatoire. L’utilisateur a confirmé sa connexion, mais l’accès au navigateur de l’agent s’est interrompu avant récupération. Aucun modèle de marque n’a donc été ajouté dans cette livraison. Le modèle BMW examiné annonçait une exportation Roblox dans les commentaires : provenance insuffisante pour l’import. Le compteur de modèles de marque demeure exact à zéro. La recherche par plaque reste limitée aux dossiers internes ; aucun service d’identification extérieur n’est configuré.
+
+Vérification : 30 tests métier réussis, compilation de production réussie, cinq contrôles HTTP/SSE/transcription sur base isolée réussis. Le clic BMW et son dossier/échéance ont été vus dans le navigateur ; les réglages de dimensions ont été vérifiés par les tests mais pas manipulés dans l’interface avant l’interruption du navigateur.

@@ -1,3 +1,4 @@
+import { portoLayout, type DealershipLayout } from "./dealership-layout";
 import * as THREE from "three";
 import { team } from "./team-data";
 import { isPresent } from "./dashboard-domain";
@@ -37,6 +38,10 @@ export class GarageScene {
   reduced = false;
   quality = "standard";
   private frame = 0;
+  private cameraFlight: {
+    position: THREE.Vector3;
+    target: THREE.Vector3;
+  } | null = null;
   private last = 0;
   private keys = new Set<string>();
   private yaw = 0;
@@ -70,6 +75,7 @@ export class GarageScene {
     private position: (x: number, z: number) => void,
     private hint: (s: string) => void,
     private failure: (s: string) => void,
+    private layout: DealershipLayout = portoLayout,
   ) {
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -86,6 +92,9 @@ export class GarageScene {
     this.scene.fog = new THREE.Fog("#dde5e4", 65, 135);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
+    this.controls.addEventListener("start", () => {
+      this.cameraFlight = null;
+    });
     this.controls.maxPolarAngle = Math.PI / 2 - 0.06;
     this.controls.minDistance = 4;
     this.controls.maxDistance = 85;
@@ -273,44 +282,90 @@ export class GarageScene {
     this.furniture.push({ x, z, w, d });
     return this.box(this.scene, x, h / 2, z, w, h, d, color, tag);
   }
+  private get depth() {
+    return 17 + 7 * (this.layout.workshopSpacing || 5);
+  }
+  private activeWalls() {
+    return walls
+      .filter(
+        (w) =>
+          this.layout.waitingRoom || !(w.x < -12 && (w.z === -8 || w.z === 2)),
+      )
+      .map((w) =>
+        w.z === -52
+          ? { ...w, z: -this.depth }
+          : Math.abs(w.x) === 22 && w.d === 70
+            ? { ...w, z: (18 - this.depth) / 2, d: 18 + this.depth }
+            : w,
+      );
+  }
   private build() {
     this.box(this.scene, 0, -0.25, 5, 110, 0.4, 110, "#aab8b2");
-    this.box(this.scene, 0, -0.015, 0, 44, 0.12, 36, palette.floor);
+    this.box(
+      this.scene,
+      0,
+      -0.015,
+      (18 - this.depth) / 2,
+      44,
+      0.12,
+      18 + this.depth,
+      palette.floor,
+    );
     this.box(this.scene, 0, -0.01, 24, 44, 0.1, 12, "#717b7e");
-    zones.forEach((zone) => {
-      if (zone.id !== "atelier" && zone.id !== "parking")
-        this.box(
-          this.scene,
-          zone.x,
-          0.052,
-          zone.z,
-          zone.x === 0 ? 23 : 9.6,
-          0.02,
-          zone.id === "attente"
-            ? 9.5
-            : zone.id === "bureau"
+    zones
+      .filter((z) => this.layout.waitingRoom || z.id !== "attente")
+      .forEach((zone) => {
+        if (zone.id !== "atelier" && zone.id !== "parking")
+          this.box(
+            this.scene,
+            zone.x,
+            0.052,
+            zone.z,
+            zone.x === 0 ? 23 : 9.6,
+            0.02,
+            zone.id === "attente"
               ? 9.5
-              : zone.id === "accueil"
-                ? 15.6
-                : zone.id === "showroom"
-                  ? 8.5
-                  : 11.5,
-          zone.id === "stock"
-            ? "#aab9b6"
-            : zone.id === "carrosserie"
-              ? "#bcc6c5"
-              : "#d9dcd6",
+              : zone.id === "bureau"
+                ? 9.5
+                : zone.id === "accueil"
+                  ? 15.6
+                  : zone.id === "showroom"
+                    ? 8.5
+                    : 11.5,
+            zone.id === "stock"
+              ? "#aab9b6"
+              : zone.id === "carrosserie"
+                ? "#bcc6c5"
+                : "#d9dcd6",
+          );
+        this.label(
+          zone.short.toUpperCase(),
+          zone.x,
+          3.3,
+          zone.z,
+          zone.id === "atelier" ? 5 : 3.2,
         );
-      this.label(
-        zone.short.toUpperCase(),
-        zone.x,
-        3.3,
-        zone.z,
-        zone.id === "atelier" ? 5 : 3.2,
+      });
+    this.activeWalls().forEach((b) => {
+      const wall = this.box(
+        this.scene,
+        b.x,
+        1.45,
+        b.z,
+        b.w,
+        2.9,
+        b.d,
+        palette.wall,
       );
-    });
-    walls.forEach((b) => {
-      this.box(this.scene, b.x, 1.45, b.z, b.w, 2.9, b.d, palette.wall);
+      if (b.z === 18) {
+        wall.material = new THREE.MeshPhysicalMaterial({
+          color: "#adcdd3",
+          transparent: true,
+          opacity: 0.16,
+          roughness: 0.15,
+          depthWrite: false,
+        });
+      }
       this.box(
         this.scene,
         b.x,
@@ -340,13 +395,13 @@ export class GarageScene {
       this.label("PORTE", d.x, 2.85, d.z, 1.2);
     });
     for (let i = 1; i <= 8; i++) {
-      const [x, z] = bayPosition(i);
+      const [x, z] = bayPosition(i, this.layout);
       this.box(this.scene, x, 0.061, z, 5, 0.025, 4.6, "#abb6b3");
       for (const edge of [-2.45, 2.45])
         this.box(this.scene, x + edge, 0.08, z, 0.06, 0.02, 4.6, "#e6e8dc");
       const tag: Selection = { kind: "bay", id: String(i) };
       for (const dx of [-1.65, 1.65]) {
-        this.solid(x + dx, z, 0.32, 0.6, 3.1, palette.navy, tag);
+        this.solid(x + dx, z, 0.32, 0.6, 3.1, "#bd3d42", tag);
         this.box(
           this.scene,
           x + dx,
@@ -384,11 +439,12 @@ export class GarageScene {
       });
       this.box(this.scene, x, 1.2, 7.6, 0.2, 0.3, 0.2, "#657880");
     }
-    for (const z of [-5.5, -0.5]) {
+    for (const z of this.layout.waitingRoom ? [-5.5, -0.5] : []) {
       this.solid(-20, z, 1.2, 3, 0.65, "#74877e");
       this.box(this.scene, -20.5, 1, z, 0.22, 0.75, 3, "#74877e");
     }
-    this.solid(-16, -5, 2, 1.3, 0.42, palette.wood);
+    if (this.layout.waitingRoom)
+      this.solid(-16, -5, 2, 1.3, 0.42, palette.wood);
     this.solid(-20, -14, 2.2, 1.1, 0.78, palette.wood, {
       kind: "office",
       id: "office",
@@ -439,11 +495,51 @@ export class GarageScene {
       kind: "delivery",
       id: "delivery",
     });
+    // Porto reference: a glazed frontage, two distinct showrooms and a rear workshop.
+    this.label(
+      this.layout.leftBrand.toUpperCase(),
+      -7,
+      3.8,
+      15,
+      5,
+      "#eef2ef",
+      "#303a40",
+    );
+    this.label(
+      this.layout.rightBrand.toUpperCase(),
+      7,
+      3.8,
+      15,
+      5,
+      "#eef2ef",
+      "#22493e",
+    );
+    for (const x of [-19, -14, -9, -4, 4, 9, 14, 19]) {
+      const pane = this.box(this.scene, x, 1.6, 18, 4.5, 3.2, 0.08, "#c4dddd");
+      pane.material = new THREE.MeshPhysicalMaterial({
+        color: "#b9d6db",
+        transparent: true,
+        opacity: 0.18,
+        roughness: 0.12,
+        metalness: 0.1,
+        depthWrite: false,
+      });
+      this.box(this.scene, x + 2.35, 1.7, 18, 0.18, 3.4, 0.3, "#5f676b");
+    }
+    for (let i = 0; i < 8; i++) {
+      const z = -12 - i * (this.layout.workshopSpacing || 5);
+      this.box(this.scene, -7, 0.064, z, 4.5, 0.02, 4.6, "#899795");
+      this.box(this.scene, -9.3, 0.085, z, 0.06, 0.02, 4.6, "#e8ece6");
+      this.label(`PARC ${i + 1}`, -7, 0.4, z + 2, 1.5);
+    }
+    const roof = new THREE.Group();
+    roof.userData.overhead = true;
+    this.scene.add(roof);
     // Architectural beams, high windows and practical strip lights.
-    for (const z of [-16, -8, 0, 8, 16]) {
-      this.box(this.scene, 0, 5.5, z, 44, 0.15, 0.18, "#8e9e9d");
+    for (const z of [-48, -40, -32, -24, -16, -8, 0, 8, 16]) {
+      this.box(roof, 0, 5.5, z, 44, 0.15, 0.18, "#8e9e9d");
       for (const x of [-10, 10]) {
-        this.box(this.scene, x, 5.4, z, 6, 0.06, 0.2, "#fffbe9");
+        this.box(roof, x, 5.4, z, 6, 0.06, 0.2, "#fffbe9");
       }
     }
     for (const x of [-21.8, 21.8])
@@ -609,7 +705,7 @@ export class GarageScene {
     this.clear(this.cars);
     this.wheelObjects.clear();
     vehicles.filter(isPresent).forEach((v) => {
-      const [x, z] = vehiclePosition(v, vehicles);
+      const [x, z] = vehiclePosition(v, vehicles, this.layout);
       const g = this.car(v, x, z);
       if (v.bay) g.position.y = this.liftGroups.get(v.bay)?.position.y || 0;
       this.cars.add(g);
@@ -674,15 +770,27 @@ export class GarageScene {
         this.cars.add(this.person(t.name, position[0], position[1]));
       });
     vehicles.filter(isPresent).forEach((v) => {
-      const [x, z] = vehiclePosition(v, vehicles);
+      const [x, z] = vehiclePosition(v, vehicles, this.layout);
       this.label(
         v.plate + " · " + (live[v.id]?.blocked ? "Bloqué" : v.status),
         x,
         2.65,
         z,
         3,
-        live[v.id]?.blocked ? "#985f4e" : "#385965",
-        live[v.id]?.blocked ? "#f7ede5" : "#f6faf4",
+        live[v.id]?.blocked || v.status === "En intervention"
+          ? "#a42d3b"
+          : v.status === "Prêt à livrer"
+            ? "#127348"
+            : v.status === "Devis à valider"
+              ? "#935500"
+              : "#385965",
+        live[v.id]?.blocked || v.status === "En intervention"
+          ? "#ffe3e7"
+          : v.status === "Prêt à livrer"
+            ? "#dff8e8"
+            : v.status === "Devis à valider"
+              ? "#fff0ca"
+              : "#f6faf4",
         this.cars,
       );
     });
@@ -727,11 +835,11 @@ export class GarageScene {
   }
   private boxes() {
     return [
-      ...walls,
+      ...this.activeWalls(),
       ...this.furniture,
 
       ...this.currentCars.filter(isPresent).map((v) => {
-        const [x, z] = vehiclePosition(v, this.currentCars);
+        const [x, z] = vehiclePosition(v, this.currentCars, this.layout);
         return { x, z, w: 2.05, d: 4.5 };
       }),
       ...doors
@@ -783,7 +891,7 @@ export class GarageScene {
     if (!id) return;
     const v = this.currentCars.find((v) => v.id === id);
     if (!v) return;
-    const [x, z] = vehiclePosition(v, this.currentCars);
+    const [x, z] = vehiclePosition(v, this.currentCars, this.layout);
     const mesh = new THREE.Mesh(
       new THREE.RingGeometry(2.35, 2.41, 80),
       new THREE.MeshBasicMaterial({ color: "#326e95", side: THREE.DoubleSide }),
@@ -798,7 +906,7 @@ export class GarageScene {
     for (const id of ids) {
       const v = this.currentCars.find((v) => v.id === id && isPresent(v));
       if (!v) continue;
-      const [x, z] = vehiclePosition(v, this.currentCars);
+      const [x, z] = vehiclePosition(v, this.currentCars, this.layout);
       const ring = new THREE.Mesh(
         new THREE.RingGeometry(2.35, 2.44, 64),
         new THREE.MeshBasicMaterial({
@@ -857,15 +965,36 @@ export class GarageScene {
       this.controls.update();
     }
   }
+  focusVehicle(id: string) {
+    const vehicle = this.currentCars.find((v) => v.id === id);
+    if (!vehicle) return;
+    const [x, z] = vehiclePosition(vehicle, this.currentCars, this.layout);
+    const start = this.camera.position.clone();
+    const target = this.controls.target.clone();
+    this.setMode("free");
+    this.camera.position.copy(start);
+    this.controls.target.copy(target);
+    this.cameraFlight = {
+      position: new THREE.Vector3(x - 5.8, 3.2, z + 6.6),
+      target: new THREE.Vector3(x, 0.9, z),
+    };
+    if (this.reduced) {
+      this.camera.position.copy(this.cameraFlight.position);
+      this.controls.target.copy(this.cameraFlight.target);
+      this.cameraFlight = null;
+      this.controls.update();
+    }
+  }
   setMode(mode: Mode) {
+    this.cameraFlight = null;
     this.path = [];
     if (document.pointerLockElement) document.exitPointerLock();
     this.mode = mode;
     this.controls.enabled = mode !== "walk";
     this.keys.clear();
     if (mode === "overview") {
-      this.camera.position.set(39, 45, 53);
-      this.controls.target.set(0, 0, 2);
+      this.camera.position.set(49, 58, 58);
+      this.controls.target.set(0, 0, -17);
       this.controls.update();
     } else if (mode === "walk") {
       this.camera.position.set(-17, 1.7, 13);
@@ -881,14 +1010,34 @@ export class GarageScene {
   go(zoneId: string) {
     const zone = zones.find((z) => z.id === zoneId);
     if (!zone) return;
+    if (this.mode !== "walk") {
+      const start = this.camera.position.clone();
+      const target = this.controls.target.clone();
+      this.setMode("free");
+      this.camera.position.copy(start);
+      this.controls.target.copy(target);
+      this.cameraFlight = {
+        position: new THREE.Vector3(zone.x + 6, 7, zone.z + 9),
+        target: new THREE.Vector3(zone.x, 0.8, zone.z),
+      };
+      if (this.reduced) {
+        this.camera.position.copy(this.cameraFlight.position);
+        this.controls.target.copy(this.cameraFlight.target);
+        this.cameraFlight = null;
+      }
+      this.hint(
+        `Vue ${zone.short} · choisissez un véhicule pour ouvrir son dossier`,
+      );
+      return;
+    }
     doors.forEach((d) => {
       if (this.closed.has(d.id)) this.toggleDoor(d.id);
     });
-    if (this.mode !== "walk") this.setMode("walk");
     const path = findPath(
       [this.camera.position.x, this.camera.position.z],
       [zone.x, zone.z],
       this.boxes(),
+      this.depth,
     );
     if (!path.length) {
       this.hint("Aucun passage disponible vers cette zone.");
@@ -991,11 +1140,10 @@ export class GarageScene {
           dx = diff.x;
           dz = diff.y;
           if (!this.reduced) {
-            this.yaw = THREE.MathUtils.lerp(
-              this.yaw,
-              Math.atan2(-dx, -dz),
-              0.08,
-            );
+            const angle = Math.atan2(-dx, -dz) - this.yaw;
+            this.yaw +=
+              Math.atan2(Math.sin(angle), Math.cos(angle)) *
+              (1 - Math.exp(-6 * dt));
           }
         }
       } else {
@@ -1025,12 +1173,42 @@ export class GarageScene {
           dt;
       }
       const boxes = this.boxes();
-      if (!blocked(this.camera.position.x + dx, this.camera.position.z, boxes))
+      if (
+        !blocked(
+          this.camera.position.x + dx,
+          this.camera.position.z,
+          boxes,
+          0.38,
+          this.depth,
+        )
+      )
         this.camera.position.x += dx;
-      if (!blocked(this.camera.position.x, this.camera.position.z + dz, boxes))
+      if (
+        !blocked(
+          this.camera.position.x,
+          this.camera.position.z + dz,
+          boxes,
+          0.38,
+          this.depth,
+        )
+      )
         this.camera.position.z += dz;
       this.camera.position.y = 1.7;
-    } else this.controls.update();
+    } else {
+      if (this.cameraFlight) {
+        const alpha = 1 - Math.exp(-6 * dt);
+        this.camera.position.lerp(this.cameraFlight.position, alpha);
+        this.controls.target.lerp(this.cameraFlight.target, alpha);
+        if (
+          this.camera.position.distanceTo(this.cameraFlight.position) < 0.025
+        ) {
+          this.camera.position.copy(this.cameraFlight.position);
+          this.controls.target.copy(this.cameraFlight.target);
+          this.cameraFlight = null;
+        }
+      }
+      this.controls.update();
+    }
     if (t - this.lastPosition > 180) {
       this.position(this.camera.position.x, this.camera.position.z);
       this.lastPosition = t;
@@ -1047,6 +1225,9 @@ export class GarageScene {
       fallback.forEach((object) => {
         object.visible = !detailed;
       });
+    }
+    for (const object of this.scene.children) {
+      if (object.userData.overhead) object.visible = this.mode !== "free";
     }
     this.renderer.render(this.scene, this.camera);
     this.frame = requestAnimationFrame((n) => this.tick(n));

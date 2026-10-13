@@ -1,3 +1,4 @@
+import { prepareClientMessage } from "./communication-domain.ts";
 import { record, updateVehicle, type DB, type Quote } from "./domain.ts";
 export function quoteTotals(quote: Quote) {
   const ht = quote.lines.reduce(
@@ -31,7 +32,7 @@ export function saveQuote(db: DB, quote: Quote): DB {
   const current = db.quotes?.find((q) => q.id === quote.id);
   if (current?.state === "Validé")
     throw Error("Un devis validé ne peut plus être modifié.");
-  return record(
+  const result = record(
     {
       ...db,
       quotes: [...(db.quotes || []).filter((q) => q.id !== quote.id), quote],
@@ -39,6 +40,9 @@ export function saveQuote(db: DB, quote: Quote): DB {
     quote.vehicle,
     "Devis " + quote.state.toLowerCase() + " enregistré",
   );
+  return quote.state === "À valider" && quote.lines.length
+    ? prepareClientMessage(result, quote.vehicle, "quote")
+    : result;
 }
 export function approveQuote(db: DB, id: string) {
   const quote = db.quotes?.find((q) => q.id === id);

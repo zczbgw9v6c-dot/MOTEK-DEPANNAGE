@@ -1,3 +1,6 @@
+import { DeliveryDeadline } from "./DeliveryDeadline";
+import { layoutFor } from "./dealership-layout";
+import { prepareClientMessage } from "./communication-domain";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -110,9 +113,11 @@ function Badge({ status }: { status: Status }) {
           ? "green"
           : status === "Devis à valider"
             ? "amber"
-            : status === "Diagnostic"
-              ? "slate"
-              : "blue")
+            : status === "En intervention"
+              ? "red"
+              : status === "Diagnostic"
+                ? "slate"
+                : "blue")
       }
     >
       <i />
@@ -304,6 +309,10 @@ function App() {
     }
     setSelection(s);
     setInspect(s.kind === "wheel");
+    if (s.kind === "vehicle") {
+      setMode("free");
+      scene.current?.focusVehicle(s.id);
+    }
     if (s.kind === "wheel") setMode("free");
     setTab(s.kind === "wheel" ? "pieces" : "dossier");
     if (s.kind === "stock") setView("stocks");
@@ -329,9 +338,14 @@ function App() {
         (x, z) => setPos([x, z]),
         setHint,
         setError3d,
+        layoutFor(db.dealership),
       );
       scene.current.update(db.vehicles, db.assetDisabled, db.workshop);
       scene.current.setMode(mode);
+      if (car && isPresent(car) && !inspect) {
+        scene.current.focusVehicle(car.id);
+        setMode("free");
+      }
       scene.current.reduced = reduced;
       scene.current.speed = speed;
       scene.current.setQuality(low);
@@ -344,7 +358,7 @@ function App() {
       scene.current?.dispose();
       scene.current = null;
     };
-  }, [view]);
+  }, [view, db.dealership]);
   useEffect(() => {
     scene.current?.update(db.vehicles, db.assetDisabled, db.workshop);
   }, [db.vehicles, db.assetDisabled]);
@@ -375,7 +389,7 @@ function App() {
   }
   function go(id: string) {
     setZone(id);
-    setMode("walk");
+    if (mode !== "walk") setMode("free");
     scene.current?.go(id);
   }
   function exportDB() {
@@ -389,31 +403,10 @@ function App() {
     URL.revokeObjectURL(url);
     notify("Sauvegarde exportée.");
   }
-  function prepareMessage(v: Vehicle) {
-    if (v.status !== "Prêt à livrer" && v.status !== "Livré") {
-      notify(
-        "Le contrôle qualité doit être validé avant de préparer la restitution.",
-      );
-      return;
-    }
+  function prepareMessage(v: Vehicle, kind: "pickup" | "quote" = "pickup") {
     commit(
-      (d) =>
-        record(
-          {
-            ...d,
-            messages: [
-              {
-                id: crypto.randomUUID(),
-                vehicle: v.id,
-                text: `Bonjour ${v.client}, votre ${v.make} ${v.model} (${v.plate}) est prêt à être récupéré. Contactez l’accueil pour convenir de votre passage. L’équipe AutoHub.`,
-              },
-              ...d.messages,
-            ],
-          },
-          v.id,
-          "Message client préparé, non envoyé",
-        ),
-      "Brouillon préparé · aucun envoi effectué.",
+      (d) => prepareClientMessage(d, v.id, kind),
+      "Brouillon WhatsApp préparé · aucun envoi effectué.",
     );
     setTab("historique");
   }
@@ -666,11 +659,17 @@ function App() {
                       value={zone}
                       onChange={(e) => go(e.target.value)}
                     >
-                      {zones.map((z) => (
-                        <option value={z.id} key={z.id}>
-                          {z.short}
-                        </option>
-                      ))}
+                      {zones
+                        .filter(
+                          (z) =>
+                            layoutFor(db.dealership).waitingRoom ||
+                            z.id !== "attente",
+                        )
+                        .map((z) => (
+                          <option value={z.id} key={z.id}>
+                            {z.short}
+                          </option>
+                        ))}
                     </select>
                   </div>
                   {mode === "overview" && (
@@ -748,15 +747,15 @@ function App() {
                       </button>
                     </div>
                     <svg
-                      viewBox="-24 -20 48 52"
+                      viewBox={`-24 ${-19 - 7 * (db.dealership?.workshopSpacing || 5)} 48 ${51 + 7 * (db.dealership?.workshopSpacing || 5)}`}
                       role="img"
                       aria-label="Plan interactif du garage"
                     >
                       <rect
                         x="-22"
-                        y="-18"
+                        y={-17 - 7 * (db.dealership?.workshopSpacing || 5)}
                         width="44"
-                        height="36"
+                        height={35 + 7 * (db.dealership?.workshopSpacing || 5)}
                         fill="#e6ebe7"
                         stroke="#94a6a6"
                         strokeWidth=".4"
@@ -766,34 +765,40 @@ function App() {
                         stroke="#a4b2b0"
                         strokeWidth=".4"
                       />
-                      {zones.map((z) => (
-                        <g
-                          key={z.id}
-                          onClick={() => go(z.id)}
-                          tabIndex={0}
-                          role="button"
-                          aria-label={"Aller à " + z.short}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") go(z.id);
-                          }}
-                        >
-                          <circle
-                            cx={z.x}
-                            cy={z.z}
-                            r="2.8"
-                            fill={zone === z.id ? "#477996" : "#c2cfca"}
-                          />
-                          <text
-                            x={z.x}
-                            y={z.z + 0.8}
-                            textAnchor="middle"
-                            fontSize="1.9"
-                            fill={zone === z.id ? "white" : "#314b56"}
+                      {zones
+                        .filter(
+                          (z) =>
+                            layoutFor(db.dealership).waitingRoom ||
+                            z.id !== "attente",
+                        )
+                        .map((z) => (
+                          <g
+                            key={z.id}
+                            onClick={() => go(z.id)}
+                            tabIndex={0}
+                            role="button"
+                            aria-label={"Aller à " + z.short}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") go(z.id);
+                            }}
                           >
-                            {z.short.slice(0, 3)}
-                          </text>
-                        </g>
-                      ))}
+                            <circle
+                              cx={z.x}
+                              cy={z.z}
+                              r="2.8"
+                              fill={zone === z.id ? "#477996" : "#c2cfca"}
+                            />
+                            <text
+                              x={z.x}
+                              y={z.z + 0.8}
+                              textAnchor="middle"
+                              fontSize="1.9"
+                              fill={zone === z.id ? "white" : "#314b56"}
+                            >
+                              {z.short.slice(0, 3)}
+                            </text>
+                          </g>
+                        ))}
                       {mode === "walk" && (
                         <circle
                           cx={pos[0]}
@@ -933,6 +938,7 @@ function App() {
                               <strong>{car.year}</strong>
                             </div>
                           </div>
+                          <DeliveryDeadline db={db} vehicle={car} />
                           <label>Motif de visite</label>
                           <p className="symptoms">{car.symptoms}</p>
                           <label htmlFor="technician">Technicien affecté</label>
@@ -1052,13 +1058,22 @@ function App() {
                             <Brain size={18} />
                             Rechercher des cas similaires
                           </button>
+                          {car.status === "Devis à valider" && (
+                            <button
+                              className="secondary full"
+                              onClick={() => prepareMessage(car, "quote")}
+                            >
+                              <Envelope size={18} />
+                              Préparer WhatsApp · devis
+                            </button>
+                          )}
                           {car.status === "Prêt à livrer" && (
                             <button
                               className="secondary full"
                               onClick={() => prepareMessage(car)}
                             >
                               <Envelope size={18} />
-                              Préparer le message client
+                              Préparer WhatsApp · restitution
                             </button>
                           )}
                         </>
@@ -1200,7 +1215,9 @@ function App() {
                             .filter((m) => m.vehicle === car.id)
                             .map((m) => (
                               <div className="message" key={m.id}>
-                                <span>BROUILLON · NON ENVOYÉ</span>
+                                <span>
+                                  WHATSAPP · BROUILLON À RELIRE · NON ENVOYÉ
+                                </span>
                                 <p>{m.text}</p>
                                 <button
                                   className="secondary"
@@ -1469,7 +1486,9 @@ function App() {
                         </td>
                         <td>{v.technician}</td>
                         <td>{v.bay ? String(v.bay).padStart(2, "0") : "—"}</td>
-                        <td>{v.due}</td>
+                        <td>
+                          <DeliveryDeadline db={db} vehicle={v} />
+                        </td>
                         <td>
                           <button
                             className="text-button"
@@ -1518,6 +1537,80 @@ function App() {
             />
           ) : (
             <section className="content-card settings">
+              <h2>Votre concession</h2>
+              <p>
+                Maquette inspirée de Porto : showroom en façade, atelier au
+                fond, ponts à droite et parc à gauche. Adaptez les enseignes et
+                la salle d’attente à votre garage.
+              </p>
+              {(["leftBrand", "rightBrand"] as const).map((field, i) => (
+                <label key={field}>
+                  {i === 0 ? "Showroom gauche" : "Showroom droit"}
+                  <input
+                    key={layoutFor(db.dealership)[field]}
+                    maxLength={40}
+                    defaultValue={layoutFor(db.dealership)[field]}
+                    onBlur={(e) => {
+                      const value = e.target.value.trim();
+                      if (value && value !== layoutFor(db.dealership)[field])
+                        commit(
+                          (d) => ({
+                            ...d,
+                            dealership: {
+                              ...layoutFor(d.dealership),
+                              [field]: value,
+                            },
+                          }),
+                          "Enseigne enregistrée.",
+                        );
+                    }}
+                  />
+                </label>
+              ))}
+              <label className="check-label">
+                <input
+                  type="checkbox"
+                  checked={layoutFor(db.dealership).waitingRoom}
+                  onChange={(e) => {
+                    const waitingRoom = e.target.checked;
+                    commit(
+                      (d) => ({
+                        ...d,
+                        dealership: { ...layoutFor(d.dealership), waitingRoom },
+                      }),
+                      "Plan de la concession enregistré.",
+                    );
+                  }}
+                />
+                Salle d’attente dans la maquette
+              </label>
+              <label>
+                Profondeur de l’atelier
+                <select
+                  value={db.dealership?.workshopSpacing || 5}
+                  onChange={(e) => {
+                    const workshopSpacing = Number(e.target.value);
+                    commit(
+                      (d) => ({
+                        ...d,
+                        dealership: {
+                          ...layoutFor(d.dealership),
+                          workshopSpacing,
+                        },
+                      }),
+                      "Dimensions de la maquette enregistrées.",
+                    );
+                  }}
+                >
+                  <option value={5}>Standard · ponts espacés de 5 m</option>
+                  <option value={6}>
+                    Grand atelier · ponts espacés de 6 m
+                  </option>
+                  <option value={7}>
+                    Très grand atelier · ponts espacés de 7 m
+                  </option>
+                </select>
+              </label>
               <h2>Préférences de navigation</h2>
               <label className="check-label">
                 <input
@@ -1546,9 +1639,8 @@ function App() {
               />
               <h2>Vos données locales</h2>
               <p>
-                Les dossiers sont stockés dans ce navigateur. Ce prototype n’est
-                pas un service multi-utilisateurs : exportez régulièrement une
-                sauvegarde.
+                Les dossiers et la configuration sont enregistrés sur le serveur
+                AutoHub de ce Mac. Exportez régulièrement une sauvegarde.
               </p>
               <button className="secondary" onClick={exportDB}>
                 <Export size={18} />

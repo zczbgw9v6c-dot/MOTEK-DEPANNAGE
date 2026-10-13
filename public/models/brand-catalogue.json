@@ -1,0 +1,122 @@
+{
+  "brands": [
+    "Audi",
+    "BMW",
+    "Citroën",
+    "Fiat",
+    "Mercedes",
+    "Mini",
+    "Nissan",
+    "Peugeot",
+    "Renault",
+    "Volkswagen",
+    "Toyota",
+    "Abarth",
+    "Aston Martin",
+    "Bentley",
+    "Honda",
+    "Hyundai",
+    "Jaguar",
+    "Jeep",
+    "Kia",
+    "Lamborghini",
+    "Land Rover",
+    "Maserati",
+    "McLaren",
+    "Porsche",
+    "Rolls-Royce"
+  ],
+  "models": [
+    {
+      "make": "BMW",
+      "model": "Série 3",
+      "year": null,
+      "generation": null,
+      "assetId": null,
+      "status": "awaiting_download",
+      "license": "unverified"
+    },
+    {
+      "make": "BMW",
+      "model": "X5",
+      "year": null,
+      "generation": null,
+      "assetId": null,
+      "status": "awaiting_download",
+      "license": "unverified"
+    },
+    {
+      "make": "Renault",
+      "model": "Clio",
+      "year": null,
+      "generation": null,
+      "assetId": null,
+      "status": "awaiting_download",
+      "license": "unverified"
+    },
+    {
+      "make": "Renault",
+      "model": "Mégane",
+      "year": null,
+      "generation": null,
+      "assetId": null,
+      "status": "awaiting_download",
+      "license": "unverified"
+    },
+    {
+      "make": "Volkswagen",
+      "model": "Golf",
+      "year": null,
+      "generation": null,
+      "assetId": null,
+      "status": "awaiting_download",
+      "license": "unverified"
+    },
+    {
+      "make": "Volkswagen",
+      "model": "Tiguan",
+      "year": null,
+      "generation": null,
+      "assetId": null,
+      "status": "awaiting_download",
+      "license": "unverified"
+    },
+    {
+      "make": "Jaguar",
+      "model": "XE",
+      "year": null,
+      "generation": null,
+      "assetId": null,
+      "status": "awaiting_download",
+      "license": "unverified"
+    },
+    {
+      "make": "Jaguar",
+      "model": "F-Pace",
+      "year": null,
+      "generation": null,
+      "assetId": null,
+      "status": "awaiting_download",
+      "license": "unverified"
+    },
+    {
+      "make": "Land Rover",
+      "model": "Range Rover",
+      "year": null,
+      "generation": null,
+      "assetId": null,
+      "status": "awaiting_download",
+      "license": "unverified"
+    },
+    {
+      "make": "Land Rover",
+      "model": "Defender",
+      "year": null,
+      "generation": null,
+      "assetId": null,
+      "status": "awaiting_download",
+      "license": "unverified"
+    }
+  ],
+  "note": "Objectifs de collecte, aucun modèle de marque téléchargé. Année et génération à vérifier lors de l’import."
+}

@@ -1,3 +1,5 @@
+import type { DealershipLayout } from "./dealership-layout.ts";
+import { prepareClientMessage } from "./communication-domain.ts";
 import { createDemo } from "./demo.ts";
 import { team, type Department } from "./team-data.ts";
 import type { Appointment } from "./planning-domain.ts";
@@ -77,6 +79,7 @@ export type DB = {
   quotes?: Quote[];
   assetDisabled?: string[];
   demoVersion?: number;
+  dealership?: DealershipLayout;
   appointments?: Appointment[];
   diagnosticCases?: DiagnosticCase[];
   alerts?: ManagerAlert[];
@@ -113,12 +116,16 @@ export type Quote = {
   at: string;
 };
 export const technicians = ["Non affecté", ...team.map((t) => t.name)];
-export const bayPosition = (bay: number): [number, number] => [
-  bay % 2 ? -7 : 7,
-  -10 + Math.floor((bay - 1) / 2) * 5,
-];
-export function vehiclePosition(v: Vehicle, all: Vehicle[]): [number, number] {
-  if (v.bay) return bayPosition(v.bay);
+export const bayPosition = (
+  bay: number,
+  layout?: DealershipLayout,
+): [number, number] => [7, -12 - (bay - 1) * (layout?.workshopSpacing || 5)];
+export function vehiclePosition(
+  v: Vehicle,
+  all: Vehicle[],
+  layout?: DealershipLayout,
+): [number, number] {
+  if (v.bay) return bayPosition(v.bay, layout);
   const ready = all.filter(
     (c) => c.status === "Prêt à livrer" && c.bay === null,
   );
@@ -137,11 +144,11 @@ export function vehiclePosition(v: Vehicle, all: Vehicle[]): [number, number] {
     0,
     parked.findIndex((c) => c.id === v.id),
   );
-  return [-17 + (i % 4) * 11, 22 + Math.floor(i / 4) * 5];
+  return [-7, -12 - i * (layout?.workshopSpacing || 5)];
 }
 export const zones = [
   { id: "accueil", name: "Accueil", short: "Accueil", x: -17, z: 10 },
-  { id: "atelier", name: "Atelier mécanique", short: "Atelier", x: 0, z: 0 },
+  { id: "atelier", name: "Atelier mécanique", short: "Atelier", x: 0, z: -28 },
   { id: "attente", name: "Salle d’attente", short: "Attente", x: -17, z: -3 },
   { id: "stock", name: "Magasin & stocks", short: "Stocks", x: 17, z: -12 },
   { id: "carrosserie", name: "Carrosserie", short: "Carrosserie", x: 17, z: 0 },
@@ -154,7 +161,7 @@ export const zones = [
   },
   { id: "livraison", name: "Livraison", short: "Livraison", x: 17, z: 15 },
   { id: "showroom", name: "Showroom", short: "Showroom", x: 0, z: 14 },
-  { id: "parking", name: "Parking extérieur", short: "Parking", x: 0, z: 24 },
+  { id: "parking", name: "Parc atelier", short: "Parc", x: -7, z: -28 },
 ];
 export function seed(): DB {
   return createDemo();
@@ -195,11 +202,14 @@ export function updateVehicle(db: DB, id: string, patch: Partial<Vehicle>): DB {
   if (next.status === "Prêt à livrer" || next.status === "Livré")
     next.bay = null;
   if (next.status === "Livré") next.present = false;
-  return record(
+  const result = record(
     { ...db, vehicles: db.vehicles.map((v) => (v.id === id ? next : v)) },
     id,
     patch.status ? `Statut : ${next.status}` : "Dossier mis à jour",
   );
+  return old.status !== next.status && next.status === "Prêt à livrer"
+    ? prepareClientMessage(result, id, "pickup")
+    : result;
 }
 export function reservePart(db: DB, vehicle: string, id: string): DB {
   const part = db.parts.find((p) => p.id === id);
@@ -305,6 +315,23 @@ export function loadDB(raw: string | null): DB {
   const str = (x: unknown) => typeof x === "string";
   const number = (x: unknown) =>
     typeof x === "number" && Number.isFinite(x) && x >= 0;
+  if (
+    d.dealership !== undefined &&
+    (!d.dealership ||
+      !["leftBrand", "rightBrand"].every(
+        (k) =>
+          str(d.dealership[k]) &&
+          d.dealership[k].trim().length > 0 &&
+          d.dealership[k].length <= 40,
+      ) ||
+      typeof d.dealership.waitingRoom !== "boolean")
+  )
+    return invalid();
+  if (
+    d.dealership?.workshopSpacing !== undefined &&
+    ![5, 6, 7].includes(d.dealership.workshopSpacing)
+  )
+    return invalid();
   for (const v of d.vehicles) {
     if (
       !v ||

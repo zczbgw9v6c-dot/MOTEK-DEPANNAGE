@@ -25,9 +25,11 @@ function divided(
         : { x: (last + end) / 2, z: constant, w: end - last, d: 0.25 },
     );
 }
-divided("x", -22, -18, 18, []);
-divided("x", 22, -18, 18, []);
-divided("z", -18, -22, 22, []);
+divided("x", -22, -52, 18, []);
+divided("x", 22, -52, 18, []);
+divided("z", -52, -22, 22, []);
+divided("z", -18, -22, -12, [-17]);
+divided("z", -18, 12, 22, [17]);
 divided("z", 18, -22, 22, [0, 17]);
 divided("x", -12, -18, 18, [-13, -3, 10]);
 divided("x", 12, -18, 18, [-12, 0, 12]);
@@ -42,11 +44,17 @@ export const doors = [
   { id: "d3", x: 12, z: 0, axis: "x" },
   { id: "d4", x: 12, z: 12, axis: "x" },
 ];
-export function blocked(x: number, z: number, boxes: Box[], radius = 0.38) {
+export function blocked(
+  x: number,
+  z: number,
+  boxes: Box[],
+  radius = 0.38,
+  depth = 52,
+) {
   return (
     x < -21.5 ||
     x > 21.5 ||
-    z < -17.5 ||
+    z < -depth + 0.5 ||
     z > 29 ||
     boxes.some(
       (b) =>
@@ -60,6 +68,7 @@ export function findPath(
   from: [number, number],
   to: [number, number],
   boxes: Box[],
+  depth = 52,
 ): [number, number][] {
   const start = from.map(Math.round) as [number, number];
   const end = to.map(Math.round) as [number, number];
@@ -96,7 +105,7 @@ export function findPath(
       [0, -1],
     ]) {
       const n: [number, number] = [p[0] + dx, p[1] + dz];
-      if (blocked(...n, boxes, 0.45)) continue;
+      if (blocked(...n, boxes, 0.45, depth)) continue;
       const nk = key(n),
         g = cost.get(k)! + 1;
       if (g < (cost.get(nk) ?? Infinity)) {

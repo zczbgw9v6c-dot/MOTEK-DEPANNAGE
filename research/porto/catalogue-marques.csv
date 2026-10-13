@@ -1,0 +1,11 @@
+make,model,year,generation,assetId,status,license
+BMW,Série 3,,,,awaiting_download,unverified
+BMW,X5,,,,awaiting_download,unverified
+Renault,Clio,,,,awaiting_download,unverified
+Renault,Mégane,,,,awaiting_download,unverified
+Volkswagen,Golf,,,,awaiting_download,unverified
+Volkswagen,Tiguan,,,,awaiting_download,unverified
+Jaguar,XE,,,,awaiting_download,unverified
+Jaguar,F-Pace,,,,awaiting_download,unverified
+Land Rover,Range Rover,,,,awaiting_download,unverified
+Land Rover,Defender,,,,awaiting_download,unverified

@@ -31,7 +31,7 @@ test("V2 counts and fourteen non-overlapping physical vehicles agree across all 
   const positions = d.present.map((v) => vehiclePosition(v, db.vehicles));
   assert.equal(new Set(positions.map((p) => p.join(","))).size, 14);
   assert.ok(
-    positions.every(([x, z]) => x > -22 && x < 22 && z > -18 && z < 30),
+    positions.every(([x, z]) => x > -22 && x < 22 && z > -52 && z < 30),
   );
   assert.equal(new Set(db.parts.map((p) => p.id)).size, 50);
   assert.ok(

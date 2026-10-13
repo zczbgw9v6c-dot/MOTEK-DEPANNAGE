@@ -3454,3 +3454,71 @@ kbd {
   line-height: 1.5;
   margin-bottom: 16px;
 }
+
+.badge.red {
+  color: #a52f3b;
+  background: #ffe5e8;
+}
+.badge.amber {
+  color: #925700;
+  background: #fff0ce;
+}
+.badge.green {
+  color: #137447;
+  background: #ddf7e8;
+}
+
+.delivery-deadline {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #edf3f8;
+  color: #305e7a;
+  margin: 8px 0;
+}
+.delivery-deadline small {
+  font-size: 11px;
+  color: inherit;
+}
+.delivery-deadline.late {
+  background: #ffe3e8;
+  color: #ab263b;
+  border-left: 3px solid #d34458;
+}
+.delivery-deadline.soon {
+  background: #fff0cf;
+  color: #976000;
+  border-left: 3px solid #e4aa27;
+}
+.delivery-deadline.ready {
+  background: #ddf6e8;
+  color: #187548;
+}
+
+.brand-targets {
+  margin: 16px 0;
+}
+.brand-targets summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.brand-target-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.brand-target-grid a {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px;
+  background: #edf4f9;
+  color: #305c77;
+  border-radius: 8px;
+  text-decoration: none;
+}
+.brand-target-grid small {
+  font-size: 11px;
+}

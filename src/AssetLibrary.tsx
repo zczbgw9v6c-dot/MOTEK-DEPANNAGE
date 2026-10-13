@@ -107,6 +107,7 @@ export function AssetLibrary({
   commit: (fn: (db: DB) => DB, message?: string) => void;
 }) {
   const [assets, setAssets] = useState<Asset[]>([]),
+    [targets, setTargets] = useState<{ make: string; model: string }[]>([]),
     [error, setError] = useState(""),
     [query, setQuery] = useState(""),
     [filter, setFilter] = useState("all"),
@@ -114,6 +115,13 @@ export function AssetLibrary({
     [vehicle, setVehicle] = useState(db.vehicles[0]?.id || "");
   useEffect(() => {
     const controller = new AbortController();
+    fetch("/models/brand-catalogue.json", { signal: controller.signal })
+      .then((r) => {
+        if (!r.ok) throw Error();
+        return r.json();
+      })
+      .then((m) => setTargets(m.models))
+      .catch(() => {});
     fetch("/models/manifest.json", { signal: controller.signal })
       .then((r) => {
         if (!r.ok) throw Error();
@@ -155,7 +163,8 @@ export function AssetLibrary({
         </div>
         <div>
           <strong>
-            0 <small>/ 100</small>
+            {available.filter((a) => !a.generic).length}{" "}
+            <small>/ {targets.length || 10}</small>
           </strong>
           <span>Véhicules de marque importés</span>
         </div>
@@ -169,6 +178,35 @@ export function AssetLibrary({
           licences non vérifiées.
         </span>
       </div>
+      <details className="content-card brand-targets">
+        <summary>
+          Première collection de marque · 5 marques, 10 modèles à importer
+        </summary>
+        <p>
+          Année, génération, auteur et licence doivent être vérifiés avant
+          rattachement automatique. Le téléchargement Sketchfab nécessite une
+          connexion. Ces objectifs ne sont pas comptés comme des modèles
+          importés.
+        </p>
+        <div className="brand-target-grid">
+          {targets.map((t) => (
+            <a
+              key={t.make + t.model}
+              href={
+                "https://sketchfab.com/search?type=models&features=downloadable&q=" +
+                encodeURIComponent(t.make + " " + t.model)
+              }
+              target="_blank"
+              rel="noreferrer"
+            >
+              <strong>
+                {t.make} {t.model}
+              </strong>
+              <small>Rechercher un modèle téléchargeable ↗</small>
+            </a>
+          ))}
+        </div>
+      </details>
       {error && <div className="notice">{error}</div>}
       <div className="library-layout">
         <section className="content-card">

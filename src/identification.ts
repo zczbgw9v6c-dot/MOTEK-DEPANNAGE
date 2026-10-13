@@ -64,7 +64,7 @@ export function identifyLocal(
     ? {
         state: "identified",
         matches,
-        source: "Dossiers internes de ce navigateur",
+        source: "Dossiers internes du serveur AutoHub",
         message:
           "Correspondance avec un dossier local. La motorisation n’est pas vérifiée par une source constructeur.",
       }
