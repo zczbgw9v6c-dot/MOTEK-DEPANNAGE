@@ -163,10 +163,10 @@ export function AssetLibrary({
       <div className="subtle-note">
         <ShieldCheck />
         <span>
-          Dix fichiers génériques Kenney CC0, dont des variantes de carrosserie.
-          Ils ne constituent pas dix modèles de marques connues. Les dix liens
-          Sketchfab fournis restent non téléchargés et leurs licences non
-          vérifiées.
+          Modèles génériques Kenney CC0 et création originale détaillée Spectral
+          GT RS. Ils ne constituent pas des modèles attestés de marques connues.
+          Les dix liens Sketchfab fournis restent non téléchargés et leurs
+          licences non vérifiées.
         </span>
       </div>
       {error && <div className="notice">{error}</div>}

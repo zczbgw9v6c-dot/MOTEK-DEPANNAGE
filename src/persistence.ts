@@ -1,5 +1,5 @@
 import type { DB } from "./domain.ts";
-export const STORAGE_KEY = "autohub-local-v1";
+export const STORAGE_KEY = "autohub-local-v2";
 export function persistDB(
   db: DB,
   storage: { setItem: (key: string, value: string) => void },

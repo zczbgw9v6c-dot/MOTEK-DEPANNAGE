@@ -1,5 +1,7 @@
 import { defineConfig } from "vite";
+import { autohubAPI } from "./server/plugin";
 export default defineConfig({
+  plugins: [autohubAPI()],
   build: {
     rollupOptions: {
       output: {

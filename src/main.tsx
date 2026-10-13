@@ -58,6 +58,13 @@ import { Workshop } from "./Workshop";
 import { AssetLibrary } from "./AssetLibrary";
 import { Quotes } from "./Quotes";
 import { ScanPanel } from "./ScanPanel";
+import { changeServer, readServer, syncClock, type Snapshot } from "./api";
+import { Stocks } from "./Stocks";
+import { Intelligence } from "./Intelligence";
+import { Planning } from "./Planning";
+import { Team } from "./Team";
+import { Pilotage } from "./Pilotage";
+import { dashboard, isPresent } from "./dashboard-domain";
 import { persistDB, STORAGE_KEY } from "./persistence";
 import { duplicateVehicle, workshopFor } from "./workshop-domain";
 import { identifyLocal, validVIN, type FieldEvidence } from "./identification";
@@ -69,6 +76,13 @@ function orderID() {
       : "";
   } catch {
     return "";
+  }
+}
+function hasLegacyBackup() {
+  try {
+    return !!localStorage.getItem("autohub-local-v1");
+  } catch {
+    return false;
   }
 }
 function readInitial() {
@@ -111,6 +125,48 @@ function App() {
   const [canSave, setCanSave] = useState(!initial.error);
   const [db, setDB] = useState<DB>(initial.db);
   const dbRef = useRef(db);
+  const revision = useRef(-1),
+    queue = useRef<Promise<unknown>>(Promise.resolve());
+  const [serverReady, setServerReady] = useState(false);
+  function acceptSnapshot(snapshot: Snapshot) {
+    if (snapshot.revision < revision.current) return;
+    revision.current = snapshot.revision;
+    syncClock(snapshot.serverNow);
+    dbRef.current = snapshot.db;
+    setDB(snapshot.db);
+    setCanSave(true);
+    setServerReady(true);
+    setStorageError("");
+  }
+  useEffect(() => {
+    let mounted = true;
+    readServer()
+      .then((s) => {
+        if (mounted) acceptSnapshot(s);
+      })
+      .catch(() => {
+        if (mounted)
+          setStorageError(
+            "Serveur AutoHub indisponible : les modifications sont bloquées jusqu’à reconnexion.",
+          );
+      });
+    const stream = new EventSource("/api/events");
+    stream.onmessage = (e) => {
+      if (mounted) acceptSnapshot(JSON.parse(e.data));
+    };
+    stream.onerror = () => {
+      if (mounted) {
+        setServerReady(false);
+        setStorageError(
+          "Connexion serveur interrompue. Les changements ne sont pas déclarés synchronisés.",
+        );
+      }
+    };
+    return () => {
+      mounted = false;
+      stream.close();
+    };
+  }, []);
   useEffect(() => {
     dbRef.current = db;
   }, [db]);
@@ -125,6 +181,34 @@ function App() {
   const [mode, setMode] = useState<Mode>("overview");
   const [zone, setZone] = useState("atelier");
   const [query, setQuery] = useState("");
+  const [cohort, setCohort] = useState("all");
+  const live = dashboard(db);
+  function cohortIDs(filter: string) {
+    return filter === "ready"
+      ? live.ready.map((v) => v.id)
+      : filter === "blocked"
+        ? live.blocked.map((v) => v.id)
+        : filter === "late"
+          ? live.late.map((v) => v.id)
+          : filter === "running"
+            ? live.running.map((v) => v.id)
+            : filter === "invoiced"
+              ? (db.invoices || []).map((i) => i.vehicle)
+              : filter === "present"
+                ? live.present.map((v) => v.id)
+                : db.vehicles.map((v) => v.id);
+  }
+  function filterDossiers(filter: string) {
+    setCohort(filter);
+    setQuery("");
+    setView("garage");
+    setSelection(null);
+  }
+  function openDossier(id: string) {
+    setSelection({ kind: "vehicle", id });
+    setTab("dossier");
+    setView("garage");
+  }
   const [toast, setToast] = useState("");
   const [hint, setHint] = useState("");
   const [pos, setPos] = useState<[number, number]>([-17, 13]);
@@ -144,32 +228,73 @@ function App() {
     scene = useRef<GarageScene | null>(null),
     timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const car = db.vehicles.find((v) => v.id === selection?.id);
-  const visible = db.vehicles.filter((v) =>
-    (v.make + " " + v.model + " " + v.plate + " " + v.client + " " + v.phone)
-      .toLowerCase()
-      .includes(query.toLowerCase()),
-  );
+  const visible = db.vehicles
+    .filter((v) => cohortIDs(cohort).includes(v.id))
+    .filter((v) =>
+      (v.make + " " + v.model + " " + v.plate + " " + v.client + " " + v.phone)
+        .toLowerCase()
+        .includes(query.toLowerCase()),
+    );
   const notify = (text: string) => {
     setToast(text);
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => setToast(""), 4500);
   };
-  function commit(fn: (db: DB) => DB, success?: string): boolean {
-    try {
-      if (!canSave)
-        throw Error(
-          "Restaurez une sauvegarde valide ou réinitialisez la démonstration avant de modifier les dossiers.",
+  function transact(
+    type: string,
+    vehicle: string | undefined,
+    payload: any,
+    success?: string,
+  ): Promise<boolean> {
+    const task = queue.current.then(async () => {
+      try {
+        if (revision.current < 0)
+          throw Error("Attendez la connexion au serveur.");
+        const snapshot = await changeServer(
+          revision.current,
+          type,
+          vehicle,
+          payload,
         );
-      const next = fn(dbRef.current);
-      persistDB(next, localStorage);
-      dbRef.current = next;
-      setDB(next);
-      if (success) notify(success);
-      return true;
-    } catch (e) {
-      notify((e as Error).message);
-      return false;
-    }
+        acceptSnapshot(snapshot);
+        if (success) notify(success);
+        return true;
+      } catch (e) {
+        notify((e as Error).message);
+        try {
+          acceptSnapshot(await readServer());
+        } catch {}
+        return false;
+      }
+    });
+    queue.current = task;
+    return task;
+  }
+  function commit(fn: (db: DB) => DB, success?: string): Promise<boolean> {
+    const task = queue.current.then(async () => {
+      try {
+        if (revision.current < 0)
+          throw Error("Attendez la connexion au serveur.");
+        const next = fn(dbRef.current);
+        const snapshot = await changeServer(
+          revision.current,
+          "snapshot",
+          undefined,
+          { db: next },
+        );
+        acceptSnapshot(snapshot);
+        if (success) notify(success);
+        return true;
+      } catch (e) {
+        notify((e as Error).message);
+        try {
+          acceptSnapshot(await readServer());
+        } catch {}
+        return false;
+      }
+    });
+    queue.current = task;
+    return task;
   }
   const select = (s: Selection) => {
     if (s.kind === "part") {
@@ -188,16 +313,13 @@ function App() {
     else if (s.kind === "delivery") setView("dossiers");
   };
   useEffect(() => {
-    if (!canSave) return;
+    if (!serverReady) return;
     try {
       localStorage.setItem(KEY, JSON.stringify(db));
-      setStorageError("");
     } catch {
-      setStorageError(
-        "La sauvegarde locale a échoué. Exportez vos dossiers avant de fermer.",
-      );
+      /* Server is authoritative; a full browser cache does not discard persisted data. */
     }
-  }, [db, canSave]);
+  }, [db, serverReady]);
   useEffect(() => {
     if (view !== "garage" || !host.current) return;
     try {
@@ -208,7 +330,7 @@ function App() {
         setHint,
         setError3d,
       );
-      scene.current.update(db.vehicles, db.assetDisabled);
+      scene.current.update(db.vehicles, db.assetDisabled, db.workshop);
       scene.current.setMode(mode);
       scene.current.reduced = reduced;
       scene.current.speed = speed;
@@ -224,8 +346,11 @@ function App() {
     };
   }, [view]);
   useEffect(() => {
-    scene.current?.update(db.vehicles, db.assetDisabled);
+    scene.current?.update(db.vehicles, db.assetDisabled, db.workshop);
   }, [db.vehicles, db.assetDisabled]);
+  useEffect(() => {
+    scene.current?.setFocusIds(cohort === "all" ? [] : cohortIDs(cohort));
+  }, [cohort, db, view]);
   useEffect(() => {
     scene.current?.setSelected(car?.id || null);
     if (car) scene.current?.inspect(car.id, inspect);
@@ -292,10 +417,8 @@ function App() {
     );
     setTab("historique");
   }
-  const occupied = db.vehicles.filter(
-    (v) => v.bay && v.status !== "Livré",
-  ).length;
-  const active = db.vehicles.filter((v) => v.status !== "Livré");
+  const occupied = live.occupied.length;
+  const active = live.present;
   useEffect(() => {
     const onHash = () => {
       if (location.hash.startsWith("#ordre=")) {
@@ -315,7 +438,7 @@ function App() {
     ["planning", "Planning", CalendarDots],
     ["equipe", "Équipe", Users],
     ["stocks", "Pièces & stocks", Package],
-    ["intelligence", "Garage Intelligence", Brain],
+    ["intelligence", "Garage intelligent", Brain],
     ["pilotage", "Pilotage", ChartLine],
     ["bibliotheque", "Bibliothèque 3D", Cube],
   ] as const;
@@ -378,7 +501,7 @@ function App() {
               Données fictives et modifiables.
             </p>
             <span>
-              <i /> Sauvegarde sur cet appareil
+              <i /> Base SQLite · serveur local
             </span>
           </div>
           <button
@@ -459,39 +582,46 @@ function App() {
               </button>
             </div>
           )}
-          <div className="metrics">
-            <div>
+          {cohort !== "all" && (
+            <div className="cohort-bar">
+              <span>
+                {visible.length} dossiers · filtre {cohort}
+              </span>
+              <button className="secondary" onClick={() => setCohort("all")}>
+                Afficher tous les dossiers
+              </button>
+            </div>
+          )}
+          <div className="metrics clickable-metrics">
+            <button onClick={() => filterDossiers("present")}>
               <span>Véhicules présents</span>
               <strong>
-                {active.length}
+                {live.present.length}
                 <small>dans votre garage</small>
               </strong>
-            </div>
-            <div>
+            </button>
+            <button onClick={() => setView("planning")}>
               <span>Postes occupés</span>
               <strong>
-                {occupied}
+                {live.occupied.length}
                 <em>/ 8</em>
-                <small>{8 - occupied} disponibles</small>
+                <small>{8 - live.occupied.length} disponibles</small>
               </strong>
-            </div>
-            <div>
-              <span>Devis à valider</span>
+            </button>
+            <button onClick={() => setView("devis")}>
+              <span>Devis validés</span>
               <strong>
-                {
-                  db.vehicles.filter((v) => v.status === "Devis à valider")
-                    .length
-                }
-                <small className="text-amber">action attendue</small>
+                {live.accepted.length}
+                <small>accord enregistré</small>
               </strong>
-            </div>
-            <div>
+            </button>
+            <button onClick={() => filterDossiers("ready")}>
               <span>Prêts à livrer</span>
               <strong>
-                {db.vehicles.filter((v) => v.status === "Prêt à livrer").length}
+                {live.ready.length}
                 <small className="text-green">contrôle validé</small>
               </strong>
-            </div>
+            </button>
           </div>
           {view === "garage" ? (
             <div
@@ -711,6 +841,9 @@ function App() {
                       </button>
                     </div>
                     <div className="vehicle-heading">
+                      <span className="model-honesty">
+                        Illustration générique · modèle exact non importé
+                      </span>
                       <div
                         className="car-avatar"
                         style={{ background: car.color }}
@@ -720,6 +853,9 @@ function App() {
                       <h2>
                         {car.make} {car.model}
                       </h2>
+                      <p className="warning-small">
+                        Représentation 3D générique · modèle exact non importé.
+                      </p>
                       <span className="plate">{car.plate}</span>
                       <Badge status={car.status} />
                     </div>
@@ -748,6 +884,36 @@ function App() {
                     <div className="panel-body">
                       {tab === "dossier" ? (
                         <>
+                          {!isPresent(car) && (
+                            <div className="subtle-note">
+                              Véhicule hors du garage : le dossier reste
+                              consultable.
+                            </div>
+                          )}
+                          {car.present === false &&
+                            car.status === "Réception" && (
+                              <button
+                                className="primary full"
+                                onClick={() =>
+                                  commit(
+                                    (d) => ({
+                                      ...updateVehicle(d, car.id, {
+                                        present: true,
+                                        arrivedAt: new Date().toISOString(),
+                                      }),
+                                      appointments: d.appointments?.map((a) =>
+                                        a.vehicle === car.id
+                                          ? { ...a, arrived: true }
+                                          : a,
+                                      ),
+                                    }),
+                                    "Arrivée enregistrée.",
+                                  )
+                                }
+                              >
+                                Enregistrer l’arrivée
+                              </button>
+                            )}
                           <div className="client-line">
                             <Users size={20} />
                             <div>
@@ -918,7 +1084,9 @@ function App() {
                           </button>
                           <div className="parts-selector">
                             {db.parts
-                              .filter((p) => p.id !== "filter")
+                              .filter((p) =>
+                                ["disc", "pads", "caliper"].includes(p.id),
+                              )
                               .map((p) => (
                                 <button
                                   className={selectedPart === p.id ? "on" : ""}
@@ -1178,42 +1346,38 @@ function App() {
                       />
                     </div>
                     <div className="vehicle-list">
-                      {visible
-                        .filter((v) => v.status !== "Livré")
-                        .map((v) => (
-                          <button
-                            className="vehicle-preview"
-                            key={v.id}
-                            onClick={() =>
-                              select({ kind: "vehicle", id: v.id })
-                            }
+                      {visible.filter(isPresent).map((v) => (
+                        <button
+                          className="vehicle-preview"
+                          key={v.id}
+                          onClick={() => select({ kind: "vehicle", id: v.id })}
+                        >
+                          <span
+                            className="preview-color"
+                            style={{ background: v.color }}
                           >
-                            <span
-                              className="preview-color"
-                              style={{ background: v.color }}
-                            >
-                              <Car size={23} />
-                            </span>
-                            <div>
-                              <strong>
-                                {v.make} {v.model}
-                              </strong>
-                              <small>
-                                {v.plate}{" "}
-                                <span>
-                                  ·{" "}
-                                  {v.bay
-                                    ? "Poste " + v.bay
-                                    : v.status === "Prêt à livrer"
-                                      ? "Livraison"
-                                      : "Parking"}
-                                </span>
-                              </small>
-                              <Badge status={v.status} />
-                            </div>
-                            <ArrowUpRight size={17} />
-                          </button>
-                        ))}
+                            <Car size={23} />
+                          </span>
+                          <div>
+                            <strong>
+                              {v.make} {v.model}
+                            </strong>
+                            <small>
+                              {v.plate}{" "}
+                              <span>
+                                ·{" "}
+                                {v.bay
+                                  ? "Poste " + v.bay
+                                  : v.status === "Prêt à livrer"
+                                    ? "Livraison"
+                                    : "Parking"}
+                              </span>
+                            </small>
+                            <Badge status={v.status} />
+                          </div>
+                          <ArrowUpRight size={17} />
+                        </button>
+                      ))}
                       {!visible.length && (
                         <p className="empty">Aucun dossier trouvé.</p>
                       )}
@@ -1221,9 +1385,9 @@ function App() {
                     <div className="panel-bottom">
                       <Clock size={18} />
                       <span>
-                        Les modifications sont sauvegardées
+                        Les modifications sont enregistrées en base
                         <br />
-                        sur ce navigateur.
+                        sur le serveur AutoHub de ce Mac.
                       </span>
                     </div>
                   </>
@@ -1238,6 +1402,14 @@ function App() {
                 setSelection(id ? { kind: "vehicle", id } : null)
               }
               commit={commit}
+              onAction={(type, payload) =>
+                transact(
+                  type,
+                  selection?.id,
+                  payload,
+                  "Action atelier enregistrée en base.",
+                )
+              }
               onOpen3D={(id) => {
                 setSelection({ kind: "vehicle", id });
                 setTab("dossier");
@@ -1318,460 +1490,32 @@ function App() {
               {!visible.length && <p className="empty">Aucun résultat.</p>}
             </section>
           ) : view === "planning" ? (
-            <section className="content-card">
-              <div className="section-head">
-                <h2>Planning de démonstration</h2>
-                <span className="small-chip">
-                  Horaires saisis, sans synchronisation
-                </span>
-              </div>
-              <div className="planning-grid">
-                {Array.from({ length: 8 }, (_, i) => {
-                  const v = db.vehicles.find(
-                    (v) => v.bay === i + 1 && v.status !== "Livré",
-                  );
-                  return (
-                    <div className="planning-bay" key={i}>
-                      <div>
-                        <strong>Poste {String(i + 1).padStart(2, "0")}</strong>
-                        <span className={v ? "text-blue" : "text-green"}>
-                          {v ? "Occupé" : "Disponible"}
-                        </span>
-                      </div>
-                      {v ? (
-                        <button
-                          onClick={() => {
-                            setView("garage");
-                            select({ kind: "vehicle", id: v.id });
-                          }}
-                        >
-                          <Car size={24} />
-                          <strong>
-                            {v.make} {v.model}
-                          </strong>
-                          <span>{v.plate}</span>
-                          <Badge status={v.status} />
-                          <small>{v.technician}</small>
-                          <span className="due">
-                            <Clock size={15} />
-                            Fin prévue : {v.due}
-                          </span>
-                        </button>
-                      ) : (
-                        <div className="free-bay">
-                          <Plus size={24} />
-                          <p>Disponible pour une intervention</p>
-                          <button
-                            className="secondary"
-                            onClick={() => setCreation(true)}
-                          >
-                            Réceptionner un véhicule
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="subtle-note">
-                <ShieldCheck />
-                Une affectation sur un poste occupé est refusée. Les horaires
-                restent indicatifs dans ce prototype.
-              </div>
-            </section>
+            <Planning db={db} commit={commit} onOpen={openDossier} />
           ) : view === "stocks" ? (
-            <section className="content-card">
-              <div className="section-head">
-                <h2>Magasin & stocks</h2>
-                <span className="small-chip">
-                  Catalogue fictif · compatibilité à vérifier
-                </span>
-              </div>
-              <div className="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Pièce / référence</th>
-                      <th>Emplacement</th>
-                      <th>En stock</th>
-                      <th>Réservées</th>
-                      <th>Disponibles</th>
-                      <th>Prix démo HT</th>
-                      <th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {db.parts.map((p) => (
-                      <tr key={p.id}>
-                        <td>
-                          <strong>{p.name}</strong>
-                          <small>{p.ref}</small>
-                        </td>
-                        <td>{p.location}</td>
-                        <td>{p.stock}</td>
-                        <td>{p.reserved}</td>
-                        <td>
-                          <span
-                            className={
-                              p.stock - p.reserved < p.threshold
-                                ? "text-amber"
-                                : "text-green"
-                            }
-                          >
-                            {p.stock - p.reserved}
-                          </span>
-                        </td>
-                        <td>{euro(p.price)}</td>
-                        <td>
-                          <button
-                            className="secondary"
-                            onClick={() =>
-                              commit(
-                                (d) =>
-                                  record(
-                                    {
-                                      ...d,
-                                      orders: [
-                                        {
-                                          id: crypto.randomUUID(),
-                                          part: p.id,
-                                          quantity: 1,
-                                          status: "À valider",
-                                        },
-                                        ...d.orders,
-                                      ],
-                                    },
-                                    "stock",
-                                    "Commande préparée : " + p.name,
-                                  ),
-                                "Commande préparée, aucun envoi.",
-                              )
-                            }
-                          >
-                            Commander
-                            <Plus size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="section-head">
-                <h3>Commandes préparées</h3>
-                <span>Aucun fournisseur connecté</span>
-              </div>
-              {db.orders.length ? (
-                db.orders.map((o) => (
-                  <div className="order-row" key={o.id}>
-                    <Package />
-                    <strong>
-                      {db.parts.find((p) => p.id === o.part)?.name}
-                    </strong>
-                    <span>
-                      {o.quantity} unité · {o.status}
-                    </span>
-                    <button
-                      className="secondary"
-                      disabled={o.status === "Reçue"}
-                      onClick={() =>
-                        commit(
-                          (d) =>
-                            record(
-                              {
-                                ...d,
-                                orders: d.orders.map((x) =>
-                                  x.id === o.id ? { ...x, status: "Reçue" } : x,
-                                ),
-                                parts: d.parts.map((p) =>
-                                  p.id === o.part
-                                    ? { ...p, stock: p.stock + o.quantity }
-                                    : p,
-                                ),
-                              },
-                              "stock",
-                              "Réception de commande simulée",
-                            ),
-                          "Réception simulée : stock mis à jour.",
-                        )
-                      }
-                    >
-                      Simuler la réception
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <p className="empty">Aucune commande préparée.</p>
-              )}
-            </section>
+            <Stocks db={db} commit={commit} />
           ) : view === "intelligence" ? (
-            <section className="intelligence-layout">
-              <div className="content-card diagnostic">
-                <div className="brain-icon">
-                  <Brain size={32} />
-                </div>
-                <span className="eyebrow">MÉMOIRE TECHNIQUE LOCALE</span>
-                <h2>
-                  L’expérience de l’atelier,
-                  <br />
-                  au service du diagnostic.
-                </h2>
-                <p>
-                  Décrivez les symptômes et les codes défauts pour retrouver des
-                  cas similaires dans les trois fiches fictives.
-                </p>
-                <label htmlFor="symptom-query">Symptômes et codes OBD</label>
-                <textarea
-                  id="symptom-query"
-                  value={diagnosis}
-                  onChange={(e) => {
-                    setDiagnosis(e.target.value);
-                    setSearched(false);
-                  }}
-                  placeholder="Ex. : démarrage difficile, direction intermittente, P0562…"
-                />
-                <button
-                  className="primary"
-                  disabled={!diagnosis.trim()}
-                  onClick={() => setSearched(true)}
-                >
-                  <MagnifyingGlass size={18} />
-                  Rechercher dans la mémoire
-                </button>
-                <div className="subtle-note">
-                  <ShieldCheck />
-                  <span>
-                    Recherche par mots-clés, sans modèle IA connecté. Une
-                    similarité constitue une piste à vérifier, jamais un
-                    diagnostic confirmé.
-                  </span>
-                </div>
-              </div>
-              <div className="case-results">
-                <div className="section-head">
-                  <h3>
-                    {searched ? "Cas similaires" : "Cas de démonstration"}
-                  </h3>
-                  <span>
-                    {searched ? similarCases(diagnosis).length : 3} cas
-                  </span>
-                </div>
-                {(searched
-                  ? similarCases(diagnosis)
-                  : similarCases("démarrage freinage puissance")
-                ).map((c) => (
-                  <article className="case-card" key={c.id}>
-                    <div>
-                      <span className="small-chip">{c.id} · Fictif</span>
-                      <span className="text-green">
-                        <CheckCircle size={15} /> Cause confirmée dans ce cas
-                      </span>
-                    </div>
-                    <h3>{c.title}</h3>
-                    <p>{c.vehicle}</p>
-                    <h4>Cause historique</h4>
-                    <p>{c.cause}</p>
-                    <h4>Contrôles à envisager</h4>
-                    <ul>
-                      {c.checks.map((s) => (
-                        <li key={s}>{s}</li>
-                      ))}
-                    </ul>
-                    <div className="case-result">
-                      <Check size={16} />
-                      {c.result}
-                    </div>
-                    {car && (
-                      <button
-                        className="secondary"
-                        onClick={() =>
-                          commit(
-                            (d) =>
-                              updateVehicle(d, car.id, {
-                                notes:
-                                  car.notes +
-                                  "\nPiste issue du cas fictif " +
-                                  c.id +
-                                  " — à vérifier : " +
-                                  c.checks.join(" "),
-                              }),
-                            "Piste ajoutée aux notes du dossier.",
-                          )
-                        }
-                      >
-                        Ajouter la piste au dossier de {car.plate}
-                      </button>
-                    )}
-                  </article>
-                ))}
-                {searched && !similarCases(diagnosis).length && (
-                  <div className="content-card empty">
-                    <MagnifyingGlass size={32} />
-                    <h3>Aucun cas similaire</h3>
-                    <p>
-                      Aucun des trois cas fictifs ne correspond à ces termes.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </section>
+            <Intelligence
+              initialVehicle={selection?.id}
+              db={db}
+              onOpen={openDossier}
+              commit={commit}
+              onAction={(id, type, payload) =>
+                transact(type, id, payload, "Diagnostic enregistré.")
+              }
+            />
           ) : view === "equipe" ? (
-            <section className="content-card">
-              <div className="section-head">
-                <h2>L’équipe de votre atelier</h2>
-                <span className="small-chip">4 techniciens fictifs</span>
-              </div>
-              <div className="team-grid">
-                {technicians.slice(1).map((t, i) => (
-                  <article key={t}>
-                    <div className="large-avatar">
-                      {t
-                        .split(" ")
-                        .map((s) => s[0])
-                        .join("")}
-                    </div>
-                    <h3>{t}</h3>
-                    <p>
-                      {
-                        [
-                          "Mécanique & freinage",
-                          "Diagnostic & motorisation",
-                          "Entretien & révisions",
-                          "Diagnostic électrique",
-                        ][i]
-                      }
-                    </p>
-                    <span className="small-chip">
-                      {
-                        db.vehicles.filter(
-                          (v) => v.technician === t && v.status !== "Livré",
-                        ).length
-                      }{" "}
-                      interventions affectées
-                    </span>
-                    {db.vehicles
-                      .filter((v) => v.technician === t && v.status !== "Livré")
-                      .map((v) => (
-                        <button
-                          className="team-task"
-                          key={v.id}
-                          onClick={() => {
-                            setView("garage");
-                            select({ kind: "vehicle", id: v.id });
-                          }}
-                        >
-                          <Car size={18} />
-                          <span>
-                            {v.make} {v.model}
-                            <small>
-                              {v.plate} · {v.due}
-                            </small>
-                          </span>
-                          <ArrowRight />
-                        </button>
-                      ))}
-                  </article>
-                ))}
-              </div>
-            </section>
+            <Team db={db} onOpen={openDossier} />
           ) : view === "pilotage" ? (
-            <section className="content-card">
-              <div className="section-head">
-                <h2>Vue du responsable</h2>
-                <span className="small-chip">
-                  Indicateurs calculés sur les dossiers locaux
-                </span>
-              </div>
-              <div className="director-grid">
-                <article>
-                  <h3>Flux des interventions</h3>
-                  {statuses.map((s) => {
-                    const n = db.vehicles.filter((v) => v.status === s).length;
-                    return (
-                      <div className="status-bar" key={s}>
-                        <span>{s}</span>
-                        <div>
-                          <i
-                            style={{
-                              width: `${(n / Math.max(db.vehicles.length, 1)) * 100}%`,
-                            }}
-                          />
-                        </div>
-                        <strong>{n}</strong>
-                      </div>
-                    );
-                  })}
-                </article>
-                <article>
-                  <h3>Points d’attention</h3>
-                  {db.parts
-                    .filter((p) => p.stock - p.reserved < p.threshold)
-                    .map((p) => (
-                      <div className="alert-row" key={p.id}>
-                        <WarningCircle />
-                        <span>
-                          <strong>{p.name}</strong>
-                          <small>
-                            {p.stock - p.reserved} disponibles · seuil{" "}
-                            {p.threshold}
-                          </small>
-                        </span>
-                        <button
-                          className="text-button"
-                          onClick={() => setView("stocks")}
-                        >
-                          Voir
-                          <ArrowRight />
-                        </button>
-                      </div>
-                    ))}
-                  {db.vehicles
-                    .filter((v) => v.status === "Devis à valider")
-                    .map((v) => (
-                      <div className="alert-row" key={v.id}>
-                        <Clock />
-                        <span>
-                          <strong>Devis en attente</strong>
-                          <small>
-                            {v.make} {v.model} · {v.plate}
-                          </small>
-                        </span>
-                        <button
-                          className="text-button"
-                          onClick={() => {
-                            setView("garage");
-                            select({ kind: "vehicle", id: v.id });
-                          }}
-                        >
-                          Voir
-                          <ArrowRight />
-                        </button>
-                      </div>
-                    ))}
-                </article>
-              </div>
-              <h3>Dernières actions</h3>
-              <div className="audit-list">
-                {db.audit.slice(0, 15).map((a) => (
-                  <div key={a.id}>
-                    <CheckCircle size={18} />
-                    <span>
-                      {a.action}
-                      <small>
-                        {db.vehicles.find((v) => v.id === a.vehicle)?.plate ||
-                          "Magasin"}
-                      </small>
-                    </span>
-                    <time>{new Date(a.at).toLocaleString("fr-FR")}</time>
-                  </div>
-                ))}
-                {!db.audit.length && (
-                  <p className="empty">
-                    Les actions réalisées dans l’application apparaîtront ici.
-                  </p>
-                )}
-              </div>
-            </section>
+            <Pilotage
+              db={db}
+              onAction={(id, type, payload) =>
+                transact(type, id, payload, "Décision enregistrée.")
+              }
+              commit={commit}
+              onOpen={openDossier}
+              onFilter={filterDossiers}
+              onView={setView}
+            />
           ) : (
             <section className="content-card settings">
               <h2>Préférences de navigation</h2>
@@ -1810,6 +1554,26 @@ function App() {
                 <Export size={18} />
                 Exporter tous les dossiers
               </button>
+              {localStorage.getItem("autohub-local-v1") && (
+                <button
+                  className="secondary"
+                  onClick={() => {
+                    const raw = localStorage.getItem("autohub-local-v1");
+                    if (raw) {
+                      const url = URL.createObjectURL(
+                        new Blob([raw], { type: "application/json" }),
+                      );
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = "autohub-ancienne-version-0.2.json";
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }
+                  }}
+                >
+                  Exporter la sauvegarde 0.2 conservée dans ce navigateur
+                </button>
+              )}
               <label className="import-label">
                 Restaurer une sauvegarde JSON
                 <input
@@ -1826,7 +1590,12 @@ function App() {
                         )
                       ) {
                         setCanSave(true);
-                        setDB(incoming);
+                        await transact(
+                          "import",
+                          undefined,
+                          { db: incoming },
+                          "Sauvegarde restaurée sur le serveur.",
+                        );
                         setSelection(null);
                         notify("Sauvegarde restaurée.");
                       }
@@ -1846,7 +1615,12 @@ function App() {
                     )
                   ) {
                     setCanSave(true);
-                    setDB(seed());
+                    transact(
+                      "reset",
+                      undefined,
+                      {},
+                      "Démonstration V2 réinitialisée.",
+                    );
                     setSelection(null);
                     notify("Démonstration réinitialisée.");
                   }
@@ -1866,11 +1640,11 @@ function App() {
           )}
           <footer className="app-footer">
             <span>
-              AutoHub 3D <span>·</span> Version locale 0.2
+              AutoHub 3D <span>·</span> Version V2 · synchronisée
             </span>
             <span>
               <ShieldCheck size={14} />
-              Données de démonstration · stockage local
+              Données fictives · base SQLite sur ce Mac
             </span>
           </footer>
         </main>
@@ -1884,7 +1658,7 @@ function App() {
             select({ kind: "vehicle", id });
           }}
           onClose={() => setCreation(false)}
-          onCreate={(v) => {
+          onCreate={async (v) => {
             const duplicate = duplicateVehicle(db, v);
             if (duplicate) {
               notify(
@@ -1901,6 +1675,7 @@ function App() {
             const parked = db.vehicles.filter(
               (c) =>
                 c.bay === null &&
+                c.present !== false &&
                 !["Prêt à livrer", "Livré"].includes(c.status),
             );
             if (parked.length >= 8) {
@@ -1909,7 +1684,7 @@ function App() {
               );
               return;
             }
-            const saved = commit(
+            const saved = await commit(
               (d) =>
                 record(
                   { ...d, vehicles: [...d.vehicles, v] },
@@ -2019,6 +1794,9 @@ function Reception({
             bay: null,
             due: get("due"),
             quality: false,
+            present: true,
+            arrivedAt: new Date().toISOString(),
+            estimatedMinutes: 60,
             notes: "",
             parts: [],
           });

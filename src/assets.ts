@@ -12,7 +12,10 @@ export const modelNames = [
   "truck",
   "truck-flat",
 ] as const;
-export const modelIds = modelNames.map((n) => "kenney-" + n);
+export const modelIds = [
+  ...modelNames.map((n) => "kenney-" + n),
+  "spectral-gt",
+];
 export type Asset = {
   id: string;
   kind: "vehicle" | "mechanical";
@@ -44,7 +47,11 @@ export async function loadVehicleAsset(id: string): Promise<THREE.Group> {
   let request = cache.get(id);
   if (!request) {
     request = new GLTFLoader()
-      .loadAsync("/models/" + id.slice(7) + ".glb")
+      .loadAsync(
+        "/models/" +
+          (id === "spectral-gt" ? "spectral-gt" : id.slice(7)) +
+          ".glb",
+      )
       .then((g) => g.scene);
     cache.set(id, request);
     request.catch(() => cache.delete(id));
@@ -73,7 +80,7 @@ export async function loadVehicleAsset(id: string): Promise<THREE.Group> {
   );
   const group = new THREE.Group();
   group.name = "licensed-glb";
-  group.rotation.y = Math.PI;
+  group.rotation.y = id === "spectral-gt" ? Math.PI / 2 : Math.PI;
   group.add(clone);
   return group;
 }

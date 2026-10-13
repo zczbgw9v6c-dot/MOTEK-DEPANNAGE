@@ -531,15 +531,44 @@
       "preview": null,
       "generic": true,
       "enabled": false
+    },
+    {
+      "id": "spectral-gt",
+      "kind": "vehicle",
+      "name": "Spectral GT RS · coupé détaillé non marqué",
+      "make": "Création originale, sans marque attestée",
+      "model": "Spectral GT RS",
+      "category": "sedan",
+      "source": "https://github.com/JaronKBragg7337/spectral-gt-rs",
+      "creator": "JaronKBragg7337",
+      "license": "CC0-1.0",
+      "licenseStatus": "verified",
+      "verifiedAt": "2026-10-13",
+      "licenseProof": "/models/spectral-license.txt",
+      "commercial": true,
+      "redistribution": true,
+      "noAI": false,
+      "attribution": "JaronKBragg7337 — Spectral GT RS (CC0). Ne pas impliquer un soutien de l’auteur.",
+      "format": "GLB",
+      "triangles": 151722,
+      "bytes": 4688844,
+      "sha256": "e7b7f0d9de0c3bc3897c8134b1ceae5631b1da2690d336df18c3ea82e7238c73",
+      "status": "imported",
+      "validation": "Header, length, embedded resources, SHA-256. Visual QA pending.",
+      "url": "/models/spectral-gt.glb",
+      "preview": "/models/previews/spectral-gt.png",
+      "generic": true,
+      "enabled": true,
+      "frontAxis": "positiveX"
     }
   ],
   "failures": [],
   "stats": {
-    "referenced": 20,
-    "licensesVerified": 10,
-    "downloaded": 10,
+    "referenced": 21,
+    "licensesVerified": 11,
+    "downloaded": 11,
     "knownBrandModelsImported": 0,
-    "genericVehiclesImported": 10,
+    "genericVehiclesImported": 11,
     "externalModelsAwaitingReview": 10
   }
 }

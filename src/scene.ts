@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { team } from "./team-data";
+import { isPresent } from "./dashboard-domain";
 import { loadVehicleAsset, disposeObject, supportedAsset } from "./assets";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { bayPosition, vehiclePosition, zones, type Vehicle } from "./domain";
@@ -52,6 +54,8 @@ export class GarageScene {
   private ray = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
   private highlight = new THREE.Group();
+  private cohortHighlight = new THREE.Group();
+  private cohortIDs: string[] = [];
   private selected: string | null = null;
   private currentCars: Vehicle[] = [];
   private down = [0, 0];
@@ -99,7 +103,7 @@ export class GarageScene {
     this.scene.add(sun);
     this.scene.add(sun.target);
     this.build();
-    this.scene.add(this.cars, this.highlight);
+    this.scene.add(this.cars, this.highlight, this.cohortHighlight);
     this.setMode("overview");
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(host);
@@ -234,6 +238,7 @@ export class GarageScene {
     width = 3,
     color = "#233c4c",
     bg = "#ffffff",
+    parent: THREE.Object3D = this.scene,
   ) {
     const c = document.createElement("canvas");
     c.width = 768;
@@ -253,7 +258,7 @@ export class GarageScene {
     );
     s.position.set(x, y, z);
     s.scale.set(width, width / 6, 1);
-    this.scene.add(s);
+    parent.add(s);
     return s;
   }
   private solid(
@@ -430,7 +435,7 @@ export class GarageScene {
     this.solid(20, 0, 2.5, 6, 2.6, "#d4ded9", { kind: "delivery", id: "body" });
     this.box(this.scene, 18.7, 1.25, 0, 0.04, 2.2, 5, "#9daba7");
     this.label("CABINE PEINTURE", 20, 2.8, 0, 3);
-    this.solid(20, 15, 1.3, 2, 0.9, palette.wood, {
+    this.solid(21, 17, 1.3, 2, 0.9, palette.wood, {
       kind: "delivery",
       id: "delivery",
     });
@@ -590,86 +595,133 @@ export class GarageScene {
     if (!display) this.wheelObjects.set(v.id, wheels);
     return g;
   }
-  update(vehicles: Vehicle[], disabled: string[] = []) {
+  update(
+    vehicles: Vehicle[],
+    disabled: string[] = [],
+    live: Record<
+      string,
+      { blocked?: boolean; runningSince?: string | null }
+    > = {},
+  ) {
     const generation = ++this.generation;
     this.assetDisabled = disabled;
     this.currentCars = vehicles;
     this.clear(this.cars);
     this.wheelObjects.clear();
-    vehicles
-      .filter((v) => v.status !== "Livré")
-      .forEach((v) => {
-        const [x, z] = vehiclePosition(v, vehicles);
-        const g = this.car(v, x, z);
-        if (v.bay) g.position.y = this.liftGroups.get(v.bay)?.position.y || 0;
-        this.cars.add(g);
-        const assetId =
-          v.assetId ||
-          "kenney-" +
-            (v.shape === "suv"
-              ? "suv"
-              : v.shape === "hatch"
-                ? "hatchback-sports"
-                : "sedan");
-        if (supportedAsset(assetId) && !this.assetDisabled.includes(assetId)) {
-          const fallback = [...g.children];
-          g.userData.fallback = fallback;
-          loadVehicleAsset(assetId)
-            .then((asset) => {
-              if (this.disposed || generation !== this.generation) {
-                disposeObject(asset);
-                return;
-              }
-              asset.traverse((o) => {
-                if (
-                  o instanceof THREE.Mesh &&
-                  o.name.toLowerCase().includes("wheel")
-                )
-                  o.userData.select = { kind: "wheel", id: v.id };
-              });
-              g.add(asset);
-              g.userData.asset = asset;
-              fallback.forEach((o) => (o.visible = this.inspectedId === v.id));
-              asset.visible = this.inspectedId !== v.id;
-            })
-            .catch(() =>
-              this.hint(
-                "Modèle GLB indisponible : représentation procédurale de secours.",
-              ),
-            );
-        }
-        if (v.bay) {
-          const person = this.person(
-            v.technician,
-            x + (x < 0 ? 2.4 : -2.4),
-            z + 1.3,
-          );
-          this.cars.add(person);
-        }
-      });
-    const show: Vehicle = {
-      ...vehicles[0],
-      id: "showroom",
-      color: "#d5d7d2",
-      shape: "sedan",
-    };
-    if (vehicles.length) {
-      const g = this.car(show, -6, 14, true);
-      g.userData.select = { kind: "office", id: "showroom" };
+    vehicles.filter(isPresent).forEach((v) => {
+      const [x, z] = vehiclePosition(v, vehicles);
+      const g = this.car(v, x, z);
+      if (v.bay) g.position.y = this.liftGroups.get(v.bay)?.position.y || 0;
       this.cars.add(g);
-    }
+      const assetId =
+        v.assetId ||
+        "kenney-" +
+          (v.shape === "suv"
+            ? "suv"
+            : v.shape === "hatch"
+              ? "hatchback-sports"
+              : "sedan");
+      if (supportedAsset(assetId) && !this.assetDisabled.includes(assetId)) {
+        const fallback = [...g.children];
+        g.userData.fallback = fallback;
+        loadVehicleAsset(assetId)
+          .then((asset) => {
+            if (this.disposed || generation !== this.generation) {
+              disposeObject(asset);
+              return;
+            }
+            asset.traverse((o) => {
+              if (
+                o instanceof THREE.Mesh &&
+                o.name.toLowerCase().includes("wheel")
+              )
+                o.userData.select = { kind: "wheel", id: v.id };
+            });
+            g.add(asset);
+            g.userData.asset = asset;
+            fallback.forEach((o) => (o.visible = this.inspectedId === v.id));
+            asset.visible = this.inspectedId !== v.id;
+          })
+          .catch(() =>
+            this.hint(
+              "Modèle GLB indisponible : représentation procédurale de secours.",
+            ),
+          );
+      }
+      if (v.bay) {
+        const person = this.person(
+          v.technician,
+          x + (x < 0 ? 2.4 : -2.4),
+          z + 1.3,
+        );
+        this.cars.add(person);
+      }
+    });
+    const represented = new Set(
+      vehicles.filter((v) => isPresent(v) && v.bay).map((v) => v.technician),
+    );
+    team
+      .filter((t) => !represented.has(t.name))
+      .forEach((t, i) => {
+        const position =
+          t.department === "Carrosserie"
+            ? [15, 2]
+            : t.department === "Pneumatiques"
+              ? [1, 6]
+              : t.department === "Vitrage"
+                ? [-16, 6]
+                : [-17, -12 + i];
+        this.cars.add(this.person(t.name, position[0], position[1]));
+      });
+    vehicles.filter(isPresent).forEach((v) => {
+      const [x, z] = vehiclePosition(v, vehicles);
+      this.label(
+        v.plate + " · " + (live[v.id]?.blocked ? "Bloqué" : v.status),
+        x,
+        2.65,
+        z,
+        3,
+        live[v.id]?.blocked ? "#985f4e" : "#385965",
+        live[v.id]?.blocked ? "#f7ede5" : "#f6faf4",
+        this.cars,
+      );
+    });
     this.setSelected(this.selected);
+    this.setFocusIds(this.cohortIDs);
   }
   private person(name: string, x: number, z: number) {
     const g = new THREE.Group();
     g.position.set(x, 0, z);
     g.userData.select = { kind: "technician", id: name };
-    this.box(g, 0, 1.06, 0, 0.48, 0.62, 0.28, "#38596d");
-    this.cylinder(g, 0, 1.55, 0, 0.16, 0.3, "#c7a488");
+    const torso = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.22, 0.24, 0.57, 18),
+      this.material("#38596d"),
+    );
+    torso.position.set(0, 1.05, 0);
+    torso.castShadow = true;
+    g.add(torso);
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.155, 18, 14),
+      this.material("#c7a488"),
+    );
+    head.position.set(0, 1.52, 0);
+    head.castShadow = true;
+    g.add(head);
     for (const side of [-1, 1]) {
-      this.box(g, side * 0.13, 0.44, 0, 0.18, 0.68, 0.21, "#2b3b46");
-      this.box(g, side * 0.33, 0.99, 0, 0.15, 0.58, 0.18, "#38596d");
-      this.box(g, side * 0.13, 0.09, -0.06, 0.22, 0.16, 0.34, "#283036");
+      const leg = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.085, 0.53, 6, 12),
+        this.material("#2b3b46"),
+      );
+      leg.position.set(side * 0.12, 0.44, 0);
+      g.add(leg);
+      const arm = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.065, 0.39, 6, 12),
+        this.material("#38596d"),
+      );
+      arm.position.set(side * 0.29, 1.02, 0.02);
+      arm.rotation.z = side * 0.13;
+      g.add(arm);
+      this.box(g, side * 0.12, 0.08, -0.06, 0.2, 0.14, 0.31, "#27323a");
     }
     return g;
   }
@@ -677,13 +729,11 @@ export class GarageScene {
     return [
       ...walls,
       ...this.furniture,
-      { x: -6, z: 14, w: 2.05, d: 4.5 },
-      ...this.currentCars
-        .filter((v) => v.status !== "Livré")
-        .map((v) => {
-          const [x, z] = vehiclePosition(v, this.currentCars);
-          return { x, z, w: 2.05, d: 4.5 };
-        }),
+
+      ...this.currentCars.filter(isPresent).map((v) => {
+        const [x, z] = vehiclePosition(v, this.currentCars);
+        return { x, z, w: 2.05, d: 4.5 };
+      }),
       ...doors
         .filter((d) => this.closed.has(d.id))
         .map((d) => ({ x: d.x, z: d.z, w: 0.2, d: 3 })),
@@ -741,6 +791,25 @@ export class GarageScene {
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.set(x, 0.09, z);
     this.highlight.add(mesh);
+  }
+  setFocusIds(ids: string[]) {
+    this.cohortIDs = ids;
+    this.clear(this.cohortHighlight);
+    for (const id of ids) {
+      const v = this.currentCars.find((v) => v.id === id && isPresent(v));
+      if (!v) continue;
+      const [x, z] = vehiclePosition(v, this.currentCars);
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(2.35, 2.44, 64),
+        new THREE.MeshBasicMaterial({
+          color: "#599678",
+          side: THREE.DoubleSide,
+        }),
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(x, 0.1, z);
+      this.cohortHighlight.add(ring);
+    }
   }
   inspect(id: string, exploded: boolean) {
     const car = this.cars.children.find((c) => c.userData.select?.id === id);
@@ -966,6 +1035,19 @@ export class GarageScene {
       this.position(this.camera.position.x, this.camera.position.z);
       this.lastPosition = t;
     }
+    for (const vehicle of this.cars.children) {
+      const asset = vehicle.userData.asset as THREE.Group | undefined;
+      const fallback = vehicle.userData.fallback as
+        THREE.Object3D[] | undefined;
+      if (!asset || !fallback) continue;
+      const inspection = this.inspectedId === vehicle.userData.select?.id;
+      const detailed =
+        !inspection && this.camera.position.distanceTo(vehicle.position) < 24;
+      asset.visible = detailed;
+      fallback.forEach((object) => {
+        object.visible = !detailed;
+      });
+    }
     this.renderer.render(this.scene, this.camera);
     this.frame = requestAnimationFrame((n) => this.tick(n));
   }
@@ -977,6 +1059,10 @@ export class GarageScene {
   private clear(g: THREE.Object3D) {
     g.children.forEach((c) =>
       c.traverse((o) => {
+        if (o instanceof THREE.Sprite) {
+          o.material.map?.dispose();
+          o.material.dispose();
+        }
         if (o instanceof THREE.Mesh) {
           o.geometry.dispose();
           const ms = Array.isArray(o.material) ? o.material : [o.material];

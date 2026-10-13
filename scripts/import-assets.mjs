@@ -172,6 +172,13 @@ for (const [i, line] of csv
     enabled: false,
   });
 }
+try {
+  const existing = JSON.parse(
+    await readFile("public/models/manifest.json", "utf8"),
+  );
+  for (const item of existing.entries.filter((e) => e.id === "spectral-gt"))
+    entries.push(item);
+} catch {}
 const manifest = {
   version: 1,
   generatedAt: "2026-10-13",

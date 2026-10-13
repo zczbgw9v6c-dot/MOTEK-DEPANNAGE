@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import { VoiceAssistant } from "./VoiceAssistant";
+import { serverNow } from "./api";
 import {
   Play,
   Pause,
@@ -31,23 +33,25 @@ export function Workshop({
   onSelect,
   commit,
   onOpen3D,
+  onAction,
 }: {
   db: DB;
   selected: string | null;
   onSelect: (id: string) => void;
   commit: Commit;
   onOpen3D: (id: string) => void;
+  onAction: (type: string, payload: any) => Promise<boolean>;
 }) {
   const car = db.vehicles.find((v) => v.id === selected);
   const state = car ? workshopFor(db, car.id) : null;
   const [action, setAction] = useState(""),
     [text, setText] = useState(""),
     [qr, setQR] = useState(""),
-    [now, setNow] = useState(Date.now()),
+    [now, setNow] = useState(serverNow()),
     [uploading, setUploading] = useState(false),
     [error, setError] = useState("");
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    const t = setInterval(() => setNow(serverNow()), 1000);
     return () => clearInterval(t);
   }, []);
   useEffect(() => {
@@ -179,18 +183,33 @@ export function Workshop({
         </span>
         <span>{car.technician}</span>
       </div>
+      <div className="workshop-job">
+        <strong>Travail demandé</strong>
+        <p>{car.symptoms}</p>
+        <span>
+          {car.estimatedMinutes || 60} min prévues ·{" "}
+          {state.blocked ? "Intervention bloquée" : car.status} · Temps de pause
+          :{" "}
+          {Math.floor(
+            ((state.idleElapsed || 0) +
+              (state.pausedSince
+                ? Math.max(
+                    0,
+                    Math.floor((now - Date.parse(state.pausedSince)) / 1000),
+                  )
+                : 0)) /
+              60,
+          )}{" "}
+          min
+        </span>
+      </div>
       <div className="workshop-actions">
         <button
           className={
             state.runningSince ? "work-action pause" : "work-action start"
           }
           onClick={() =>
-            commit(
-              (d) => toggleWork(d, car.id),
-              state.runningSince
-                ? "Chronométrage arrêté."
-                : "Intervention démarrée.",
-            )
+            state.runningSince ? setAction("pause") : onAction("start", {})
           }
           disabled={[
             "Prêt à livrer",
@@ -247,17 +266,12 @@ export function Workshop({
           }}
         >
           <NotePencil size={34} />
-          <strong>Compte rendu</strong>
-          <span>Saisie courte, sans microphone</span>
+          <strong>Dicter un compte rendu</strong>
+          <span>Voix locale ou saisie courte</span>
         </button>
         <button
           className="work-action finish"
-          onClick={() =>
-            commit(
-              (d) => finishWork(d, car.id),
-              "Travaux terminés : contrôle qualité demandé.",
-            )
-          }
+          onClick={() => onAction("finish", {})}
           disabled={car.status !== "En intervention"}
         >
           <CheckCircle size={34} />
@@ -270,76 +284,51 @@ export function Workshop({
           {error}
         </div>
       )}
+      {["piece", "issue", "report"].includes(action) && (
+        <VoiceAssistant
+          db={db}
+          vehicle={car.id}
+          mode={action}
+          onAction={onAction}
+          onClose={() => setAction("")}
+        />
+      )}
+      {action === "pause" && (
+        <div className="content-card pause-choices">
+          <h3>Motif de pause</h3>
+          {["Pause manuelle", "Attente de pièce", "Attente de décision"].map(
+            (reason) => (
+              <button
+                className="secondary"
+                key={reason}
+                onClick={async () => {
+                  if (await onAction("pause", { reason })) setAction("");
+                }}
+              >
+                {reason}
+              </button>
+            ),
+          )}
+        </div>
+      )}
       {action === "piece" && (
         <div className="content-card">
-          <h3>Demander au magasin</h3>
-          <p className="warning-small">
-            Illustrations et références de démonstration. Compatibilité non
-            vérifiée ; confirmation VIN/OEM nécessaire avant montage.
-          </p>
+          <h3>Sélection manuelle de pièce</h3>
           <div className="part-request-grid">
             {db.parts.map((p) => (
               <button
                 className="secondary"
                 key={p.id}
                 disabled={state.requests.some((r) => r.part === p.id)}
-                onClick={() =>
-                  commit(
-                    (d) => requestPart(d, car.id, p.id),
-                    "Demande transmise au magasin local.",
-                  )
-                }
+                onClick={() => onAction("request", { part: p.id, quantity: 1 })}
               >
-                <Package size={24} />
                 <strong>{p.name}</strong>
-                <span>{p.stock - p.reserved} disponibles</span>
+                <span>
+                  {p.stock - p.reserved} disponibles · {p.ref}
+                </span>
               </button>
             ))}
           </div>
-        </div>
-      )}
-      {(action === "issue" || action === "report") && (
-        <div className="content-card">
-          <h3>
-            {action === "issue"
-              ? "Quel problème avez-vous rencontré ?"
-              : "Votre compte rendu atelier"}
-          </h3>
-          <textarea
-            aria-label="Note atelier rapide"
-            maxLength={1500}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Décrivez brièvement les faits…"
-          />
-          <button
-            className="primary"
-            disabled={!text.trim()}
-            onClick={() => {
-              const entry = {
-                id: crypto.randomUUID(),
-                text: text.trim(),
-                at: new Date().toISOString(),
-              };
-              commit((d) => {
-                const current = workshopFor(d, car.id);
-                return patchWorkshop(
-                  d,
-                  car.id,
-                  action === "issue"
-                    ? { issues: [...current.issues, entry] }
-                    : { reports: [...current.reports, entry] },
-                  action === "issue"
-                    ? "Blocage signalé"
-                    : "Compte rendu ajouté",
-                );
-              }, "Note enregistrée.");
-              setAction("");
-              setText("");
-            }}
-          >
-            Enregistrer
-          </button>
         </div>
       )}
       <div className="workshop-detail">

@@ -1,113 +1,123 @@
-# AutoHub 3D — CRM Garage · version locale 0.2
+# AutoHub 3D — V2 fonctionnelle · version 0.3
 
-AutoHub est un projet indépendant d’ORIA / Jarvis. Le dépôt, les dépendances, les modèles, les données locales et le serveur appartiennent uniquement à ce dossier. Aucun dépôt distant n’est configuré. Ouvrir **AutoHub 3D.code-workspace** pour travailler sur ce projet dans une fenêtre dédiée.
+AutoHub est indépendant d’ORIA / Jarvis : dépôt, dépendances, serveur, base et modèles propres à ce dossier. Ouvrir `AutoHub 3D.code-workspace` pour une fenêtre de travail dédiée. Aucun dépôt distant ni service payant n’est configuré.
 
-Cette tranche est un prototype fonctionnel local, pas encore un SaaS multi-garages. Les dossiers initiaux, références de pièces, prix et cas techniques sont fictifs. Aucun service payant, message externe ou fournisseur n’est activé.
+## Démarrer
 
-## Lancer
-
-Node.js 22.18+ (24 recommandé) et npm.
+Node.js 24 recommandé, npm et un navigateur avec WebGL. Pour la voix : Python 3.13 et FFmpeg ; l’installation est propre à AutoHub.
 
 ```sh
 npm install
 npm run dev
 ```
 
-Ouvrir http://127.0.0.1:5173. Vite affiche un autre port si celui-ci est occupé. Le moteur OCR est préparé automatiquement depuis les dépendances installées ; les données françaises sont embarquées dans `public/ocr`. L’application n’utilise pas de CDN à l’exécution.
+Ouvrir http://127.0.0.1:5173. Vite indique un autre port si celui-ci est occupé. Le serveur SQLite et l’API démarrent avec Vite ; `npm run preview` fournit aussi l’API de cette démonstration, pas seulement des fichiers statiques.
+
+```sh
+npm run speech:setup
+```
+
+Cette commande installe Faster Whisper et un modèle français multilingue libre dans `.speech-venv` et `.data/speech-model`. Après installation, la transcription ne contacte aucun fournisseur externe. Le navigateur demande l’autorisation du microphone à la première utilisation. Le texte est toujours disponible comme alternative. Aucun coût de service vocal.
 
 ```sh
 npm test
+npm run verify:api
+npm run verify:scan
 npm run build
 npm run preview
 ```
 
-Pour vérifier les trois moteurs de scan sur les documents fictifs fournis :
+## Démonstration cohérente
 
-```sh
-npm run verify:scan
-```
+Le jeu V2 contient **60 dossiers**, **14 véhicules physiquement présents**, **8 profils de techniciens**, **5 devis validés**, **4 véhicules prêts à livrer**, **50 références fictives** et **15 diagnostics détaillés**. Les quatre prêts font partie des quatorze ; les rendez-vous futurs et dossiers livrés ne sont pas dessinés dans le garage. Aucun véhicule de showroom fantôme ne s’ajoute aux compteurs.
 
-## Ce qui fonctionne
+Les véhicules présents occupent six des huit ponts, quatre emplacements de livraison et quatre places de parking. Tous les emplacements sont distincts. Le parking de réception dispose de huit places, la livraison de quatre, avec débordement contrôlé vers le parking. Une base fraîche démarre trois sessions fictives en cours ; une base déjà modifiée est préservée. Les chiffres évoluent ensuite selon les actions, sans constantes dans le tableau de bord.
 
-### Garage 3D
+Toutes les identités, interventions, codes, mesures, devis, factures, références, fournisseurs, prix, motorisations et données qualité de démonstration sont explicitement fictifs. Aucun tarif ou référence OEM n’est présenté comme authentique.
 
-Neuf zones : accueil, attente, atelier à huit postes, magasin, carrosserie, bureau, livraison, showroom et parking. ZQSD / WASD ou flèches pour marcher, souris pour orienter, E ou clic pour sélectionner à moins de cinq mètres. Échap libère la souris et arrête un trajet automatique. La caméra est à 1,70 m ; les murs, voitures et principaux meubles ont des collisions horizontales.
+## Ce qui est implémenté
 
-Les destinations et la minimap déclenchent un parcours A* à travers les ouvertures. Les portes du trajet s’ouvrent automatiquement ; les portes identifiées sont aussi cliquables. Vue globale et caméra orbitale libre, zoom et déplacement. Les ponts et leurs véhicules peuvent être levés / abaissés visuellement.
+### État partagé et chronomètre
 
-Cliquer sur un véhicule ouvre son dossier ; un technicien ouvre ses tâches ; un montant de pont ouvre son poste ; une étagère ouvre les stocks ; le comptoir ouvre une réception. Le bureau du responsable ouvre désormais les devis, conformément aux fonctions mises en avant dans les vidéos.
+L’état est conservé dans `.data/autohub.sqlite`, séparément d’ORIA. SQLite stocke les dossiers, horaires, sessions, pauses, demandes, alertes et audit. Une transaction vérifie la révision avant toute écriture ; un écran obsolète doit actualiser, et une requête répétée n’est pas exécutée deux fois. Les vingt derniers états sont conservés dans l’historique technique.
 
-Les GLB génériques se chargent à la demande, sont mis en cache, normalisés et associés aux dossiers. La galerie permet de changer cette représentation, consulter la licence, désactiver un actif ou télécharger un GLB local. La vue de freinage passe à une illustration procédurale détaillée : elle n’est pas une géométrie OEM. Disque, plaquettes et étrier sont sélectionnables ; une roue peut être retirée et remontée visuellement.
+Les actions de temps sont exécutées par le serveur : début, pause et reprise enregistrés avec leurs heures. La durée active et la durée de pause sont séparées. Le navigateur affiche un temps dérivé des timestamps et de l’horloge serveur, sans être la source du compteur. Rechargement, fermeture et réouverture conservent le chronomètre. Un technicien ne peut pas démarrer deux sessions actives simultanément.
 
-### Réception, dossiers et identification interne
+Les écrans reçoivent les changements via Server-Sent Events. Une déconnexion est affichée et une modification échouée n’est pas déclarée synchronisée. Plusieurs navigateurs atteignant ce même serveur partagent les mêmes données. L’accès depuis un autre appareil exige un serveur joignable et une mise en service sécurisée : **le téléphone ne peut pas utiliser son propre localhost**.
 
-Création réelle de dossier et intervention, recherche par client / téléphone / plaque / modèle, notes, technicien, poste et statut. Pays FR / PT / ES, VIN facultatif, contrôle de format et recherche **dans les dossiers de ce navigateur uniquement**. Une plaque inconnue ne produit aucune marque ni motorisation supposée. Plaque et VIN contradictoires conduisent à un conflit explicite. Doublons VIN ou plaque normalisée + pays refusés, sans fusion automatique de clients.
+La sauvegarde 0.2 du navigateur reste conservée sous sa clé d’origine, avec un bouton d’export dans les paramètres. L’état V2 côté serveur est indépendant. Import / export JSON restent disponibles.
 
-Huit places de réception en attente sont autorisées au parking de démonstration. Une affectation sur un pont occupé est refusée. La livraison exige un contrôle qualité validé, libère le poste, conserve le dossier et permet de préparer un message client non envoyé. Les changements alimentent le journal local.
+### Atelier et voix
 
-### Mode atelier, sans obligation de 3D
+Six grandes actions : Démarrer / Pause, Signaler un problème, Demander une pièce, Dicter un compte rendu, Ajouter une photo, Terminer. Travail demandé, estimation, temps actif / pause, responsable, statut, emplacement des clés et checklist sont visibles. L’atelier reste fonctionnel sans 3D.
 
-Six grandes actions : Démarrer / Pause, Demander une pièce, Signaler un problème, Ajouter une photo, Compte rendu, Terminer. Chronométrage local avec durée persistante ; le compteur continue jusqu’à Pause, même si l’onglet est fermé. Affectation à un technicien nécessaire ; travaux interdits lorsqu’un devis reste à valider.
+Le microphone enregistre au plus trente secondes. L’audio est traité par Faster Whisper sur ce Mac et les fichiers temporaires sont supprimés ensuite. Le système propose des actions structurées sur le dossier ouvert ; le technicien lit ou écoute le résumé puis confirme avec le grand bouton. Les formules incertaines sont signalées. La lecture du résumé utilise uniquement une voix française locale disponible ; sinon le résumé reste à lire. Aucune reconnaissance parfaite hors ligne n’est promise.
 
-Trois points de checklist avant fin des travaux, puis passage à Contrôle qualité : aucune validation de qualité automatique. Emplacement des clés modifiable. Demandes de pièces en stock réservées ; pièces absentes signalées en attente magasin, sans création de stock fictif ni commande externe. Photos compressées localement, métadonnées et original non conservés, trois maximum par dossier. Comptes rendus et problèmes journalisés.
+Exemples reconnus : pause, reprise, manque de filtre, demande de deux disques, incident mécanique, diagnostic complémentaire, note, alerte responsable, fin des travaux et temps restant. Une négation de commande ne déclenche pas l’action opposée ; une description d’incident négative reste enregistrable. Une pièce inconnue ne produit aucune référence inventée. Les variantes linguistiques non prises en charge passent par la saisie manuelle.
 
-Le QR encode uniquement l’URL et l’identifiant du dossier. Il ne donne aucun droit d’accès. Le lien ouvre le mode atelier si le dossier existe déjà dans le navigateur utilisé. **Un téléphone ne peut pas accéder à ce serveur depuis son propre localhost ni retrouver les données d’un autre navigateur** : synchronisation et accès multi-appareils restent à développer. Le scan caméra du QR et la dictée ne sont pas activés ; le compte rendu est manuel.
+Un problème bloque l’intervention, arrête son temps actif et crée une alerte interne. Une demande de pièce est soumise au responsable, avec quantité et stock. Celui-ci vérifie explicitement la référence / compatibilité et consigne sa décision ; la réservation ne peut pas rendre le stock négatif. Les références sont fictives et cette validation n’est pas une preuve OEM réelle. Aucune commande fournisseur payante ni message externe ne part de la voix.
 
-### Devis et stocks
+La reprise exige que les incidents et demandes bloquantes soient traités. Terminer exige les trois contrôles ; l’intervention passe au contrôle qualité, la ressource est libérée et l’audit est mis à jour. Prêt à livrer exige la qualité, également vérifiée par le serveur. Le message client reste un brouillon non envoyé.
 
-Devis liés aux dossiers, lignes manuelles, quantités, prix HT, TVA saisie, calcul des totaux, brouillon, soumission et accord client enregistré manuellement. Les devis validés sont verrouillés. Aucun tarif fournisseur ou temps constructeur ajouté automatiquement. Impression possible ; document de démonstration sans signature électronique ni valeur fiscale.
+Photos compressées localement, sans original / EXIF, trois par dossier. QR : URL du serveur et identifiant uniquement, sans plaque, VIN ou client ; il ne donne aucun droit d’accès. La confirmation entièrement vocale reste à améliorer : la confirmation fiable actuelle est le grand bouton tactile.
 
-Stocks disponibles / réservés, alertes de seuil, commandes préparées et réception **simulée** avec mise à jour des quantités. Les références et prix initiaux restent fictifs et les compatibilités non vérifiées. Les commandes réelles nécessiteront sources VIN/OEM, fournisseur autorisé et validation.
+### Planning
 
-### AutoHub Scan
+Trois vues : techniciens, ressources et départements. Huit spécialistes : Kader, Yanis, Sofiane, Mehdi, Thomas, Karim, Lucas, Rayan. Huit ponts et les postes pneumatiques, vitrage, diagnostic, carrosserie, peinture et contrôle final.
 
-PDF.js pour les PDF texte ; Tesseract français embarqué pour JPG, PNG, WebP et PDF image. Traitement local, sans API OCR, LLM ou transfert externe. Aperçu du document, zoom, rotation avant OCR, texte inspectable, formulaire corrigible, confirmation explicite de chaque champ appliqué. Seuls A, D.1, D.3, E et l’année de B préremplissent les champs correspondants de réception ; les autres champs confirmés sont conservés comme éléments documentaires. C.1 ne crée ni ne remplace le client.
+Cartes avec véhicule / plaque, symptômes, horaire, durée, statut, priorité et liens vers dossier / 3D. Glisser-déposer entre techniciens ou ressources, modification d’heure / durée, date et filtre de retards. Modifications réellement sauvegardées. Les conflits de technicien / ressource et compétences inadéquates sont refusés.
 
-Trois exemples fictifs sont disponibles directement dans le scanner : PDF texte, PDF scanné, photo. Limites : 15 Mo, cinq pages PDF, OCR sur la première page uniquement lorsque le PDF n’a pas de texte. Gabarit français et lignes portant des codes explicites ; les valeurs non trouvées restent vides. Aucune confiance numérique inventée et aucune motorisation ou finition déduite. Le format du VIN est contrôlé, sans décodeur constructeur. Les originaux ne sont pas conservés.
+Alertes calculées : chevauchements, compétences, durée inférieure à l’estimation saisie, stock absent, arrivée manquante, devis non accepté, dépassement de fin, horaire et capacité. Un premier créneau libre est calculé depuis les réservations et horaires enregistrés ; aucune recommandation horaire n’est inventée par une IA. Les propositions restent à vérifier pour les pièces et le devis.
 
-OCR et formulaire sont **partiels** : documents réels à mises en page complexes, flou, reflets, recadrage / correction de perspective, HEIC, zones sources surlignées, gabarits PT / ES et contrôle avancé restent à développer. Les coordonnées des zones sont actuellement nulles. Les résultats exigent une vérification humaine.
+Les pauses, reprises, demandes, décisions et fins se reflètent dans les vues. Limites : horaires journaliers simples, pas encore absences / jours de travail ni optimisation globale de plusieurs tâches. Les ressources spécialisées sont des réservations métier ; leur géométrie détaillée reste à enrichir.
 
-### Garage Intelligence
+### Stock, devis et pilotage
 
-Trois cas fictifs retrouvés par mots-clés normalisés et codes OBD. Les causes historiques sont distinguées du diagnostic du véhicule courant. Une piste peut être ajoutée aux notes. Il n’y a pas encore d’IA distante, d’embeddings, d’apprentissage, de corpus inter-garages ou d’enrichissement automatique des cas après clôture.
+Cinquante références avec catégorie, unité, fournisseur / marque fictifs, achat / vente démo, emplacement, quantité, réservé, seuil et dernier mouvement. Recherche et filtres. Ruptures, stocks faibles, commandes préparées, réservations liées aux dossiers et réceptions explicitement simulées. Les mouvements sont journalisés. Sorties physiques de pièces montées / retours restent à compléter ; une réservation ne signifie pas une pièce consommée.
 
-## Modèles et provenance
+Devis manuels, calculs HT / TVA / TTC, soumission, validation manuelle, verrouillage et impression démo. Aucun prix fournisseur, temps constructeur ou signature électronique supposé. Les factures de démonstration sont des enregistrements fictifs, sans documents réglementaires ni paiements réels.
 
-**Chiffres réels : 20 références recensées, 10 GLB génériques locaux, 10 licences CC0 vérifiées, 0 modèle de marque importé.** Les dix liens du CSV restent non téléchargés et non vérifiés. Les variantes ne comptent pas comme cent véhicules distincts.
+Le pilotage calcule les présents, sessions, blocages, devis, prêts, retards, disponibilités, ponts, stocks critiques, factures payées fictives, rendez-vous et entretiens. Les indicateurs ouvrent leurs vues. Les filtres Prêts / Bloqués / Présents ouvrent exactement les dossiers concernés et les mettent en évidence en 3D. Décisions du responsable, alertes, livraisons et audit sont reliés aux mêmes enregistrements.
 
-Les fichiers importés viennent du [Car Kit officiel Kenney](https://kenney.nl/assets/car-kit). Licence originale conservée dans `public/models/kenney-license.txt`, provenance / auteur / date / SHA-256 / triangles / taille dans `public/models/manifest.json`. Les textures du pack ont été intégrées aux GLB pour éviter les ressources externes. Les modèles originaux sont conservés localement dans le dossier de recherche ignoré par Git.
+### Garage intelligent
 
-Import idempotent, après téléchargement officiel et extraction du pack dans `research/catalogue/kenney-original` :
+« Expliquez-moi votre cas » : véhicule existant, recherche interne plaque / VIN, symptômes, note vocale, import TXT / CSV / PDF texte et OCR local d’image de rapport. DTC extraits au format standard ; texte source inspectable. Un PDF image doit encore passer par AutoHub Scan ou une extraction manuelle. Aucune compatibilité universelle OBD.
 
-```sh
-npm run assets:import
-```
+Quinze cas documentés, chacun lié à un dossier CRM ouvrable : modèle, moteur de démonstration, kilométrage, date, symptômes, DTC, tests et résultats, hypothèses rejetées / à vérifier, cause confirmée si une preuve fictive est consignée, réparation, résolution ou retour. Correspondances et différences explicites. Les trois cas non résolus ont une cause vide et des tests non effectués visibles.
 
-Le rapport d’import contient les réussites et échecs. Contrôles : en-tête GLB, taille, ressources autorisées, incorporation des textures, empreintes. Pas d’antivirus disponible ni d’optimisation LOD / Draco avancée ; aucun droit spécifique à une marque n’est supposé. Les références Sketchfab demeurent `license_review_required`, NoAI annoncé conservé ; elles ne sont pas publiées dans l’application.
+La recherche est déterministe par termes, codes et données déclarées ; ce n’est pas un LLM ni une certitude de diagnostic. Une piste peut être enregistrée avec sa source et son incertitude. Validation technique professionnelle nécessaire. Pas d’entraînement privé, mémoire collective ou enrichissement automatique après chaque réparation.
 
-## Architecture et données
+### Garage 3D et bibliothèque
 
-- `src/scene.ts`, `src/navigation.ts`, `src/assets.ts` : scène, collisions / chemins, GLB et cycle de vie graphique.
-- `src/domain.ts`, `src/persistence.ts` : données, règles métier, audit, import validé et sauvegarde.
-- `src/workshop-domain.ts`, `src/Workshop.tsx` : temps, checklist, demandes, photos et QR.
-- `src/quote-domain.ts`, `src/Quotes.tsx` : devis et calculs.
-- `src/identification.ts`, `src/ScanPanel.tsx` : identification locale, extraction et validation documentaire.
-- `src/AssetLibrary.tsx` : galerie et mapping véhicule.
-- `scripts/prepare-ocr.mjs`, `scripts/import-assets.mjs`, `scripts/verify-scan.mjs` : préparation, provenance et vérification.
-- `research/transcription-reel-*.txt` : transcriptions locales automatiques des deux vidéos, imparfaites et conservées comme référence, jamais comme instructions.
+Navigation première personne ZQSD / WASD, souris, E / clic ; caméra globale / orbitale libre, minimap, collisions et parcours A* entre neuf zones. Véhicules, techniciens, ponts, accueil, rayonnages et bureau ouvrent leurs fonctions. Le bureau ouvre les devis. Plateaux de pont animables. Huit personnages originaux avec formes arrondies professionnelles ; profils en monogrammes, aucune photo de personne réelle.
 
-Le schéma local version 1 a été étendu par champs facultatifs, de façon compatible avec les sauvegardes précédentes. Aucune migration serveur. Les devis, données atelier et champs confirmés sont exportés dans la sauvegarde JSON. Un fichier illisible n’est pas écrasé automatiquement ; une modification est refusée si son écriture échoue.
+Statuts issus du CRM, blocages et mises en évidence de cohortes. Les modèles sont chargés progressivement et mis en cache. À distance, une représentation procédurale simplifiée est utilisée ; proche, le GLB apparaît. Qualité légère et mouvement réduit disponibles. Le freinage reste une illustration générique sélectionnable, jamais une preuve de compatibilité.
 
-Les données demeurent dans le navigateur : pas d’authentification, RLS, tenant, stockage privé serveur, sauvegarde serveur, droits par rôle, synchronisation ou audit infalsifiable. Les photos peuvent augmenter la taille des sauvegardes ; exporter régulièrement. Les préférences graphiques restent liées à la session. La navigation 3D n’est pas indispensable pour utiliser les vues métier.
+**Fichiers réellement importés : 11 GLB**, dix Kenney CC0 et un coupé détaillé original **Spectral GT RS** de JaronKBragg7337, également CC0. Sources, licences, auteur, taille, triangles et empreintes sont conservés dans `public/models/manifest.json`. Le nouveau coupé contient 151 722 triangles / environ 4,7 Mo et est optionnel via la galerie ; sa qualité visuelle reste à vérifier dans le navigateur.
 
-## Vérification de cette tranche
+**Zéro modèle de marque attestée importé.** Le but de quinze carrosseries courantes exactes n’est pas atteint. Les véhicules du CRM peuvent être BMW / Renault fictifs, mais leur représentation est explicitement générique. Sketchfab refuse les accès consultés ; aucun contournement ni téléchargement par extraction de viewer. Les dix références fournies restent à vérifier et non publiées. Variantes et modèles génériques ne sont pas comptés comme cent véhicules de marques.
 
-19 tests automatisés de règles métier, navigation, imports, temps atelier, checklist, demandes, doublons, identification, calculs / validation des devis, stockage et intégrité des dix GLB. TypeScript et build de production vérifiés.
+Sources : https://kenney.nl/assets/car-kit et https://github.com/JaronKBragg7337/spectral-gt-rs. Crédits complets : `THIRD_PARTY.md` et `public/licenses`.
 
-Lecture PDF texte, OCR photo et OCR PDF image vérifiés avec les trois documents fictifs propres : A, D.1, D.3 et E retrouvés, compte rendu dans `research/verification-scan.json`. Ces résultats ne démontrent pas la précision sur des cartes grises réelles.
+## Vérifications et limites
 
-La première tranche avait été vérifiée dans le navigateur (dossiers, freinage, réservation persistante, réception jusqu’à livraison et brouillon). Pour cette tranche, le contrôle du scan via le sélecteur de fichiers a été bloqué, puis l’aperçu intégré est devenu indisponible. **La validation complète de l’interface 0.2 dans le navigateur reste à effectuer.** Le serveur local répond HTTP 200.
+27 tests passent : règles existantes, cohérence des soixante dossiers, positions distinctes des quatorze véhicules, profils / stock / devis, cas reliés, planning, voix, confirmation, stock, qualité serveur, concurrence et parcours complet avec réouverture de SQLite.
 
-## Prochaine tranche
+`verify:api` contrôle sur une base temporaire dont le fichier est vérifié : HTTP, deuxième client recevant le changement en SSE, requête dupliquée, conflit, proposition vocale et transcription réelle d’un audio français synthétique. Rapport : `research/verification-api-v2.json`.
 
-Priorité : API et base PostgreSQL / Supabase propres à AutoHub, authentification et isolation par garage, sauvegarde serveur et stockage des documents, tests RLS / multi-utilisateurs. Ensuite : preuves documentaires avec zones et scores fiables, gabarits PT / ES, enrichissement structuré de la mémoire après réparation, modèles sous licence de véhicules réels, identification VIN autorisée et connecteurs fournisseurs. L’objectif de 100 véhicules de marque distincts, les équipements OBD, facturation réglementaire, assurance, concession, agents, marketing, voix et fonctionnement hors ligne synchronisé ne sont pas atteints.
+Les trois tests d’AutoHub Scan antérieurs restent disponibles ; PDF texte / scan / photo fictifs, traitement local et champs à confirmer. Pas encore OCR robuste tous gabarits / coordonnées / scores ni identification automobile externe.
+
+Compilation TypeScript couvre maintenant le frontend **et le serveur**. Le build passe. L’aperçu automatisé intégré n’a pas pu être atteint pendant cette tranche ; la validation visuelle complète et le microphone matériel restent à tester manuellement. Les vérifications API / audio / données ne prétendent pas remplacer ces essais.
+
+Prototype local : pas d’authentification, droits fiables par rôle, isolation multi-tenant, hébergement smartphone sécurisé, facturation légale, fournisseurs réels ni synchronisation hors ligne. Ne pas exposer ce serveur sans authentification et HTTPS. Une base SQLite à état JSON transactionnel convient à la démo ; migration relationnelle SaaS à prévoir.
+
+## Fichiers principaux et prochaine étape
+
+- `server/store.ts`, `server/plugin.ts`, `server/transcribe.py` : SQLite, API, SSE et audio local.
+- `src/demo.ts`, `src/team-data.ts`, `src/dashboard-domain.ts` : jeu V2 et indicateurs.
+- `src/planning-domain.ts`, `src/Planning.tsx` : réservations, contrôles et créneaux.
+- `src/workshop-domain.ts`, `src/Workshop.tsx`, `src/voice-domain.ts`, `src/VoiceAssistant.tsx` : atelier et confirmation.
+- `src/Intelligence.tsx`, `src/diagnostic-domain.ts`, `src/Pilotage.tsx`, `src/ManagerRequests.tsx`, `src/Stocks.tsx`, `src/Team.tsx` : vues métier reliées.
+- `src/scene.ts`, `src/assets.ts`, `src/AssetLibrary.tsx` : garage et modèles ; `tests/v2.test.ts` et `scripts/verify-api.mjs` : preuves de cohérence.
+
+Prochaine étape : essai manuel tablette / micro / parcours 3D, puis authentification et accès distant sécurisé. Ensuite : modèles de marques sous licences confirmées, tâches relationnelles, sorties de stock, absences, mémoire de réparation enrichie et connecteurs professionnels autorisés. ORIA demeure hors du périmètre.

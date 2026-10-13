@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-13T11:38:04.730Z",
+  "isolated": true,
+  "checks": [
+    "HTTP state: coherent 60 dossiers / 50 parts",
+    "SSE: second client receives the persisted action",
+    "Duplicate request and concurrent edit guarded",
+    "Structured voice proposal via HTTP",
+    "Synthetic French audio transcribed through local HTTP pipeline"
+  ]
+}

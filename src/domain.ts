@@ -1,3 +1,8 @@
+import { createDemo } from "./demo.ts";
+import { team, type Department } from "./team-data.ts";
+import type { Appointment } from "./planning-domain.ts";
+import type { DiagnosticCase } from "./diagnostic-domain.ts";
+import type { ManagerAlert } from "./dashboard-domain.ts";
 import type { WorkshopState } from "./workshop-domain.ts";
 import type { FieldEvidence } from "./identification.ts";
 export const statuses = [
@@ -35,6 +40,13 @@ export type Vehicle = {
   country?: string;
   assetId?: string;
   registrationEvidence?: FieldEvidence[];
+  present?: boolean;
+  demo?: boolean;
+  arrivedAt?: string;
+  estimatedMinutes?: number;
+  engine?: string;
+  department?: Department;
+  partReservations?: Record<string, number>;
 };
 export type Part = {
   id: string;
@@ -45,6 +57,13 @@ export type Part = {
   price: number;
   location: string;
   threshold: number;
+  category?: string;
+  unit?: string;
+  purchasePrice?: number;
+  brand?: string;
+  supplier?: string;
+  lastMovement?: string;
+  demo?: boolean;
 };
 export type Audit = { id: string; at: string; vehicle: string; action: string };
 export type DB = {
@@ -57,6 +76,33 @@ export type DB = {
   workshop?: Record<string, WorkshopState>;
   quotes?: Quote[];
   assetDisabled?: string[];
+  demoVersion?: number;
+  appointments?: Appointment[];
+  diagnosticCases?: DiagnosticCase[];
+  alerts?: ManagerAlert[];
+  stockMovements?: {
+    id: string;
+    part: string;
+    vehicle: string;
+    kind: string;
+    quantity: number;
+    at: string;
+  }[];
+  invoices?: {
+    id: string;
+    vehicle: string;
+    total: number;
+    state: string;
+    at: string;
+    demo: boolean;
+  }[];
+  maintenance?: {
+    id: string;
+    vehicle: string;
+    label: string;
+    due: string;
+    consent: boolean;
+  }[];
 };
 export type Quote = {
   id: string;
@@ -66,13 +112,7 @@ export type Quote = {
   state: "Brouillon" | "À valider" | "Validé";
   at: string;
 };
-export const technicians = [
-  "Non affecté",
-  "Thomas Martin",
-  "Sarah Moreau",
-  "Lucas Bernard",
-  "Emma Petit",
-];
+export const technicians = ["Non affecté", ...team.map((t) => t.name)];
 export const bayPosition = (bay: number): [number, number] => [
   bay % 2 ? -7 : 7,
   -10 + Math.floor((bay - 1) / 2) * 5,
@@ -83,13 +123,15 @@ export function vehiclePosition(v: Vehicle, all: Vehicle[]): [number, number] {
     (c) => c.status === "Prêt à livrer" && c.bay === null,
   );
   const ri = ready.findIndex((c) => c.id === v.id);
-  if (ri >= 0 && ri < 2) return [15 + ri * 4, 10];
+  if (ri >= 0 && ri < 4)
+    return [15 + (ri % 2) * 4, 10 + Math.floor(ri / 2) * 5];
   const parked = all.filter(
     (c) =>
       c.bay === null &&
       c.status !== "Livré" &&
+      c.present !== false &&
       (c.status !== "Prêt à livrer" ||
-        ready.findIndex((r) => r.id === c.id) >= 2),
+        ready.findIndex((r) => r.id === c.id) >= 4),
   );
   const i = Math.max(
     0,
@@ -115,171 +157,7 @@ export const zones = [
   { id: "parking", name: "Parking extérieur", short: "Parking", x: 0, z: 24 },
 ];
 export function seed(): DB {
-  const base = {
-    phone: "06 00 00 00 00",
-    email: "",
-    km: 84500,
-    year: 2020,
-    symptoms: "Vibrations au freinage et bruit sur le train avant.",
-    codes: "",
-    quality: false,
-    notes: "",
-    parts: [],
-  };
-  return {
-    version: 1,
-    vehicles: [
-      {
-        ...base,
-        id: "v1",
-        make: "BMW",
-        model: "Série 3",
-        plate: "GH-482-LP",
-        client: "Alexandre Dubois",
-        color: "#426780",
-        shape: "sedan",
-        status: "En intervention",
-        technician: "Thomas Martin",
-        bay: 1,
-        due: "14:30",
-      },
-      {
-        ...base,
-        id: "v2",
-        make: "Peugeot",
-        model: "3008",
-        plate: "FV-913-AB",
-        client: "Camille Laurent",
-        color: "#b7b9b4",
-        shape: "suv",
-        status: "Diagnostic",
-        technician: "Sarah Moreau",
-        bay: 2,
-        due: "15:00",
-        symptoms: "Perte de puissance et voyant moteur.",
-        codes: "P0299",
-      },
-      {
-        ...base,
-        id: "v3",
-        make: "Volkswagen",
-        model: "Golf",
-        plate: "GT-205-NC",
-        client: "Julien Robert",
-        color: "#b39c79",
-        shape: "hatch",
-        status: "Devis à valider",
-        technician: "Lucas Bernard",
-        bay: 3,
-        due: "16:00",
-      },
-      {
-        ...base,
-        id: "v4",
-        make: "Land Rover",
-        model: "Range Rover",
-        plate: "HP-731-DR",
-        client: "Sophie Mercier",
-        color: "#52665b",
-        shape: "suv",
-        status: "Diagnostic",
-        technician: "Emma Petit",
-        bay: 4,
-        due: "17:00",
-        symptoms:
-          "Démarrage difficile, défauts électriques et direction intermittente.",
-        codes: "P0562 U0100",
-      },
-      {
-        ...base,
-        id: "v5",
-        make: "Renault",
-        model: "Clio",
-        plate: "FM-648-JK",
-        client: "Marc Lefèvre",
-        color: "#b36e5b",
-        shape: "hatch",
-        status: "Contrôle qualité",
-        technician: "Thomas Martin",
-        bay: 5,
-        due: "14:00",
-      },
-      {
-        ...base,
-        id: "v6",
-        make: "Audi",
-        model: "A4",
-        plate: "GC-092-TM",
-        client: "Nathalie Roux",
-        color: "#d8d8d2",
-        shape: "sedan",
-        status: "En intervention",
-        technician: "Sarah Moreau",
-        bay: 6,
-        due: "16:30",
-      },
-      {
-        ...base,
-        id: "v7",
-        make: "Volvo",
-        model: "XC60",
-        plate: "HN-418-BV",
-        client: "Pierre Girard",
-        color: "#33444d",
-        shape: "suv",
-        status: "Prêt à livrer",
-        technician: "Lucas Bernard",
-        bay: null,
-        due: "15:30",
-        quality: true,
-      },
-    ],
-    parts: [
-      {
-        id: "disc",
-        name: "Disque de frein avant",
-        ref: "DEMO-FR-001",
-        stock: 8,
-        reserved: 0,
-        price: 78,
-        location: "A · 01",
-        threshold: 4,
-      },
-      {
-        id: "pads",
-        name: "Jeu de plaquettes",
-        ref: "DEMO-FR-002",
-        stock: 3,
-        reserved: 0,
-        price: 46,
-        location: "A · 02",
-        threshold: 4,
-      },
-      {
-        id: "caliper",
-        name: "Étrier de frein",
-        ref: "DEMO-FR-003",
-        stock: 0,
-        reserved: 0,
-        price: 145,
-        location: "A · 03",
-        threshold: 2,
-      },
-      {
-        id: "filter",
-        name: "Filtre à huile",
-        ref: "DEMO-FL-001",
-        stock: 24,
-        reserved: 0,
-        price: 12,
-        location: "B · 01",
-        threshold: 10,
-      },
-    ],
-    audit: [],
-    orders: [],
-    messages: [],
-  };
+  return createDemo();
 }
 export function record(db: DB, vehicle: string, action: string): DB {
   return {
@@ -316,6 +194,7 @@ export function updateVehicle(db: DB, id: string, patch: Partial<Vehicle>): DB {
     throw Error("Ce poste est déjà occupé.");
   if (next.status === "Prêt à livrer" || next.status === "Livré")
     next.bay = null;
+  if (next.status === "Livré") next.present = false;
   return record(
     { ...db, vehicles: db.vehicles.map((v) => (v.id === id ? next : v)) },
     id,
@@ -599,5 +478,80 @@ export function loadDB(raw: string | null): DB {
         return invalid();
     }
   }
+  for (const field of [
+    "appointments",
+    "diagnosticCases",
+    "alerts",
+    "stockMovements",
+    "invoices",
+    "maintenance",
+  ])
+    if (d[field] !== undefined && !Array.isArray(d[field])) return invalid();
+  if (
+    d.appointments?.some(
+      (a: any) =>
+        !a ||
+        !str(a.id) ||
+        !d.vehicles.some((v: Vehicle) => v.id === a.vehicle) ||
+        !str(a.technician) ||
+        !str(a.resource) ||
+        !str(a.department) ||
+        !Number.isFinite(Date.parse(a.start)) ||
+        !number(a.duration) ||
+        a.duration < 15 ||
+        !Number.isFinite(Date.parse(a.promised)) ||
+        !Array.isArray(a.requiredParts) ||
+        !a.requiredParts.every(str) ||
+        !["Planifié", "En cours", "En pause", "Terminé"].includes(a.state) ||
+        typeof a.arrived !== "boolean",
+    )
+  )
+    return invalid();
+  if (
+    d.diagnosticCases?.some(
+      (c: any) =>
+        !c ||
+        !str(c.id) ||
+        !d.vehicles.some((v: Vehicle) => v.id === c.vehicleId) ||
+        !str(c.symptoms) ||
+        !str(c.engine) ||
+        !Array.isArray(c.codes) ||
+        !c.codes.every(str) ||
+        !Array.isArray(c.tests) ||
+        c.tests.some(
+          (t: any) =>
+            !t || !str(t.name) || !str(t.result) || typeof t.done !== "boolean",
+        ) ||
+        !Array.isArray(c.hypotheses) ||
+        !str(c.repair) ||
+        !str(c.result) ||
+        typeof c.resolved !== "boolean" ||
+        !(c.cause === null || str(c.cause)),
+    )
+  )
+    return invalid();
+  if (
+    d.alerts?.some(
+      (a: any) =>
+        !a ||
+        !str(a.id) ||
+        !str(a.vehicle) ||
+        !str(a.message) ||
+        !str(a.kind) ||
+        typeof a.resolved !== "boolean",
+    )
+  )
+    return invalid();
+  if (
+    d.invoices?.some(
+      (i: any) =>
+        !i ||
+        !str(i.id) ||
+        !d.vehicles.some((v: Vehicle) => v.id === i.vehicle) ||
+        !number(i.total) ||
+        !str(i.state),
+    )
+  )
+    return invalid();
   return d as DB;
 }
