@@ -1,5 +1,11 @@
+import { demoShowroom } from "./guided-domain";
 import { occludesTarget } from "./camera-occlusion";
-import { vehicleView, isRendered, shortestTurn } from "./camera-navigation";
+import {
+  vehicleView,
+  zoneView,
+  isRendered,
+  shortestTurn,
+} from "./camera-navigation";
 import { portoLayout, type DealershipLayout } from "./dealership-layout";
 import * as THREE from "three";
 import { team } from "./team-data";
@@ -17,6 +23,9 @@ import {
 } from "./navigation";
 export type Selection = {
   kind:
+    | "zone"
+    | "customer"
+    | "inventory"
     | "vehicle"
     | "wheel"
     | "bay"
@@ -104,6 +113,7 @@ export class GarageScene {
     this.scene.fog = new THREE.Fog("#dde5e4", 65, 135);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
+    this.controls.enabled = false;
     this.controls.enablePan = false;
     this.controls.rotateSpeed = 0.55;
     this.controls.zoomSpeed = 0.65;
@@ -362,15 +372,25 @@ export class GarageScene {
               : zone.id === "carrosserie"
                 ? "#bcc6c5"
                 : "#d9dcd6",
+            { kind: "zone", id: zone.id },
           );
-        this.label(
+        const sign = this.label(
           zone.short.toUpperCase(),
           zone.x,
           3.3,
           zone.z,
           zone.id === "atelier" ? 5 : 3.2,
         );
+        sign.userData.select = { kind: "zone", id: zone.id };
       });
+    this.box(this.scene, 0, 0.057, -30, 23, 0.015, 40, palette.floor, {
+      kind: "zone",
+      id: "atelier",
+    });
+    this.box(this.scene, -7, 0.059, -30, 5, 0.012, 40, "#b6c1bb", {
+      kind: "zone",
+      id: "parking",
+    });
     this.activeWalls().forEach((b) => {
       const wall = this.box(
         this.scene,
@@ -478,6 +498,14 @@ export class GarageScene {
     this.box(this.scene, -20, 1.12, -14, 0.9, 0.62, 0.1, palette.navy, {
       kind: "office",
       id: "office",
+    });
+    const reception = this.person("Éric", -18, 6, "customer");
+    reception.userData.select = { kind: "zone", id: "accueil" };
+    this.scene.add(reception);
+    this.label("ACCUEIL · RÉCEPTION CLIENTS", -18, 2.4, 7.5, 4);
+    this.box(this.scene, -18, 0.5, 8.14, 4.7, 0.7, 0.08, "#315e7b", {
+      kind: "reception",
+      id: "reception",
     });
     // Stock shelves with separately selectable reference boxes.
     for (const x of [14, 20])
@@ -724,6 +752,7 @@ export class GarageScene {
       string,
       { blocked?: boolean; runningSince?: string | null }
     > = {},
+    demo = false,
   ) {
     const generation = ++this.generation;
     this.assetDisabled = disabled;
@@ -820,14 +849,58 @@ export class GarageScene {
         this.cars,
       );
       vehicleLabel.userData.vehicleLabel = v.id;
+      vehicleLabel.userData.select = { kind: "vehicle", id: v.id };
     });
+    if (demo) {
+      if (this.layout.waitingRoom)
+        ["v11", "v12", "v13"].forEach((id, i) => {
+          const v = vehicles.find((v) => v.id === id && isPresent(v));
+          if (!v) return;
+          const person = this.person(
+            v.client.split(" ")[0],
+            -19 + i * 1.2,
+            -3,
+            "customer",
+          );
+          person.userData.select = { kind: "customer", id: v.id };
+          const badge = this.cars.children.find(
+            (o) =>
+              o instanceof THREE.Sprite &&
+              o.userData.select?.kind === "customer" &&
+              o.userData.select?.id === v.client.split(" ")[0],
+          );
+          if (badge) badge.userData.select = { kind: "customer", id: v.id };
+          this.cars.add(person);
+        });
+      demoShowroom.forEach((v, i) => {
+        const proxy = {
+          ...vehicles[0],
+          ...v,
+          shape: "suv",
+          plate: "SHOWROOM",
+          status: "Réception",
+        } as Vehicle;
+        const group = this.car(proxy, i === 2 ? -7 : 4 + i * 5, 14, true);
+        group.userData.select = { kind: "inventory", id: v.id };
+        group.traverse((o) => {
+          if (o.userData.select)
+            o.userData.select = { kind: "inventory", id: v.id };
+        });
+        this.cars.add(group);
+      });
+    }
     this.setSelected(this.selected);
     this.setFocusIds(this.cohortIDs);
   }
-  private person(name: string, x: number, z: number) {
+  private person(
+    name: string,
+    x: number,
+    z: number,
+    kind: "technician" | "customer" = "technician",
+  ) {
     const g = new THREE.Group();
     g.position.set(x, 0, z);
-    g.userData.select = { kind: "technician", id: name };
+    g.userData.select = { kind, id: name };
     const torso = new THREE.Mesh(
       new THREE.CylinderGeometry(0.22, 0.24, 0.57, 18),
       this.material("#38596d"),
@@ -858,7 +931,122 @@ export class GarageScene {
       g.add(arm);
       this.box(g, side * 0.12, 0.08, -0.06, 0.2, 0.14, 0.31, "#27323a");
     }
+    const uniform = team.find((t) => t.name === name)?.color || "#355b78";
+    g.children.forEach((o) => {
+      if (
+        o instanceof THREE.Mesh &&
+        o.geometry instanceof THREE.CapsuleGeometry &&
+        o.position.y > 0.8
+      )
+        (o.material as THREE.MeshStandardMaterial).color.set(uniform);
+    });
+    const torsoMesh = g.children[0] as THREE.Mesh;
+    torsoMesh.scale.set(1.12, 1.2, 0.82);
+    (torsoMesh.material as THREE.MeshStandardMaterial).color.set(uniform);
+    this.cylinder(g, 0, 1.39, 0, 0.08, 0.12, "#c7a488");
+    this.box(g, 0, 1.51, -0.14, 0.06, 0.07, 0.055, "#bc967e");
+    for (const side of [-1, 1]) {
+      const eye = new THREE.Mesh(
+        new THREE.SphereGeometry(0.016, 10, 8),
+        this.material("#313b40"),
+      );
+      eye.position.set(side * 0.059, 1.56, -0.142);
+      g.add(eye);
+      this.box(g, side * 0.105, 1.1, -0.19, 0.12, 0.12, 0.026, uniform);
+    }
+    this.box(g, 0, 0.83, 0, 0.45, 0.04, 0.35, "#26333c");
+    // A fitted cap, ears, hands and contrasting workwear details.
+    this.cylinder(
+      g,
+      0,
+      1.68,
+      0,
+      0.17,
+      0.08,
+      kind === "technician" ? uniform : "#755f51",
+    );
+    this.box(g, 0, 1.66, -0.15, 0.26, 0.04, 0.19, uniform);
+    for (const side of [-1, 1]) {
+      this.box(g, side * 0.15, 1.52, 0, 0.035, 0.09, 0.06, "#c7a488");
+      this.box(
+        g,
+        side * 0.31,
+        0.76,
+        0.03,
+        0.09,
+        0.11,
+        0.09,
+        kind === "technician" ? "#d1ac61" : "#c7a488",
+      );
+    }
+    this.box(g, 0, 1.05, -0.21, 0.015, 0.48, 0.012, "#ccd4d8");
+    if (kind === "technician") {
+      const canvas = document.createElement("canvas");
+      canvas.width = 512;
+      canvas.height = 160;
+      const context = canvas.getContext("2d")!;
+      context.fillStyle = uniform;
+      context.fillRect(0, 0, 512, 160);
+      context.fillStyle = "#ffffff";
+      context.font = "bold 70px Arial";
+      context.textAlign = "center";
+      context.fillText(name.toUpperCase(), 256, 103);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const back = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.49, 0.16),
+        new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide }),
+      );
+      back.position.set(0, 1.23, 0.205);
+      g.add(back);
+    }
+    const badge = this.label(
+      name,
+      x,
+      2.05,
+      z,
+      1.6,
+      "#23465b",
+      "#ffffff",
+      this.cars,
+    );
+    badge.userData.select = { kind, id: name };
     return g;
+  }
+  focusEntity(kind: Selection["kind"], id: string) {
+    const object = this.cars.children.find(
+      (o) =>
+        o instanceof THREE.Group &&
+        o.userData.select?.kind === kind &&
+        o.userData.select?.id === id,
+    );
+    if (!object) return;
+    const start = this.camera.position.clone(),
+      target = this.controls.target.clone();
+    this.setMode("free");
+    this.camera.position.copy(start);
+    this.controls.target.copy(target);
+    const view = vehicleView(
+      object.position.x,
+      object.position.z,
+      this.camera.aspect,
+    );
+    this.cameraFlight =
+      kind === "inventory"
+        ? {
+            position: new THREE.Vector3(...view.position),
+            target: new THREE.Vector3(...view.target),
+          }
+        : {
+            position: object.position.clone().add(new THREE.Vector3(3, 3, 5)),
+            target: object.position.clone().add(new THREE.Vector3(0, 1, 0)),
+          };
+    if (this.reduced) {
+      this.camera.position.copy(this.cameraFlight.position);
+      this.controls.target.copy(this.cameraFlight.target);
+      this.cameraFlight = null;
+      this.controls.update();
+    }
   }
   private boxes() {
     return [
@@ -1025,7 +1213,7 @@ export class GarageScene {
     this.path = [];
     if (document.pointerLockElement) document.exitPointerLock();
     this.mode = mode;
-    this.controls.enabled = mode !== "walk";
+    this.controls.enabled = false;
     this.keys.clear();
     if (mode === "overview") {
       this.camera.position.set(49, 58, 58);
@@ -1051,9 +1239,17 @@ export class GarageScene {
       this.setMode("free");
       this.camera.position.copy(start);
       this.controls.target.copy(target);
+      const framing = zoneView(
+        zoneId,
+        zone.x,
+        zone.z,
+        this.camera.aspect,
+        this.depth,
+      );
+      this.controls.maxDistance = 150;
       this.cameraFlight = {
-        position: new THREE.Vector3(zone.x + 6, 7, zone.z + 9),
-        target: new THREE.Vector3(zone.x, 0.8, zone.z),
+        position: new THREE.Vector3(...framing.position),
+        target: new THREE.Vector3(...framing.target),
       };
       if (this.reduced) {
         this.camera.position.copy(this.cameraFlight.position);
@@ -1102,7 +1298,11 @@ export class GarageScene {
     this.ray.setFromCamera(this.pointer, this.camera);
     const hit = this.ray
       .intersectObjects(this.scene.children, true)
-      .find((h) => isRendered(h.object) && !(h.object instanceof THREE.Sprite));
+      .find(
+        (h) =>
+          isRendered(h.object) &&
+          (!(h.object instanceof THREE.Sprite) || !!h.object.userData.select),
+      );
     const s = hit ? this.selection(hit.object) : null;
     if (click && s) this.activate(s);
     this.renderer.domElement.style.cursor = s ? "pointer" : "grab";
@@ -1143,7 +1343,11 @@ export class GarageScene {
     this.ray.setFromCamera(new THREE.Vector2(0, 0), this.camera);
     const hit = this.ray
       .intersectObjects(this.scene.children, true)
-      .find((h) => isRendered(h.object) && !(h.object instanceof THREE.Sprite));
+      .find(
+        (h) =>
+          isRendered(h.object) &&
+          (!(h.object instanceof THREE.Sprite) || !!h.object.userData.select),
+      );
     const target = hit && hit.distance < 5 ? this.selection(hit.object) : null;
     if (target) this.activate(target);
     else
@@ -1268,7 +1472,7 @@ export class GarageScene {
     const aim = this.controls.target;
     for (const object of this.scene.children) {
       if (object.userData.overhead) object.visible = this.mode !== "free";
-      if (object.userData.sceneLabel) object.visible = !focused;
+      if (object.userData.sceneLabel) object.visible = this.mode === "overview";
       if (object.userData.occluder) {
         object.visible = true;
         if (this.mode !== "walk") {
@@ -1303,7 +1507,10 @@ export class GarageScene {
         if (o instanceof THREE.Mesh) {
           o.geometry.dispose();
           const ms = Array.isArray(o.material) ? o.material : [o.material];
-          ms.forEach((m) => m.dispose());
+          ms.forEach((m) => {
+            (m as THREE.MeshBasicMaterial).map?.dispose();
+            m.dispose();
+          });
         }
       }),
     );

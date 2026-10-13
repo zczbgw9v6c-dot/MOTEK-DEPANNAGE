@@ -89,7 +89,7 @@ La recherche est déterministe par termes, codes et données déclarées ; ce n�
 
 ### Garage 3D et bibliothèque
 
-Navigation première personne ZQSD / WASD, souris, E / clic ; caméra globale / orbitale libre, minimap, collisions et parcours A* entre neuf zones. Véhicules, techniciens, ponts, accueil, rayonnages et bureau ouvrent leurs fonctions. Le bureau ouvre les devis. Plateaux de pont animables. Huit personnages originaux avec formes arrondies professionnelles ; profils en monogrammes, aucune photo de personne réelle.
+Navigation guidée : vue d’ensemble et neuf zones tactiles. Libre et Immersion retirés de l’interface ; aucun déplacement manuel. Véhicules, personnes et zones ouvrent un cadrage automatique et un panneau contextuel. Huit techniciens illustratifs avec casquette, tenue, gants et prénom sur le dos ; aucune photo de personne réelle.
 
 Statuts issus du CRM, blocages et mises en évidence de cohortes. Les modèles sont chargés progressivement et mis en cache. À distance, une représentation procédurale simplifiée est utilisée ; proche, le GLB apparaît. Qualité légère et mouvement réduit disponibles. Le freinage reste une illustration générique sélectionnable, jamais une preuve de compatibilité.
 
@@ -151,3 +151,11 @@ Le cadrage des véhicules du parc gauche se fait désormais depuis l’allée ce
 Les cloisons et meubles traversant la ligne de vue vers le centre ou les quatre coins de la voiture sont masqués en vue globale/libre, puis restaurés en immersion. Leurs volumes restent actifs pour les collisions de déplacement. Les objets masqués et les roues de la représentation de secours invisible ne capturent plus les clics. En inspection, seules les étiquettes du véhicule visé sont affichées. Une destination occupée par une voiture est remplacée par un point voisin libre.
 
 Huit tests dédiés couvrent les deux rangées avec les trois dimensions d’atelier, les écrans étroits, la projection des huit coins du véhicule, les clics à travers des objets masqués, le virage autour de ±π, une arrivée occupée, le mur gênant et les deux vues de livraison. Le contrôle visuel automatique de cette itération n’a pas pu être réalisé : les outils de navigation Chrome puis le navigateur intégré ont expiré. Aucun nouveau modèle de marque n’a été récupéré durant cette correction.
+
+### Interface 3D guidée et tablette (13 octobre 2026)
+
+Cette évolution remplace les anciens modes Libre et Immersion décrits dans l’historique ci-dessus. Les zones et leurs panneaux sont accessibles sans déplacement manuel. L’atelier et le showroom sont cadrés dans leur ensemble ; un client ouvre son état, son dernier devis réel enregistré, son accord et son rendez-vous. Le bouton devis ouvre le véhicule correspondant. L’accueil possède un comptoir et un agent visible. Les techniciens portent leur prénom sur le dos et ouvrent leurs interventions.
+
+Le mode « Mains sales » agrandit les commandes (64 px minimum, zones 74 px), simplifie l’en-tête et masque les commandes secondaires. Vérification dans Chrome avec viewport tablette 1024×768 ; pas de validation physique avec des gants. Attente : trois présences explicitement simulées dans la démonstration. Showroom : trois véhicules commerciaux simulés, séparés des 14 véhicules physiques du CRM. Les modèles restent illustratifs. Les garages réels ne reçoivent pas ces présences ou stocks fictifs.
+
+Stocks : commandes datées du jour selon Europe/Lisbon et commandes attendues. Les anciennes commandes non datées restent indiquées « Date non renseignée ». Aucun envoi externe. Validation : 42 tests réussis, compilation de production réussie, interactions salle d’attente → client → devis, atelier → technicien, stocks, showroom et mode tactile contrôlées dans Chrome. Captures dans `research/porto/atelier-mains-sales.jpg` et `technicien-guide.jpg`.

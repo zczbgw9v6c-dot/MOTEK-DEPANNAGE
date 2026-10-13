@@ -1,3 +1,5 @@
+import { quoteTotals } from "./quote-domain";
+import { GuidedContext, ClientContext } from "./GuidedContext";
 import { DeliveryDeadline } from "./DeliveryDeadline";
 import { layoutFor } from "./dealership-layout";
 import { prepareClientMessage } from "./communication-domain";
@@ -28,6 +30,7 @@ import {
   ArrowsOut,
   WarningCircle,
   ShieldCheck,
+  HandPalm,
   Wrench,
   Envelope,
   CheckCircle,
@@ -184,6 +187,7 @@ function App() {
       : null,
   );
   const [mode, setMode] = useState<Mode>("overview");
+  const [gloves, setGloves] = useState(false);
   const [zone, setZone] = useState("atelier");
   const [query, setQuery] = useState("");
   const [cohort, setCohort] = useState("all");
@@ -315,11 +319,23 @@ function App() {
     }
     if (s.kind === "wheel") setMode("free");
     setTab(s.kind === "wheel" ? "pieces" : "dossier");
-    if (s.kind === "stock") setView("stocks");
-    else if (s.kind === "reception") setCreation(true);
-    else if (s.kind === "office")
-      setView(s.id === "office" ? "devis" : "pilotage");
-    else if (s.kind === "delivery") setView("dossiers");
+    const zoneId =
+      s.kind === "zone"
+        ? s.id
+        : s.kind === "stock"
+          ? "stock"
+          : s.kind === "reception"
+            ? "accueil"
+            : s.kind === "office"
+              ? "bureau"
+              : s.kind === "delivery"
+                ? "livraison"
+                : null;
+    if (zoneId) go(zoneId);
+    else if (["customer", "technician", "inventory"].includes(s.kind)) {
+      setMode("free");
+      scene.current?.focusEntity(s.kind, s.id);
+    }
   };
   useEffect(() => {
     if (!serverReady) return;
@@ -340,9 +356,14 @@ function App() {
         setError3d,
         layoutFor(db.dealership),
       );
-      scene.current.update(db.vehicles, db.assetDisabled, db.workshop);
+      scene.current.update(
+        db.vehicles,
+        db.assetDisabled,
+        db.workshop,
+        !!db.demoVersion,
+      );
       scene.current.setMode(mode);
-      if (car && isPresent(car) && !inspect) {
+      if (car && selection?.kind !== "customer" && isPresent(car) && !inspect) {
         scene.current.focusVehicle(car.id);
         setMode("free");
       }
@@ -360,14 +381,24 @@ function App() {
     };
   }, [view, db.dealership]);
   useEffect(() => {
-    scene.current?.update(db.vehicles, db.assetDisabled, db.workshop);
+    scene.current?.update(
+      db.vehicles,
+      db.assetDisabled,
+      db.workshop,
+      !!db.demoVersion,
+    );
   }, [db.vehicles, db.assetDisabled]);
   useEffect(() => {
     scene.current?.setFocusIds(cohort === "all" ? [] : cohortIDs(cohort));
   }, [cohort, db, view]);
   useEffect(() => {
-    scene.current?.setSelected(car?.id || null);
-    if (car) scene.current?.inspect(car.id, inspect);
+    scene.current?.setSelected(
+      selection?.kind === "vehicle" || selection?.kind === "wheel"
+        ? car?.id || null
+        : null,
+    );
+    if (car && selection?.kind !== "customer")
+      scene.current?.inspect(car.id, inspect);
   }, [selection, inspect, db.vehicles]);
   useEffect(() => {
     if (scene.current) {
@@ -389,7 +420,9 @@ function App() {
   }
   function go(id: string) {
     setZone(id);
-    if (mode !== "walk") setMode("free");
+    setSelection({ kind: "zone", id });
+    setInspect(false);
+    setMode("free");
     scene.current?.go(id);
   }
   function exportDB() {
@@ -543,7 +576,7 @@ function App() {
             <span className="avatar">ÉS</span>
           </div>
         </header>
-        <main>
+        <main className={gloves ? "glove-mode" : ""}>
           <div className="page-heading">
             <div>
               <div className="eyebrow">AUTOHUB · VOTRE ESPACE AUTOMOBILE</div>
@@ -630,52 +663,74 @@ function App() {
                     <strong>{zones.find((z) => z.id === zone)?.name}</strong>
                     <span>Environnement 3D</span>
                   </div>
-                  <div className="mode-switch">
-                    {(
-                      [
-                        ["overview", MapTrifold, "Globale"],
-                        ["free", Cube, "Libre"],
-                        ["walk", PersonSimpleWalk, "Immersion"],
-                      ] as const
-                    ).map(([id, Icon, label]) => (
-                      <button
-                        key={id}
-                        className={mode === id ? "selected" : ""}
-                        onClick={() => changeMode(id)}
-                        title={label}
-                      >
-                        <Icon size={17} />
-                        <span>{label}</span>
-                      </button>
-                    ))}
+                  <div className="guided-toolbar">
+                    <button
+                      className="secondary"
+                      onClick={() => {
+                        setSelection(null);
+                        changeMode("overview");
+                      }}
+                    >
+                      Vue d’ensemble
+                    </button>
+                    <button
+                      className={gloves ? "primary" : "secondary"}
+                      aria-pressed={gloves}
+                      onClick={() => setGloves(!gloves)}
+                    >
+                      <HandPalm size={22} />
+                      {gloves ? "Mains sales activé" : "Mains sales"}
+                    </button>
                   </div>
                 </div>
+                <nav className="guided-zones" aria-label="Zones du garage">
+                  {zones
+                    .filter(
+                      (z) =>
+                        layoutFor(db.dealership).waitingRoom ||
+                        z.id !== "attente",
+                    )
+                    .map((z) => (
+                      <button
+                        key={z.id}
+                        className={
+                          zone === z.id && mode !== "overview" ? "active" : ""
+                        }
+                        onClick={() => go(z.id)}
+                      >
+                        {z.short}
+                      </button>
+                    ))}
+                </nav>
                 <div className="scene-viewport">
                   <div ref={host} className="canvas-host" />
-                  {car && isPresent(car) && mode !== "walk" && (
-                    <div
-                      className="vehicle-view-controls"
-                      aria-label="Points de vue du véhicule"
-                    >
-                      {[false, true].map((rear) => (
-                        <button
-                          key={String(rear)}
-                          onClick={() => {
-                            setInspect(false);
-                            scene.current?.inspect(car.id, false);
-                            scene.current?.focusVehicle(car.id, rear);
-                            setMode("free");
-                          }}
-                        >
-                          {rear ? "Autre côté" : "Recentrer"}
+                  {car &&
+                    selection?.kind !== "customer" &&
+                    isPresent(car) &&
+                    mode !== "walk" && (
+                      <div
+                        className="vehicle-view-controls"
+                        aria-label="Points de vue du véhicule"
+                      >
+                        {[false, true].map((rear) => (
+                          <button
+                            key={String(rear)}
+                            onClick={() => {
+                              setInspect(false);
+                              scene.current?.inspect(car.id, false);
+                              scene.current?.focusVehicle(car.id, rear);
+                              setMode("free");
+                            }}
+                          >
+                            {rear ? "Autre côté" : "Recentrer"}
+                          </button>
+                        ))}
+                        <button onClick={() => changeMode("overview")}>
+                          Vue atelier
                         </button>
-                      ))}
-                      <button onClick={() => changeMode("overview")}>
-                        Vue atelier
-                      </button>
-                    </div>
-                  )}
-                  <div className="zone-menu">
+                      </div>
+                    )}
+                  <div className="zone-menu guided-zone-menu">
                     <label htmlFor="destination">SE DÉPLACER VERS</label>
                     <select
                       id="destination"
@@ -695,69 +750,6 @@ function App() {
                         ))}
                     </select>
                   </div>
-                  {mode === "overview" && (
-                    <div className="scene-welcome">
-                      <span>UN ATELIER À EXPLORER</span>
-                      <h2>
-                        La vue d’ensemble.
-                        <br />
-                        Le détail à un clic.
-                      </h2>
-                      <p>Sélectionnez un véhicule pour ouvrir son dossier.</p>
-                      <button
-                        onClick={() => {
-                          setSelection(null);
-                          changeMode("walk");
-                          setZone("accueil");
-                        }}
-                      >
-                        <PersonSimpleWalk size={18} />
-                        Entrer dans le garage
-                        <ArrowRight size={17} />
-                      </button>
-                    </div>
-                  )}
-                  {mode === "walk" && (
-                    <>
-                      <div className="crosshair" />
-                      <div className="walking-tip">
-                        Cliquez dans la scène pour regarder autour de vous
-                        <br />
-                        <kbd>ZQSD</kbd> / <kbd>WASD</kbd> marcher · <kbd>E</kbd>{" "}
-                        interagir · <kbd>Échap</kbd> libérer la souris
-                      </div>
-                      <div className="touch-controls">
-                        {[
-                          ["↑", "KeyW"],
-                          ["←", "KeyA"],
-                          ["↓", "KeyS"],
-                          ["→", "KeyD"],
-                        ].map(([label, code]) => (
-                          <button
-                            key={code}
-                            aria-label={"Déplacement " + label}
-                            onPointerDown={() =>
-                              window.dispatchEvent(
-                                new KeyboardEvent("keydown", { code }),
-                              )
-                            }
-                            onPointerUp={() =>
-                              window.dispatchEvent(
-                                new KeyboardEvent("keyup", { code }),
-                              )
-                            }
-                            onPointerLeave={() =>
-                              window.dispatchEvent(
-                                new KeyboardEvent("keyup", { code }),
-                              )
-                            }
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
                   <div className="mini-map">
                     <div>
                       <MapTrifold size={14} />
@@ -834,28 +826,49 @@ function App() {
                       )}
                     </svg>
                   </div>
-                  <button
-                    className="scene-expand"
-                    aria-label="Afficher la caméra libre"
-                    onClick={() => changeMode("free")}
-                  >
-                    <ArrowsOut size={19} />
-                  </button>
                 </div>
                 <div className="scene-footer">
                   <span>
                     <span className="dot" />{" "}
                     {hint ||
-                      "Cliquez un véhicule pour le cadrer. Glissez pour tourner autour, utilisez la molette pour zoomer."}
+                      "Touchez une zone, une voiture ou une personne. Le cadrage et les informations s’ouvrent automatiquement."}
                   </span>
-                  <span>GLB génériques · freins illustratifs</span>
+                  <span>Véhicules illustratifs · navigation guidée</span>
                 </div>
               </section>
               <aside className="context-panel">
-                {car ? (
+                {selection?.kind === "zone" ||
+                selection?.kind === "inventory" ? (
+                  <GuidedContext
+                    db={db}
+                    selection={selection}
+                    onSelect={select}
+                    onView={setView}
+                    onReception={() => setCreation(true)}
+                    onClose={() => {
+                      setSelection(null);
+                      changeMode("overview");
+                    }}
+                  />
+                ) : selection?.kind === "customer" && car ? (
+                  <ClientContext
+                    db={db}
+                    vehicle={car}
+                    onVehicle={() => select({ kind: "vehicle", id: car.id })}
+                    onQuotes={() => setView("devis")}
+                    onClose={() => {
+                      setSelection(null);
+                      changeMode("overview");
+                    }}
+                  />
+                ) : car ? (
                   <>
                     <div className="panel-top">
-                      <span>DOSSIER VÉHICULE</span>
+                      <span>
+                        {selection?.kind === "customer"
+                          ? "DOSSIER CLIENT"
+                          : "DOSSIER VÉHICULE"}
+                      </span>
                       <button
                         className="icon-button"
                         aria-label="Fermer le dossier"
@@ -863,6 +876,7 @@ function App() {
                           scene.current?.inspect(car.id, false);
                           setSelection(null);
                           setInspect(false);
+                          changeMode("overview");
                         }}
                       >
                         <X size={18} />
@@ -879,7 +893,9 @@ function App() {
                         <Car size={34} color="white" />
                       </div>
                       <h2>
-                        {car.make} {car.model}
+                        {selection?.kind === "customer"
+                          ? car.client
+                          : `${car.make} ${car.model}`}
                       </h2>
                       <p className="warning-small">
                         Représentation 3D générique · modèle exact non importé.
@@ -942,6 +958,61 @@ function App() {
                                 Enregistrer l’arrivée
                               </button>
                             )}
+                          <div className="guided-item">
+                            <strong>
+                              {selection?.kind === "customer"
+                                ? car.client
+                                : "Situation du client"}
+                            </strong>
+                            <span>
+                              {car.status === "Prêt à livrer"
+                                ? "Restitution possible · contrôle validé"
+                                : car.status}
+                            </span>
+                            {(db.quotes || [])
+                              .filter((q) => q.vehicle === car.id)
+                              .sort(
+                                (a, b) => Date.parse(b.at) - Date.parse(a.at),
+                              )
+                              .slice(0, 1)
+                              .map((q) => (
+                                <div key={q.id}>
+                                  <strong>
+                                    Dernier devis : {q.state} ·{" "}
+                                    {euro(quoteTotals(q).total)} TTC
+                                  </strong>
+                                  <small>
+                                    {q.state === "Validé"
+                                      ? "Accord client enregistré"
+                                      : "Accord client attendu"}
+                                  </small>
+                                </div>
+                              ))}
+                            {!(db.quotes || []).some(
+                              (q) => q.vehicle === car.id,
+                            ) && <small>Aucun devis enregistré</small>}
+                            <button
+                              className="secondary full"
+                              onClick={() => setView("devis")}
+                            >
+                              Consulter les devis
+                            </button>
+                          </div>
+                          <ol
+                            className="client-progress"
+                            aria-label="Parcours du dossier"
+                          >
+                            {statuses.map((status) => (
+                              <li
+                                key={status}
+                                aria-current={
+                                  status === car.status ? "step" : undefined
+                                }
+                              >
+                                {status}
+                              </li>
+                            ))}
+                          </ol>
                           <div className="client-line">
                             <Users size={20} />
                             <div>
@@ -1196,6 +1267,7 @@ function App() {
                                                 part: p.id,
                                                 quantity: 1,
                                                 status: "À valider",
+                                                at: new Date().toISOString(),
                                               },
                                               ...d.orders,
                                             ],
@@ -1459,7 +1531,7 @@ function App() {
           ) : view === "bibliotheque" ? (
             <AssetLibrary db={db} commit={commit} />
           ) : view === "devis" ? (
-            <Quotes db={db} commit={commit} />
+            <Quotes db={db} commit={commit} initialVehicle={car?.id} />
           ) : view === "dossiers" ? (
             <section className="content-card">
               <div className="section-head">
@@ -1651,15 +1723,6 @@ function App() {
                 />
                 Qualité légère : ombres désactivées et résolution réduite
               </label>
-              <label>Vitesse de déplacement : {speed.toFixed(1)} m/s</label>
-              <input
-                type="range"
-                min="1.5"
-                max="6"
-                step=".1"
-                value={speed}
-                onChange={(e) => setSpeed(Number(e.target.value))}
-              />
               <h2>Vos données locales</h2>
               <p>
                 Les dossiers et la configuration sont enregistrés sur le serveur

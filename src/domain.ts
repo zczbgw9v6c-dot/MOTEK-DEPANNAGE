@@ -73,7 +73,13 @@ export type DB = {
   vehicles: Vehicle[];
   parts: Part[];
   audit: Audit[];
-  orders: { id: string; part: string; quantity: number; status: string }[];
+  orders: {
+    id: string;
+    part: string;
+    quantity: number;
+    status: string;
+    at?: string;
+  }[];
   messages: { id: string; vehicle: string; text: string }[];
   workshop?: Record<string, WorkshopState>;
   quotes?: Quote[];
@@ -381,6 +387,8 @@ export function loadDB(raw: string | null): DB {
       !str(o.id) ||
       !str(o.part) ||
       !str(o.status) ||
+      (o.at !== undefined &&
+        (!str(o.at) || !Number.isFinite(Date.parse(o.at)))) ||
       !Number.isInteger(o.quantity) ||
       o.quantity < 1 ||
       !d.parts.some((p: Part) => p.id === o.part)

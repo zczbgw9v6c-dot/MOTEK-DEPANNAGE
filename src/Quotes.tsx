@@ -17,14 +17,21 @@ const money = (n: number) =>
 export function Quotes({
   db,
   commit,
+  initialVehicle,
 }: {
   db: DB;
+  initialVehicle?: string;
   commit: (fn: (db: DB) => DB, message?: string) => void;
 }) {
-  const [selected, setSelected] = useState<string | null>(null),
+  const [selected, setSelected] = useState<string | null>(
+      (db.quotes || [])
+        .filter((q) => q.vehicle === initialVehicle)
+        .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0]?.id || null,
+    ),
     [draft, setDraft] = useState<Quote | null>(null),
     [vehicle, setVehicle] = useState(
-      db.vehicles.find((v) => v.status === "Devis à valider")?.id ||
+      initialVehicle ||
+        db.vehicles.find((v) => v.status === "Devis à valider")?.id ||
         db.vehicles[0]?.id ||
         "",
     );

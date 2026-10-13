@@ -4,6 +4,7 @@ import { nearestWalkable, blocked, findPath } from "../src/navigation.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  zoneView,
   vehicleView,
   isRendered,
   shortestTurn,
@@ -108,4 +109,24 @@ test("delivery viewpoints are distinct and still look at the same car", () => {
     second = vehicleView(19, 15, 1.2, true);
   assert.notDeepEqual(first.position, second.position);
   assert.deepEqual(first.target, second.target);
+});
+
+test("guided workshop and showroom views fit their complete floor on tablet screens", () => {
+  for (const aspect of [0.7, 1.2, 1.8])
+    for (const depth of [52, 59, 66])
+      for (const id of ["atelier", "showroom"]) {
+        const view = zoneView(id, 0, 14, aspect, depth);
+        const camera = new THREE.PerspectiveCamera(48, aspect, 0.1, 300);
+        camera.position.set(...view.position);
+        camera.lookAt(new THREE.Vector3(...view.target));
+        camera.updateMatrixWorld();
+        for (const x of [-12, 12])
+          for (const z of id === "atelier" ? [-depth, -9] : [9, 19]) {
+            const point = new THREE.Vector3(x, 0, z).project(camera);
+            assert.ok(
+              Math.abs(point.x) < 1 && Math.abs(point.y) < 1,
+              `${id} ${aspect} ${depth}: ${point.x},${point.y}`,
+            );
+          }
+      }
 });

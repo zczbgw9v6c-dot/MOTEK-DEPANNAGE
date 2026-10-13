@@ -144,6 +144,7 @@ export function Stocks({
                                   part: p.id,
                                   quantity: 1,
                                   status: "À valider",
+                                  at: new Date().toISOString(),
                                 },
                                 ...d.orders,
                               ],

@@ -3555,3 +3555,208 @@ kbd {
     right: 10px;
   }
 }
+
+.guided-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.guided-toolbar button {
+  min-height: 44px;
+}
+.guided-context {
+  padding: 24px;
+  overflow: auto;
+  max-height: 620px;
+}
+.guided-context h2 {
+  font-size: 23px;
+  margin: 0 0 12px;
+}
+.guided-item {
+  padding: 14px;
+  margin: 12px 0;
+  border-radius: 12px;
+  background: #edf4f8;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.guided-item small {
+  color: #5e737e;
+}
+.guided-context .vehicle-row {
+  width: 100%;
+  min-height: 66px;
+}
+.glove-mode button,
+.glove-mode select {
+  min-height: 64px !important;
+  min-width: 64px !important;
+  font-size: 17px !important;
+  touch-action: manipulation;
+}
+.glove-mode .guided-toolbar button {
+  padding: 16px 22px;
+}
+.glove-mode .mini-map,
+.glove-mode .vehicle-view-controls {
+  display: none;
+}
+.glove-mode .zone-menu {
+  max-width: 260px;
+}
+.glove-mode .panel-tabs {
+  gap: 8px;
+}
+.glove-mode .context-panel .vehicle-facts,
+.glove-mode .context-panel textarea,
+.glove-mode .context-panel label[for="notes"] {
+  display: none;
+}
+.glove-mode .context-panel .vehicle-row {
+  min-height: 84px;
+}
+.glove-mode .context-panel button {
+  margin-top: 8px;
+}
+@media (max-width: 1050px) {
+  .guided-toolbar {
+    justify-content: flex-end;
+  }
+  .scene-toolbar {
+    align-items: flex-start;
+  }
+}
+
+.guided-zones {
+  display: flex;
+  gap: 8px;
+  padding: 12px 18px;
+  overflow-x: auto;
+  border-top: 1px solid #e2e9ec;
+  background: #f6f9fb;
+}
+.guided-zones button {
+  border: 1px solid #d9e5ec;
+  border-radius: 9px;
+  min-width: 86px;
+  min-height: 46px;
+  padding: 9px 13px;
+  background: white;
+  color: #335c75;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.guided-zones button.active {
+  background: #315f7c;
+  color: white;
+  border-color: #315f7c;
+}
+.guided-zone-menu {
+  display: none;
+}
+.glove-mode .guided-zones button {
+  min-width: 112px !important;
+  min-height: 74px !important;
+}
+
+.client-progress {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.client-progress li {
+  font-size: 11px;
+  padding: 6px 8px;
+  background: #eef2f4;
+  border-radius: 6px;
+  color: #657a87;
+}
+.client-progress li[aria-current="step"] {
+  color: white;
+  background: #315f7c;
+  font-weight: 600;
+}
+.glove-mode .client-progress li {
+  font-size: 13px;
+  padding: 9px;
+}
+
+.glove-mode .guided-zones {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+.glove-mode .page-heading {
+  display: none;
+}
+.glove-mode .metrics {
+  display: none;
+}
+.glove-mode .garage-layout {
+  margin-top: 0;
+}
+
+.scene-toolbar {
+  height: auto;
+  min-height: 57px;
+  padding: 10px 16px;
+  flex-wrap: wrap;
+}
+.glove-mode .scene-title {
+  display: none;
+}
+.glove-mode .guided-toolbar {
+  width: 100%;
+  justify-content: space-between;
+}
+.glove-mode .garage-layout {
+  min-height: 0;
+}
+.glove-mode .scene-viewport {
+  flex: none;
+  min-height: 330px;
+  height: calc(100dvh - 350px);
+}
+body:has(.glove-mode) .sidebar {
+  width: 72px;
+  padding: 12px 8px;
+}
+body:has(.glove-mode) .sidebar .brand {
+  font-size: 0;
+  justify-content: center;
+}
+body:has(.glove-mode) .sidebar .brand svg {
+  width: 28px;
+}
+body:has(.glove-mode) .sidebar .garage-brand,
+body:has(.glove-mode) .sidebar .sidebar-label,
+body:has(.glove-mode) .sidebar .user,
+body:has(.glove-mode) .sidebar .nav-item .badge {
+  display: none;
+}
+body:has(.glove-mode) .sidebar .nav-item {
+  font-size: 0;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px;
+}
+body:has(.glove-mode) .sidebar .nav-item svg {
+  flex-shrink: 0;
+}
+.workspace:has(.glove-mode) {
+  margin-left: 72px;
+  width: calc(100% - 72px);
+}
+
+body:has(.glove-mode) .sidebar .garage-name,
+body:has(.glove-mode) .sidebar .nav-caption,
+body:has(.glove-mode) .sidebar .local-card,
+body:has(.glove-mode) .sidebar .nav-count,
+body:has(.glove-mode) .sidebar .brand > span:last-child {
+  display: none;
+}

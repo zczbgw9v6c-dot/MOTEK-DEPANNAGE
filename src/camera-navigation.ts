@@ -25,3 +25,28 @@ export function shortestTurn(current: number, target: number, dt: number) {
     Math.atan2(Math.sin(angle), Math.cos(angle)) * (1 - Math.exp(-6 * dt))
   );
 }
+
+export function zoneView(
+  id: string,
+  x: number,
+  z: number,
+  aspect = 1,
+  depth = 52,
+) {
+  const workshop = id === "atelier" || id === "parking";
+  if (workshop) z = (-depth - 9) / 2;
+  const halfWidth = workshop ? 12 : id === "showroom" ? 12 : 5;
+  const halfDepth = workshop ? (depth - 9) / 2 : id === "showroom" ? 5 : 7;
+  const distance = Math.max(
+    halfDepth * 2.8,
+    ((halfWidth + halfDepth * 0.6) * 3.2) / Math.max(aspect, 0.35),
+  );
+  return {
+    position: [x + distance * 0.45, distance * 0.72, z + distance * 0.63] as [
+      number,
+      number,
+      number,
+    ],
+    target: [x, 0.8, z] as [number, number, number],
+  };
+}
