@@ -58,9 +58,11 @@ export function zoneVehicles(db: DB, zone: string) {
       v.status !== "Livré" &&
       (zone === "livraison"
         ? v.status === "Prêt à livrer"
-        : zone === "parking"
-          ? !v.bay && v.status !== "Prêt à livrer"
-          : !!v.bay),
+        : zone === "carrosserie"
+          ? ["Carrosserie", "Peinture"].includes(v.department || "")
+          : zone === "parking"
+            ? !v.bay && v.status !== "Prêt à livrer"
+            : !!v.bay),
   );
 }
 

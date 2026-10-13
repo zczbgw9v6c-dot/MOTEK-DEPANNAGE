@@ -328,11 +328,13 @@ export function VehicleSummary({
   db,
   vehicle: v,
   onDetails,
+  onWork,
   onClose,
 }: {
   db: DB;
   vehicle: DB["vehicles"][number];
   onDetails: () => void;
+  onWork: () => void;
   onClose: () => void;
 }) {
   const events = db.audit
@@ -396,6 +398,9 @@ export function VehicleSummary({
         )}
         <button className="primary" onClick={onDetails}>
           Ouvrir le dossier complet
+        </button>
+        <button className="primary" onClick={onWork}>
+          Intervention · chrono & actions
         </button>
       </div>
     </>

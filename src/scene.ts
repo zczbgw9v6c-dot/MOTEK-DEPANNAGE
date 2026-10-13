@@ -11,6 +11,7 @@ import * as THREE from "three";
 import { team } from "./team-data";
 import { isPresent } from "./dashboard-domain";
 import { loadVehicleAsset, disposeObject, supportedAsset } from "./assets";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { bayPosition, vehiclePosition, zones, type Vehicle } from "./domain";
 import {
@@ -40,11 +41,11 @@ export type Selection = {
 };
 export type Mode = "overview" | "walk" | "free";
 const palette = {
-  floor: "#c6ccc9",
-  wall: "#f0f1ea",
-  navy: "#233c4c",
-  blue: "#567e96",
-  wood: "#ac9878",
+  floor: "#747b80",
+  wall: "#8d969b",
+  navy: "#202a32",
+  blue: "#48647c",
+  wood: "#917457",
 };
 export class GarageScene {
   renderer: THREE.WebGLRenderer;
@@ -56,6 +57,8 @@ export class GarageScene {
   reduced = false;
   quality = "standard";
   private frame = 0;
+  private environment: THREE.WebGLRenderTarget;
+  private floorTexture: THREE.CanvasTexture | null = null;
   private occlusionBounds = new Map<THREE.Object3D, THREE.Box3>();
   private cameraFlight: {
     position: THREE.Vector3;
@@ -107,17 +110,25 @@ export class GarageScene {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 1.18;
+    const environment = new RoomEnvironment();
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.environment = pmrem.fromScene(environment, 0.045);
+    this.scene.environment = this.environment.texture;
+    this.scene.environmentIntensity = 0.65;
+    environment.dispose();
+    pmrem.dispose();
     host.appendChild(this.renderer.domElement);
-    this.scene.background = new THREE.Color("#dde5e4");
-    this.scene.fog = new THREE.Fog("#dde5e4", 180, 360);
+    this.scene.background = new THREE.Color("#242c35");
+    this.scene.fog = new THREE.Fog("#242c35", 180, 360);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.enabled = true;
     this.controls.enablePan = true;
-    this.controls.enableRotate = false;
+    this.controls.enableRotate = true;
     this.controls.screenSpacePanning = false;
     this.controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
+    this.controls.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
     this.controls.touches.ONE = THREE.TOUCH.PAN;
     this.controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
     this.controls.minDistance = 7;
@@ -135,11 +146,12 @@ export class GarageScene {
     this.controls.addEventListener("start", () => {
       this.cameraFlight = null;
     });
-    this.controls.maxPolarAngle = Math.PI / 2 - 0.06;
+    this.controls.minPolarAngle = 0.18;
+    this.controls.maxPolarAngle = Math.PI / 2 - 0.12;
     this.controls.minDistance = 4;
     this.controls.maxDistance = 85;
-    this.scene.add(new THREE.HemisphereLight("#fffdf3", "#5b6b73", 2.7));
-    const sun = new THREE.DirectionalLight("#fff8e9", 3.7);
+    this.scene.add(new THREE.HemisphereLight("#dbe7ff", "#36302b", 1.8));
+    const sun = new THREE.DirectionalLight("#fff3de", 3.2);
     sun.position.set(-25, 40, 20);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -151,6 +163,9 @@ export class GarageScene {
     sun.shadow.normalBias = 0.035;
     this.scene.add(sun);
     this.scene.add(sun.target);
+    const fill = new THREE.DirectionalLight("#b8d6ff", 1.3);
+    fill.position.set(24, 18, -35);
+    this.scene.add(fill);
     this.build();
     for (const object of this.scene.children) {
       if (object.userData.occluder)
@@ -200,6 +215,7 @@ export class GarageScene {
       this.down = [e.clientX, e.clientY];
     });
     this.listen(this.renderer.domElement, "pointerup", (e: PointerEvent) => {
+      if (e.button !== 0) return;
       if (Math.hypot(e.clientX - this.down[0], e.clientY - this.down[1]) > 5)
         return;
       if (this.mode === "walk") {
@@ -292,8 +308,8 @@ export class GarageScene {
     y: number,
     z: number,
     width = 3,
-    color = "#233c4c",
-    bg = "#ffffff",
+    color = "#eef3f5",
+    bg = "#202932",
     parent: THREE.Object3D = this.scene,
   ) {
     const c = document.createElement("canvas");
@@ -349,8 +365,283 @@ export class GarageScene {
             : w,
       );
   }
+  /** Canvas-local coordinates for the accessible HTML zone markers. */
+  projectZones(): { id: string; x: number; y: number; visible: boolean }[] {
+    const { width, height } = this.renderer.domElement.getBoundingClientRect();
+    this.camera.updateMatrixWorld();
+    return zones
+      .filter((zone) => this.layout.waitingRoom || zone.id !== "attente")
+      .map((zone) => {
+        const point = new THREE.Vector3(zone.x, 2, zone.z).project(this.camera);
+        return {
+          id: zone.id,
+          x: (point.x * 0.5 + 0.5) * width,
+          y: (-point.y * 0.5 + 0.5) * height,
+          visible:
+            this.mode === "overview" &&
+            point.z > -1 &&
+            point.z < 1 &&
+            Math.abs(point.x) < 1 &&
+            Math.abs(point.y) < 1,
+        };
+      });
+  }
+  private industrialFloor() {
+    // A locally generated texture: concrete aggregate, tile seams and subtle wear.
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 256;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#d5d5d3";
+    ctx.fillRect(0, 0, 256, 256);
+    let seed = 173;
+    const random = () =>
+      (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+    for (let i = 0; i < 5500; i++) {
+      const shade = Math.floor(150 + random() * 100);
+      ctx.fillStyle = `rgba(${shade},${shade},${shade},0.2)`;
+      ctx.fillRect(random() * 256, random() * 256, 1 + random() * 2, 1);
+    }
+    ctx.strokeStyle = "rgba(39,45,49,.45)";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(0.75, 0.75, 254.5, 254.5);
+    ctx.strokeStyle = "rgba(255,255,255,.28)";
+    ctx.strokeRect(2, 2, 252, 252);
+    this.floorTexture = new THREE.CanvasTexture(canvas);
+    this.floorTexture.colorSpace = THREE.SRGBColorSpace;
+    this.floorTexture.wrapS = this.floorTexture.wrapT = THREE.RepeatWrapping;
+    this.floorTexture.anisotropy = Math.min(
+      8,
+      this.renderer.capabilities.getMaxAnisotropy(),
+    );
+  }
+  private glassFrame(b: Box) {
+    const alongX = b.w > b.d;
+    const length = alongX ? b.w : b.d;
+    for (const y of [0.28, 2.92])
+      this.box(
+        this.scene,
+        b.x,
+        y,
+        b.z,
+        alongX ? b.w : 0.09,
+        0.065,
+        alongX ? 0.09 : b.d,
+        "#25313a",
+      );
+    const segments = Math.max(1, Math.ceil(length / 2.6));
+    for (let i = 0; i <= segments; i++) {
+      const offset = -length / 2 + (i * length) / segments;
+      this.box(
+        this.scene,
+        b.x + (alongX ? offset : 0),
+        1.6,
+        b.z + (alongX ? 0 : offset),
+        0.075,
+        2.65,
+        0.075,
+        "#25313a",
+      );
+    }
+  }
+  private toolCabinet(x: number, z: number) {
+    const tag: Selection = { kind: "stock", id: "tools" };
+    const cabinet = this.solid(x, z, 0.9, 0.65, 0.92, "#293740", tag);
+    cabinet.material.metalness = 0.7;
+    cabinet.material.roughness = 0.32;
+    const top = this.box(
+      this.scene,
+      x,
+      0.96,
+      z,
+      1.02,
+      0.065,
+      0.75,
+      "#a8b2b5",
+      tag,
+    );
+    top.material.metalness = 0.85;
+    for (let row = 0; row < 5; row++) {
+      this.box(
+        this.scene,
+        x,
+        0.24 + row * 0.13,
+        z + 0.335,
+        0.78,
+        0.012,
+        0.01,
+        "#121b23",
+        tag,
+      );
+      this.box(
+        this.scene,
+        x,
+        0.28 + row * 0.13,
+        z + 0.355,
+        0.62,
+        0.025,
+        0.025,
+        "#a1adb1",
+        tag,
+      );
+    }
+    for (const dx of [-0.35, 0.35])
+      for (const dz of [-0.22, 0.22]) {
+        const wheel = this.cylinder(
+          this.scene,
+          x + dx,
+          0.08,
+          z + dz,
+          0.09,
+          0.07,
+          "#11181d",
+        );
+        wheel.rotation.z = Math.PI / 2;
+      }
+    for (let i = 0; i < 3; i++) {
+      const tool = this.box(
+        this.scene,
+        x - 0.28 + i * 0.2,
+        1.01,
+        z,
+        0.035,
+        0.025,
+        0.3,
+        "#b8c1c6",
+        tag,
+      );
+      tool.material.metalness = 0.9;
+      tool.rotation.y = i * 0.35;
+    }
+  }
+  private plant(x: number, z: number) {
+    this.cylinder(this.scene, x, 0.29, z, 0.28, 0.58, "#414c50");
+    this.cylinder(this.scene, x, 0.58, z, 0.23, 0.025, "#302b25");
+    for (let i = 0; i < 9; i++) {
+      const angle = i * 2.4;
+      const leaf = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 8, 8),
+        this.material(i % 2 ? "#465c3c" : "#62744d", 0, 0.85),
+      );
+      leaf.scale.set(0.1, 0.56, 0.055);
+      leaf.position.set(
+        x + Math.cos(angle) * 0.18,
+        0.98 + (i % 3) * 0.12,
+        z + Math.sin(angle) * 0.18,
+      );
+      leaf.rotation.set(Math.sin(angle) * 0.55, angle, Math.cos(angle) * 0.55);
+      leaf.castShadow = true;
+      this.scene.add(leaf);
+    }
+  }
+  private roomDetails() {
+    // Metal workbench and pegboard in the parts room.
+    this.solid(17, -17, 4, 0.85, 0.85, "#374650", {
+      kind: "stock",
+      id: "tools",
+    });
+    const bench = this.box(
+      this.scene,
+      17,
+      0.9,
+      -17,
+      4.1,
+      0.09,
+      0.95,
+      "#a1a9aa",
+    );
+    bench.material.metalness = 0.8;
+    this.box(this.scene, 17, 1.63, -17.39, 4.1, 1.15, 0.06, "#26343e");
+    for (let i = 0; i < 9; i++) {
+      const tool = this.box(
+        this.scene,
+        15.3 + i * 0.42,
+        1.63,
+        -17.33,
+        0.035,
+        0.4 + (i % 3) * 0.1,
+        0.035,
+        "#b9c2c6",
+        { kind: "stock", id: "tools" },
+      );
+      tool.material.metalness = 0.85;
+    }
+    // Loose tire rack and compressor are kept out of the walking aisles.
+    for (let i = 0; i < 4; i++) {
+      const tire = new THREE.Mesh(
+        new THREE.TorusGeometry(0.34, 0.12, 10, 24),
+        this.material("#202629", 0, 0.91),
+      );
+      tire.position.set(20.9, 0.45 + i * 0.23, -19.2);
+      tire.rotation.x = Math.PI / 2;
+      tire.userData.select = { kind: "stock", id: "tires" };
+      tire.castShadow = true;
+      this.scene.add(tire);
+    }
+    // Waiting room upholstery, tables and office chair.
+    if (this.layout.waitingRoom) {
+      for (const z of [-5.5, -0.5]) {
+        for (const end of [-1, 1])
+          this.box(
+            this.scene,
+            -20,
+            0.85,
+            z + end * 1.43,
+            1.2,
+            0.42,
+            0.17,
+            "#526058",
+          );
+        for (let i = -1; i <= 1; i++)
+          this.box(
+            this.scene,
+            -19.93,
+            0.69,
+            z + i * 0.88,
+            0.9,
+            0.12,
+            0.82,
+            "#657166",
+          );
+      }
+      this.box(this.scene, -16, 0.65, -5, 0.36, 0.03, 0.5, "#e0e0d9");
+      this.cylinder(this.scene, -16.55, 0.66, -4.85, 0.1, 0.2, "#d8d5c8");
+    }
+    this.cylinder(this.scene, -20, 0.3, -15.3, 0.055, 0.5, "#737d82");
+    this.box(this.scene, -20, 0.59, -15.3, 0.58, 0.16, 0.58, "#303d46");
+    this.box(this.scene, -20, 0.95, -15.56, 0.58, 0.65, 0.09, "#303d46");
+    // Linear drain channels; repeated floor texture is applied per slab in metres.
+    for (const x of [-10.8, 10.8]) {
+      this.box(this.scene, x, 0.082, -30, 0.22, 0.01, 39, "#333e46");
+      for (let z = -49; z < -10; z += 0.7)
+        this.box(this.scene, x, 0.091, z, 0.2, 0.008, 0.035, "#738087");
+    }
+    this.scene.traverse((object) => {
+      if (
+        !(object instanceof THREE.Mesh) ||
+        !(object.geometry instanceof THREE.BoxGeometry)
+      )
+        return;
+      const { width, height, depth } = object.geometry.parameters;
+      if (
+        width < 2 ||
+        depth < 2 ||
+        height > 0.15 ||
+        object.position.y > 0.075 ||
+        object.position.y < -0.02
+      )
+        return;
+      const material = object.material as THREE.MeshStandardMaterial;
+      const texture = this.floorTexture!.clone();
+      texture.repeat.set(width / 2, depth / 2);
+      texture.needsUpdate = true;
+      material.map = texture;
+      material.metalness = 0.18;
+      material.roughness = 0.48;
+      material.needsUpdate = true;
+    });
+  }
   private build() {
-    this.box(this.scene, 0, -0.25, 5, 110, 0.4, 110, "#aab8b2");
+    this.box(this.scene, 0, -0.34, -12, 110, 0.4, 140, "#303a42");
     this.box(
       this.scene,
       0,
@@ -361,7 +652,8 @@ export class GarageScene {
       18 + this.depth,
       palette.floor,
     );
-    this.box(this.scene, 0, -0.01, 24, 44, 0.1, 12, "#717b7e");
+    this.industrialFloor();
+    this.box(this.scene, 0, -0.01, 24, 44, 0.1, 12, "#3d474e");
     zones
       .filter((z) => this.layout.waitingRoom || z.id !== "attente")
       .forEach((zone) => {
@@ -383,26 +675,18 @@ export class GarageScene {
                     ? 8.5
                     : 11.5,
             zone.id === "stock"
-              ? "#aab9b6"
+              ? "#606b72"
               : zone.id === "carrosserie"
-                ? "#bcc6c5"
-                : "#d9dcd6",
+                ? "#78848b"
+                : "#8b8b85",
             { kind: "zone", id: zone.id },
           );
-        const sign = this.label(
-          zone.short.toUpperCase(),
-          zone.x,
-          3.3,
-          zone.z,
-          zone.id === "atelier" ? 5 : 3.2,
-        );
-        sign.userData.select = { kind: "zone", id: zone.id };
       });
-    this.box(this.scene, 0, 0.057, -30, 23, 0.015, 40, palette.floor, {
+    this.box(this.scene, 0, 0.057, -30, 23, 0.015, 40, "#71797d", {
       kind: "zone",
       id: "atelier",
     });
-    this.box(this.scene, -7, 0.059, -30, 5, 0.012, 40, "#b6c1bb", {
+    this.box(this.scene, -7, 0.059, -30, 5, 0.012, 40, "#4c565d", {
       kind: "zone",
       id: "parking",
     });
@@ -418,14 +702,20 @@ export class GarageScene {
         palette.wall,
       );
       wall.userData.occluder = true;
-      if (b.z === 18) {
+      if (
+        b.z === 18 ||
+        (b.x === -12 && b.z > -18) ||
+        (b.x < -12 && (b.z === -8 || b.z === 2))
+      ) {
         wall.material = new THREE.MeshPhysicalMaterial({
-          color: "#adcdd3",
+          color: "#c3dce1",
           transparent: true,
-          opacity: 0.16,
+          opacity: 0.22,
           roughness: 0.15,
           depthWrite: false,
+          metalness: 0.18,
         });
+        this.glassFrame(b);
       }
       this.box(
         this.scene,
@@ -457,12 +747,37 @@ export class GarageScene {
     });
     for (let i = 1; i <= 8; i++) {
       const [x, z] = bayPosition(i, this.layout);
-      this.box(this.scene, x, 0.061, z, 5, 0.025, 4.6, "#abb6b3");
+      this.box(this.scene, x, 0.061, z, 5, 0.025, 4.6, "#4b555d");
       for (const edge of [-2.45, 2.45])
-        this.box(this.scene, x + edge, 0.08, z, 0.06, 0.02, 4.6, "#e6e8dc");
+        this.box(this.scene, x + edge, 0.08, z, 0.06, 0.02, 4.6, "#d6ad5d");
       const tag: Selection = { kind: "bay", id: String(i) };
       for (const dx of [-1.65, 1.65]) {
-        this.solid(x + dx, z, 0.32, 0.6, 3.1, "#bd3d42", tag);
+        const post = this.solid(x + dx, z, 0.32, 0.6, 3.1, "#a93035", tag);
+        post.material.metalness = 0.55;
+        post.material.roughness = 0.3;
+        this.box(this.scene, x + dx, 0.08, z, 0.65, 0.1, 0.85, "#20262b", tag);
+        this.box(
+          this.scene,
+          x + dx,
+          1.5,
+          z - 0.31,
+          0.12,
+          2.5,
+          0.04,
+          "#bac2c5",
+          tag,
+        );
+        this.box(
+          this.scene,
+          x + dx,
+          1.15,
+          z + 0.33,
+          0.24,
+          0.3,
+          0.12,
+          "#252d32",
+          tag,
+        );
         this.box(
           this.scene,
           x + dx,
@@ -479,13 +794,45 @@ export class GarageScene {
       lift.position.set(x, 0, z);
       for (const dx of [-0.65, 0.65])
         this.box(lift, dx, 0.14, 0, 0.2, 0.16, 3.6, palette.navy, tag);
+      for (const side of [-1, 1])
+        for (const end of [-1, 1]) {
+          const arm = this.box(
+            lift,
+            side * 1.08,
+            0.2,
+            end * 0.75,
+            1.1,
+            0.12,
+            0.2,
+            "#636f76",
+            tag,
+          );
+          arm.rotation.y = side * end * 0.32;
+          this.cylinder(
+            lift,
+            side * 0.65,
+            0.31,
+            end * 0.91,
+            0.16,
+            0.12,
+            "#242a2e",
+          );
+        }
+      for (const end of [-1, 1])
+        this.box(
+          this.scene,
+          x,
+          0.082,
+          z + end * 2.3,
+          4.95,
+          0.012,
+          0.045,
+          "#d6ad5d",
+        );
       this.scene.add(lift);
       this.liftGroups.set(i, lift);
       this.label(`POSTE ${String(i).padStart(2, "0")}`, x, 3.8, z, 2.3);
-      this.solid(x + (x < 0 ? -3 : 3), z + 1.5, 0.75, 0.5, 0.9, "#687d83", {
-        kind: "stock",
-        id: "tools",
-      });
+      this.toolCabinet(x + (x < 0 ? -3 : 3), z + 1.5);
     }
     // Reception counter, screens and waiting lounge.
     this.solid(-18, 7.5, 5, 1.2, 1.05, palette.wood, {
@@ -525,10 +872,22 @@ export class GarageScene {
     // Stock shelves with separately selectable reference boxes.
     for (const x of [14, 20])
       for (const z of [-15, -10]) {
-        this.solid(x, z, 1.1, 3, 2.25, "#526b71", {
-          kind: "stock",
-          id: "shelf",
-        });
+        this.furniture.push({ x, z, w: 1.1, d: 3 });
+        for (const side of [-1, 1])
+          for (const end of [-1, 1]) {
+            const upright = this.box(
+              this.scene,
+              x + side * 0.53,
+              1.23,
+              z + end * 1.45,
+              0.075,
+              2.45,
+              0.075,
+              "#27343e",
+              { kind: "stock", id: "shelf" },
+            );
+            upright.material.metalness = 0.75;
+          }
         for (let row = 0; row < 3; row++) {
           this.box(
             this.scene,
@@ -538,7 +897,7 @@ export class GarageScene {
             1.2,
             0.08,
             3.1,
-            "#c4c9c1",
+            "#828c93",
           );
           for (let j = 0; j < 3; j++)
             this.box(
@@ -606,9 +965,11 @@ export class GarageScene {
     this.scene.add(roof);
     // Architectural beams, high windows and practical strip lights.
     for (const z of [-48, -40, -32, -24, -16, -8, 0, 8, 16]) {
-      this.box(roof, 0, 5.5, z, 44, 0.15, 0.18, "#8e9e9d");
+      this.box(roof, 0, 5.5, z, 44, 0.15, 0.18, "#3d4953");
       for (const x of [-10, 10]) {
-        this.box(roof, x, 5.4, z, 6, 0.06, 0.2, "#fffbe9");
+        const strip = this.box(roof, x, 5.4, z, 6, 0.06, 0.2, "#fffbe9");
+        strip.material.emissive.set("#dceaff");
+        strip.material.emissiveIntensity = 2;
       }
     }
     for (const x of [-21.8, 21.8])
@@ -618,10 +979,14 @@ export class GarageScene {
     for (const x of [-18, -9, 0, 9, 18]) {
       this.box(this.scene, x, 0.06, 24, 0.08, 0.02, 9, "#d7dacc");
     }
-    for (const x of [-24, 24]) {
-      this.cylinder(this.scene, x, 0.65, 18, 0.8, 1.3, "#708075");
-      this.cylinder(this.scene, x, 2, 18, 1.1, 1.6, "#66816b");
-    }
+    for (const [x, z] of [
+      [-20, 13],
+      [-14, 1],
+      [-14, -16],
+      [20, 15],
+    ])
+      this.plant(x, z);
+    this.roomDetails();
   }
   private car(v: Vehicle, x: number, z: number, display = false) {
     const g = new THREE.Group();
@@ -902,6 +1267,29 @@ export class GarageScene {
             o.userData.select = { kind: "inventory", id: v.id };
         });
         this.cars.add(group);
+        const showroomAssetId = "kenney-suv-luxury";
+        if (!this.assetDisabled.includes(showroomAssetId)) {
+          const fallback = [...group.children];
+          group.userData.fallback = fallback;
+          loadVehicleAsset(showroomAssetId)
+            .then((asset) => {
+              if (this.disposed || generation !== this.generation) {
+                disposeObject(asset);
+                return;
+              }
+              asset.traverse((object) => {
+                object.userData.select = { kind: "inventory", id: v.id };
+              });
+              group.add(asset);
+              group.userData.asset = asset;
+              fallback.forEach((object) => {
+                object.visible = false;
+              });
+            })
+            .catch(() => {
+              // The existing selectable procedural representation remains available.
+            });
+        }
       });
     }
     this.setSelected(this.selected);
@@ -924,10 +1312,11 @@ export class GarageScene {
     torso.castShadow = true;
     g.add(torso);
     const head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.155, 18, 14),
+      new THREE.SphereGeometry(0.145, 20, 16),
       this.material("#c7a488"),
     );
     head.position.set(0, 1.52, 0);
+    head.scale.set(0.9, 1.15, 0.94);
     head.castShadow = true;
     g.add(head);
     for (const side of [-1, 1]) {
@@ -962,7 +1351,7 @@ export class GarageScene {
     this.box(g, 0, 1.51, -0.14, 0.06, 0.07, 0.055, "#bc967e");
     for (const side of [-1, 1]) {
       const eye = new THREE.Mesh(
-        new THREE.SphereGeometry(0.016, 10, 8),
+        new THREE.SphereGeometry(0.009, 8, 6),
         this.material("#313b40"),
       );
       eye.position.set(side * 0.059, 1.56, -0.142);
@@ -971,16 +1360,22 @@ export class GarageScene {
     }
     this.box(g, 0, 0.83, 0, 0.45, 0.04, 0.35, "#26333c");
     // A fitted cap, ears, hands and contrasting workwear details.
-    this.cylinder(
-      g,
-      0,
-      1.68,
-      0,
-      0.17,
-      0.08,
-      kind === "technician" ? uniform : "#755f51",
+    const cap = new THREE.Mesh(
+      new THREE.SphereGeometry(0.148, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+      this.material(kind === "technician" ? uniform : "#51453c", 0, 0.95),
     );
-    this.box(g, 0, 1.66, -0.15, 0.26, 0.04, 0.19, uniform);
+    cap.position.set(0, 1.62, 0);
+    cap.scale.set(1, 0.52, 0.95);
+    g.add(cap);
+    if (kind === "technician") {
+      const brim = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 14, 8),
+        this.material(uniform),
+      );
+      brim.position.set(0, 1.625, -0.12);
+      brim.scale.set(0.14, 0.013, 0.12);
+      g.add(brim);
+    }
     for (const side of [-1, 1]) {
       this.box(g, side * 0.15, 1.52, 0, 0.035, 0.09, 0.06, "#c7a488");
       this.box(
@@ -1478,7 +1873,9 @@ export class GarageScene {
       if (!asset || !fallback) continue;
       const inspection = this.inspectedId === vehicle.userData.select?.id;
       const detailed =
-        !inspection && this.camera.position.distanceTo(vehicle.position) < 24;
+        !inspection &&
+        (this.quality !== "low" ||
+          this.camera.position.distanceTo(vehicle.position) < 45);
       asset.visible = detailed;
       fallback.forEach((object) => {
         object.visible = !detailed;
@@ -1487,7 +1884,7 @@ export class GarageScene {
     const focused = this.mode === "free" && !!this.focusedVehicle;
     const aim = this.controls.target;
     for (const object of this.scene.children) {
-      if (object.userData.overhead) object.visible = this.mode !== "free";
+      if (object.userData.overhead) object.visible = this.mode === "walk";
       if (object.userData.sceneLabel) object.visible = this.mode === "overview";
       if (object.userData.occluder) {
         object.visible = true;
@@ -1509,6 +1906,7 @@ export class GarageScene {
     this.frame = requestAnimationFrame((n) => this.tick(n));
   }
   setQuality(low: boolean) {
+    this.quality = low ? "low" : "standard";
     this.renderer.setPixelRatio(low ? 1 : Math.min(devicePixelRatio, 1.6));
     this.renderer.shadowMap.enabled = !low;
     this.resize();
@@ -1550,6 +1948,8 @@ export class GarageScene {
         });
       }
     });
+    this.environment.dispose();
+    this.floorTexture?.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }

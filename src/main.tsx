@@ -1,3 +1,4 @@
+import { ZoneMarkers } from "./ZoneMarkers";
 import { quoteTotals } from "./quote-domain";
 import { GuidedContext, ClientContext, VehicleSummary } from "./GuidedContext";
 import { DeliveryDeadline } from "./DeliveryDeadline";
@@ -60,6 +61,7 @@ import "@fontsource/dm-sans/latin-500.css";
 import "@fontsource/dm-sans/latin-600.css";
 import "@fontsource/dm-sans/latin-700.css";
 import "./style.css";
+import "./motek.css";
 import { Workshop } from "./Workshop";
 import { AssetLibrary } from "./AssetLibrary";
 import { Quotes } from "./Quotes";
@@ -189,6 +191,8 @@ function App() {
   const [mode, setMode] = useState<Mode>("overview");
   const [gloves, setGloves] = useState(false);
   const [fullDossier, setFullDossier] = useState(false);
+  const [workbench, setWorkbench] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState("");
   const [zone, setZone] = useState("atelier");
   const [query, setQuery] = useState("");
   const [cohort, setCohort] = useState("all");
@@ -307,7 +311,9 @@ function App() {
     return task;
   }
   const select = (s: Selection) => {
-    setFullDossier(false);
+    setFullDossier(s.kind === "wheel" || s.kind === "part");
+    setWorkbench(false);
+    if (car && car.id !== s.id) scene.current?.inspect(car.id, false);
     if (s.kind === "part") {
       setSelectedPart(s.id);
       setTab("pieces");
@@ -365,6 +371,12 @@ function App() {
         !!db.demoVersion,
       );
       scene.current.setMode(mode);
+      if (selection?.kind === "zone") scene.current.go(selection.id);
+      if (
+        selection &&
+        ["customer", "technician", "inventory"].includes(selection.kind)
+      )
+        scene.current.focusEntity(selection.kind, selection.id);
       if (car && selection?.kind !== "customer" && isPresent(car) && !inspect) {
         scene.current.focusVehicle(car.id);
         setMode("free");
@@ -389,7 +401,7 @@ function App() {
       db.workshop,
       !!db.demoVersion,
     );
-  }, [db.vehicles, db.assetDisabled]);
+  }, [db.vehicles, db.assetDisabled, db.workshop, db.demoVersion]);
   useEffect(() => {
     scene.current?.setFocusIds(cohort === "all" ? [] : cohortIDs(cohort));
   }, [cohort, db, view]);
@@ -416,11 +428,15 @@ function App() {
     [],
   );
   function changeMode(m: Mode) {
+    if (car) scene.current?.inspect(car.id, false);
     setMode(m);
     scene.current?.setMode(m);
     setInspect(false);
   }
   function go(id: string) {
+    if (car) scene.current?.inspect(car.id, false);
+    setView("garage");
+    setWorkbench(false);
     setZone(id);
     setSelection({ kind: "zone", id });
     setInspect(false);
@@ -459,23 +475,31 @@ function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
   const nav = [
-    ["garage", "Mon garage", Buildings],
-    ["dossiers", "Dossiers véhicules", Car],
-    ["atelier", "Mode atelier", Wrench],
+    ["garage", "Accueil", Buildings],
+    ["zone:atelier", "Atelier", Wrench],
+    ["zone:attente", "Attente", Users],
+    ["stocks", "Stocks", Package],
+    ["zone:carrosserie", "Carrosserie", Car],
+    ["zone:bureau", "Bureau", FileText],
+    ["zone:livraison", "Livraison", CheckCircle],
+    ["zone:showroom", "Showroom", Car],
+    ["zone:parking", "Parc", Buildings],
+    ["dossiers", "Clients & véhicules", Car],
+    ["atelier", "Interventions", Wrench],
     ["devis", "Devis & validations", FileText],
     ["planning", "Planning", CalendarDots],
     ["equipe", "Équipe", Users],
-    ["stocks", "Pièces & stocks", Package],
+
     ["intelligence", "Garage intelligent", Brain],
-    ["pilotage", "Pilotage", ChartLine],
+    ["pilotage", "Rapports", ChartLine],
     ["bibliotheque", "Bibliothèque 3D", Cube],
   ] as const;
   return (
-    <div className="app-shell">
+    <div className="app-shell motek-shell">
       <aside className="sidebar">
         <a
           className="brand"
-          aria-label="AutoHub 3D, ouvrir le garage"
+          aria-label="MOTEK, ouvrir le garage"
           href="#"
           onClick={(e) => {
             e.preventDefault();
@@ -485,9 +509,7 @@ function App() {
           <span className="brand-symbol">
             <Buildings size={25} weight="duotone" />
           </span>
-          <span>
-            autohub<span className="brand-3d">3D</span>
-          </span>
+          <span>MOTEK</span>
         </a>
         <div className="garage-name">
           <span className="garage-monogram">AG</span>
@@ -504,9 +526,26 @@ function App() {
               key={id}
               aria-label={label}
               title={label}
-              className={view === id ? "nav-item active" : "nav-item"}
+              className={
+                (
+                  id.startsWith("zone:")
+                    ? view === "garage" &&
+                      mode !== "overview" &&
+                      zone === id.slice(5)
+                    : view === id && (id !== "garage" || mode === "overview")
+                )
+                  ? "nav-item active"
+                  : "nav-item"
+              }
               onClick={() => {
-                setView(id);
+                if (id.startsWith("zone:")) go(id.slice(5));
+                else {
+                  setView(id);
+                  if (id === "garage") {
+                    setSelection(null);
+                    changeMode("overview");
+                  }
+                }
                 setQuery("");
               }}
             >
@@ -558,6 +597,51 @@ function App() {
       </aside>
       <div className="workspace">
         <header className="topbar">
+          <div className="global-search">
+            <MagnifyingGlass size={18} />
+            <input
+              aria-label="Recherche globale MOTEK"
+              placeholder="Rechercher un véhicule, un client, un dossier…"
+              value={globalSearch}
+              onChange={(e) => setGlobalSearch(e.target.value)}
+            />
+            {globalSearch.trim() && (
+              <div className="global-results">
+                {db.vehicles
+                  .filter((v) =>
+                    `${v.make} ${v.model} ${v.plate} ${v.client}`
+                      .toLowerCase()
+                      .includes(globalSearch.toLowerCase()),
+                  )
+                  .slice(0, 6)
+                  .map((v) => (
+                    <button
+                      key={v.id}
+                      onClick={() => {
+                        setView("garage");
+                        select({ kind: "vehicle", id: v.id });
+                        setGlobalSearch("");
+                      }}
+                    >
+                      <Car size={18} />
+                      <span>
+                        <strong>
+                          {v.make} {v.model}
+                        </strong>
+                        <small>
+                          {v.plate} · {v.client}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+                {!db.vehicles.some((v) =>
+                  `${v.make} ${v.model} ${v.plate} ${v.client}`
+                    .toLowerCase()
+                    .includes(globalSearch.toLowerCase()),
+                ) && <p>Aucun dossier correspondant.</p>}
+              </div>
+            )}
+          </div>
           <div className="breadcrumbs">
             Atelier Grand Parc <span>/</span>{" "}
             <strong>
@@ -583,7 +667,7 @@ function App() {
         >
           <div className="page-heading">
             <div>
-              <div className="eyebrow">AUTOHUB · VOTRE ESPACE AUTOMOBILE</div>
+              <div className="eyebrow">MOTEK · VOTRE ESPACE AUTOMOBILE</div>
               <h1>
                 {view === "garage"
                   ? "Une nouvelle perspective sur votre atelier."
@@ -709,6 +793,12 @@ function App() {
                 </nav>
                 <div className="scene-viewport">
                   <div ref={host} className="canvas-host" />
+                  <ZoneMarkers
+                    scene={scene}
+                    db={db}
+                    onSelect={go}
+                    large={gloves}
+                  />
                   {car &&
                     selection?.kind !== "customer" &&
                     isPresent(car) &&
@@ -836,13 +926,13 @@ function App() {
                   <span>
                     <span className="dot" />{" "}
                     {hint ||
-                      "Glissez pour explorer · pincez pour zoomer · touchez une zone ou un véhicule."}
+                      "Glissez pour explorer · bouton droit pour pivoter · molette pour zoomer."}
                   </span>
                   <span>Véhicules illustratifs · navigation guidée</span>
                 </div>
               </section>
               <aside
-                key={`${selection?.kind || "none"}-${selection?.id || ""}-${fullDossier}`}
+                key={`${selection?.kind || "none"}-${selection?.id || ""}-${fullDossier}-${workbench}`}
                 className="context-panel"
               >
                 {selection?.kind === "zone" ||
@@ -869,11 +959,42 @@ function App() {
                       changeMode("overview");
                     }}
                   />
+                ) : car && workbench ? (
+                  <div className="embedded-workbench">
+                    <div className="panel-top">
+                      <strong>INTERVENTION · {car.plate}</strong>
+                      <button
+                        aria-label="Revenir à la synthèse"
+                        onClick={() => setWorkbench(false)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <Workshop
+                      db={db}
+                      selected={car.id}
+                      onSelect={() => {
+                        setWorkbench(false);
+                        go("atelier");
+                      }}
+                      commit={commit}
+                      onAction={(type, payload) =>
+                        transact(
+                          type,
+                          car.id,
+                          payload,
+                          "Action atelier enregistrée en base.",
+                        )
+                      }
+                      onOpen3D={() => setWorkbench(false)}
+                    />
+                  </div>
                 ) : car && !fullDossier ? (
                   <VehicleSummary
                     db={db}
                     vehicle={car}
                     onDetails={() => setFullDossier(true)}
+                    onWork={() => setWorkbench(true)}
                     onClose={() => {
                       setSelection(null);
                       changeMode("overview");
@@ -1836,7 +1957,7 @@ function App() {
           )}
           <footer className="app-footer">
             <span>
-              AutoHub 3D <span>·</span> Version V2 · synchronisée
+              MOTEK <span>·</span> Version V2 · synchronisée
             </span>
             <span>
               <ShieldCheck size={14} />

@@ -1,0 +1,522 @@
+/* MOTEK: graphite workspace, blue actions and readable neutral business panels. */
+:root {
+  --blue: #1768ee;
+  --navy: #171c23;
+  --border: #dbe2e8;
+  --muted: #84909f;
+  --green: #13896d;
+  background: #151a21;
+}
+body {
+  background: #151a21;
+}
+.motek-shell .sidebar {
+  width: 184px;
+  padding: 18px 10px 10px;
+  background: #14191f;
+  border-right: 1px solid #323941;
+}
+.motek-shell .brand {
+  padding: 0 10px 20px;
+  font-size: 25px;
+  letter-spacing: 1px;
+  color: #fff;
+  font-weight: 700;
+}
+.motek-shell .brand-symbol {
+  background: none;
+  color: #3886ff;
+  width: 30px;
+}
+.motek-shell .garage-name,
+.motek-shell .nav-caption,
+.motek-shell .local-card {
+  display: none;
+}
+.motek-shell .sidebar nav {
+  gap: 2px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.motek-shell .nav-item {
+  min-height: 35px;
+  padding: 8px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  color: #aab6c3;
+  gap: 10px;
+}
+.motek-shell .nav-item svg {
+  width: 17px;
+}
+.motek-shell .nav-item:hover {
+  background: #252d38;
+  color: #fff;
+}
+.motek-shell .nav-item.active {
+  background: #1765cf;
+  color: #fff;
+}
+.motek-shell .sidebar-bottom {
+  margin-top: auto;
+  padding-top: 10px;
+}
+.motek-shell .user {
+  padding: 12px 4px;
+  border-top: 1px solid #303946;
+}
+.motek-shell .workspace {
+  margin-left: 184px;
+  width: calc(100% - 184px);
+  background: #1b222b;
+}
+.motek-shell .topbar {
+  height: 56px;
+  min-height: 56px;
+  background: #1c232c;
+  color: #ced8e4;
+  border-bottom: 1px solid #353e49;
+  padding: 0 20px;
+  gap: 16px;
+  position: relative;
+  z-index: 12;
+}
+.motek-shell .breadcrumbs {
+  display: none;
+}
+.motek-shell .top-actions .demo {
+  background: #27333f;
+  color: #bfcbd8;
+}
+.global-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(430px, 58%);
+  padding: 0 12px;
+  border: 1px solid #414c58;
+  border-radius: 6px;
+  background: #303944;
+}
+.global-search input {
+  min-height: 34px;
+  padding: 7px 0;
+  font-size: 12px;
+  border: none;
+  background: transparent;
+  color: #eff4fa;
+}
+.global-search input::placeholder {
+  color: #aeb9c8;
+}
+.global-results {
+  position: absolute;
+  top: 44px;
+  left: 0;
+  right: 0;
+  border: 1px solid #45515f;
+  border-radius: 9px;
+  background: #1d2631;
+  box-shadow: 0 14px 35px #0007;
+  overflow: hidden;
+  z-index: 30;
+}
+.global-results button {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 13px;
+  color: #e9eef5;
+  text-align: left;
+}
+.global-results button:hover {
+  background: #314055;
+}
+.global-results strong,
+.global-results small {
+  display: block;
+}
+.global-results small {
+  color: #a7b5c7;
+  margin-top: 3px;
+}
+.global-results p {
+  padding: 15px;
+  color: #ccd5df;
+}
+.motek-shell .primary {
+  background: #1768ee;
+  color: #fff;
+  border-color: #1768ee;
+}
+.motek-shell .primary:hover {
+  background: #0758d5;
+}
+.motek-shell main:not(.spatial-workspace) {
+  color: #dfe7f0;
+}
+.motek-shell main:not(.spatial-workspace) .content-card,
+.motek-shell .workshop-screen,
+.motek-shell .planning-editor {
+  color: #253846;
+}
+.motek-shell .page-heading h1 {
+  color: #edf3fb;
+}
+.motek-shell .page-heading p {
+  color: #adb9c8;
+}
+.motek-shell .spatial-workspace {
+  padding: 0 !important;
+}
+.motek-shell .spatial-workspace .garage-layout {
+  height: calc(100dvh - 56px);
+  min-height: 460px;
+}
+.motek-shell .spatial-workspace .scene-card {
+  border: none;
+  border-radius: 0;
+  background: #232c36;
+}
+.motek-shell .spatial-workspace .scene-toolbar {
+  position: absolute;
+  z-index: 7;
+  top: 12px;
+  left: 16px;
+  right: 16px;
+  padding: 0;
+  min-height: 34px;
+  background: none;
+  color: #f1f5fb;
+  pointer-events: none;
+}
+.motek-shell .scene-title {
+  background: #1a232ee8;
+  padding: 9px 12px;
+  border: 1px solid #68788855;
+  border-radius: 6px;
+  font-size: 11px;
+}
+.motek-shell .scene-title > span:last-child {
+  display: none;
+}
+.motek-shell .guided-toolbar {
+  pointer-events: auto;
+}
+.motek-shell .guided-toolbar .secondary {
+  background: #1e2936ee;
+  color: #e5eef9;
+  border-color: #71819355;
+  min-height: 36px;
+  font-size: 11px;
+}
+.motek-shell .guided-toolbar .primary {
+  min-height: 36px;
+  font-size: 11px;
+}
+.motek-shell .spatial-workspace:not(.glove-mode) .guided-zones {
+  display: none;
+}
+.motek-shell .spatial-workspace .scene-viewport {
+  min-height: 0;
+}
+.motek-shell .scene-footer {
+  background: #17202be8;
+  border-top: 1px solid #42526755;
+  color: #aab8c8;
+  font-size: 10px;
+  min-height: 30px;
+}
+.motek-shell .spatial-workspace .app-footer {
+  display: none;
+}
+.motek-shell .spatial-workspace .minimap {
+  background: #1b2731e8;
+  color: #bdcedb;
+  border-color: #5a6c7c66;
+  opacity: 0.85;
+  transform: scale(0.6);
+}
+.motek-shell .has-context .context-panel {
+  top: 68px;
+  bottom: 48px;
+  right: 16px;
+  width: min(390px, 38%);
+  border: 1px solid #536273;
+  border-radius: 10px;
+  box-shadow: 0 16px 50px #0005;
+  background: #f4f7fa;
+  color: #233543;
+}
+.motek-shell .context-panel .panel-top {
+  background: #1b2531;
+  color: #fff;
+  padding: 14px 18px;
+  min-height: 48px;
+  border-bottom: 1px solid #334357;
+}
+.motek-shell .context-panel .panel-top button {
+  color: #dae6f5;
+}
+.motek-shell .context-panel h2 {
+  font-size: 23px;
+}
+.motek-shell .context-panel .guided-context {
+  padding: 18px;
+}
+.motek-shell .context-panel .vehicle-row {
+  min-height: 64px;
+  border-radius: 7px;
+  margin: 3px 0;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #e0e6ed;
+}
+.motek-shell .context-panel .vehicle-row:hover {
+  background: #e8f0ff;
+  border-color: #a7c6fa;
+}
+.motek-shell .vehicle-view-controls {
+  top: 58px;
+  left: 16px;
+}
+.motek-shell .vehicle-view-controls button {
+  background: #172638e8;
+  color: #e9f2ff;
+  border-color: #7b96b266;
+}
+.zone-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 3;
+}
+.zone-marker {
+  position: absolute;
+  pointer-events: auto;
+  transform: translate(-50%, -100%);
+  min-width: 118px;
+  max-width: 180px;
+  padding: 8px 12px 8px 8px;
+  background: #161e28ef;
+  border: 1px solid #8fa1b277;
+  border-radius: 8px;
+  box-shadow: 0 5px 18px #0005;
+  color: #f2f6fc;
+  gap: 9px;
+  text-align: left;
+  justify-content: flex-start;
+}
+.zone-marker:hover,
+.zone-marker:focus-visible {
+  background: #223b59;
+  border-color: #589aff;
+}
+.zone-marker:after {
+  content: "";
+  position: absolute;
+  bottom: -9px;
+  left: calc(50% - 1px);
+  width: 2px;
+  height: 8px;
+  background: #96a8bc;
+}
+.zone-marker strong {
+  font-size: 12px;
+  display: block;
+}
+.zone-marker small {
+  color: #aab8c9;
+  font-size: 10px;
+  display: block;
+  margin-top: 2px;
+}
+.marker-icon {
+  width: 30px;
+  height: 32px;
+  border-radius: 5px;
+  background: #1768ee;
+  color: white;
+  display: grid;
+  place-items: center;
+}
+.zone-atelier .marker-icon {
+  background: #c4404e;
+}
+.zone-attente .marker-icon {
+  background: #0c946e;
+}
+.zone-stock .marker-icon {
+  background: #c57c2d;
+}
+.zone-carrosserie .marker-icon {
+  background: #8656bc;
+}
+.zone-livraison .marker-icon {
+  background: #13896d;
+}
+.marker-alert {
+  position: absolute;
+  right: -7px;
+  top: -8px;
+  border-radius: 50%;
+  background: #d54a45;
+  color: white;
+  min-width: 20px;
+  min-height: 20px;
+  font-size: 10px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #1f2835;
+}
+.embedded-workbench .workshop-screen {
+  padding: 14px;
+  border: none;
+  box-shadow: none;
+}
+.embedded-workbench .workshop-top {
+  flex-wrap: wrap;
+}
+.embedded-workbench .workshop-top h2 {
+  font-size: 18px;
+}
+.embedded-workbench .workshop-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.embedded-workbench .work-action {
+  min-height: 75px;
+}
+.embedded-workbench .workshop-bottom {
+  grid-template-columns: 1fr;
+}
+.motek-shell .glove-mode .zone-marker {
+  min-height: 70px;
+  min-width: 145px;
+}
+.motek-shell .glove-mode .zone-marker strong {
+  font-size: 17px;
+}
+.motek-shell .glove-mode .zone-marker small {
+  font-size: 12px;
+}
+.motek-shell .glove-mode .guided-zones {
+  position: absolute;
+  z-index: 6;
+  top: 92px;
+  left: 12px;
+  right: 12px;
+  padding: 8px;
+  border-radius: 10px;
+  background: #17232fee;
+}
+.motek-shell .glove-mode .guided-zones button {
+  background: #2c3948;
+  color: #e3edf8;
+  border-color: #526378;
+  min-height: 64px;
+}
+.motek-shell .glove-mode .guided-zones button.active {
+  background: #1768ee;
+}
+.motek-shell .glove-mode .scene-toolbar {
+  top: 12px;
+}
+.motek-shell .glove-mode .scene-title {
+  display: none;
+}
+.motek-shell .glove-mode .has-context .context-panel {
+  top: 260px;
+}
+@media (max-width: 1000px) {
+  .motek-shell .sidebar {
+    width: 72px;
+  }
+  .motek-shell .workspace {
+    margin-left: 72px;
+    width: calc(100% - 72px);
+  }
+  .motek-shell .nav-item span,
+  .motek-shell .brand > span:last-child,
+  .motek-shell .user > div,
+  .motek-shell .user > button {
+    display: none;
+  }
+  .motek-shell .brand {
+    padding: 0 8px 16px;
+  }
+  .motek-shell .nav-item {
+    justify-content: center;
+    min-height: 40px;
+  }
+  .motek-shell .has-context .context-panel {
+    width: min(360px, 43%);
+  }
+  .zone-marker {
+    min-width: 105px;
+    padding: 6px;
+    gap: 6px;
+  }
+}
+@media (max-width: 760px) {
+  .motek-shell .has-context .context-panel {
+    top: auto;
+    bottom: 40px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-height: 46%;
+  }
+  .motek-shell .glove-mode .has-context .context-panel {
+    top: auto;
+  }
+  .motek-shell .scene-title {
+    display: none;
+  }
+  .motek-shell .scene-footer > span:last-child {
+    display: none;
+  }
+  .global-search {
+    width: 70%;
+  }
+  .zone-marker small {
+    display: none;
+  }
+  .zone-marker {
+    min-width: 90px;
+  }
+  .motek-shell .sidebar .nav-item {
+    min-height: 40px;
+  }
+  .motek-shell .has-context .zone-markers {
+    opacity: 0.6;
+  }
+}
+.zone-marker {
+  width: 152px;
+  min-width: 152px;
+  max-width: 152px;
+}
+.motek-shell .glove-mode .zone-marker {
+  width: 180px;
+  min-width: 180px;
+  max-width: 180px;
+}
+.embedded-workbench .workshop-detail {
+  grid-template-columns: 1fr;
+  min-width: 0;
+}
+.embedded-workbench .workshop-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+}
+.embedded-workbench .workshop-detail > * {
+  min-width: 0;
+}
+.motek-shell .workspace:has(.glove-mode) {
+  margin-left: 72px;
+  width: calc(100% - 72px);
+}
