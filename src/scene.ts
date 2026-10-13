@@ -107,14 +107,29 @@ export class GarageScene {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.25;
+    this.renderer.toneMappingExposure = 1.05;
     host.appendChild(this.renderer.domElement);
     this.scene.background = new THREE.Color("#dde5e4");
-    this.scene.fog = new THREE.Fog("#dde5e4", 65, 135);
+    this.scene.fog = new THREE.Fog("#dde5e4", 180, 360);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
-    this.controls.enabled = false;
-    this.controls.enablePan = false;
+    this.controls.enabled = true;
+    this.controls.enablePan = true;
+    this.controls.enableRotate = false;
+    this.controls.screenSpacePanning = false;
+    this.controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
+    this.controls.touches.ONE = THREE.TOUCH.PAN;
+    this.controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
+    this.controls.minDistance = 7;
+    this.controls.addEventListener("change", () => {
+      const target = this.controls.target;
+      const dx = THREE.MathUtils.clamp(target.x, -24, 24) - target.x;
+      const dz = THREE.MathUtils.clamp(target.z, -70, 20) - target.z;
+      target.x += dx;
+      target.z += dz;
+      this.camera.position.x += dx;
+      this.camera.position.z += dz;
+    });
     this.controls.rotateSpeed = 0.55;
     this.controls.zoomSpeed = 0.65;
     this.controls.addEventListener("start", () => {
@@ -1213,11 +1228,12 @@ export class GarageScene {
     this.path = [];
     if (document.pointerLockElement) document.exitPointerLock();
     this.mode = mode;
-    this.controls.enabled = false;
+    this.controls.enabled = true;
     this.keys.clear();
     if (mode === "overview") {
-      this.camera.position.set(49, 58, 58);
-      this.controls.target.set(0, 0, -17);
+      const scale = Math.max(1, 1.3 / Math.max(this.camera.aspect, 0.35));
+      this.camera.position.set(37 * scale, 46 * scale, -13 + 57 * scale);
+      this.controls.target.set(0, 0, -13);
       this.controls.update();
     } else if (mode === "walk") {
       this.camera.position.set(-17, 1.7, 13);

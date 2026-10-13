@@ -1,5 +1,5 @@
 import { quoteTotals } from "./quote-domain";
-import { GuidedContext, ClientContext } from "./GuidedContext";
+import { GuidedContext, ClientContext, VehicleSummary } from "./GuidedContext";
 import { DeliveryDeadline } from "./DeliveryDeadline";
 import { layoutFor } from "./dealership-layout";
 import { prepareClientMessage } from "./communication-domain";
@@ -188,6 +188,7 @@ function App() {
   );
   const [mode, setMode] = useState<Mode>("overview");
   const [gloves, setGloves] = useState(false);
+  const [fullDossier, setFullDossier] = useState(false);
   const [zone, setZone] = useState("atelier");
   const [query, setQuery] = useState("");
   const [cohort, setCohort] = useState("all");
@@ -306,6 +307,7 @@ function App() {
     return task;
   }
   const select = (s: Selection) => {
+    setFullDossier(false);
     if (s.kind === "part") {
       setSelectedPart(s.id);
       setTab("pieces");
@@ -576,7 +578,9 @@ function App() {
             <span className="avatar">ÉS</span>
           </div>
         </header>
-        <main className={gloves ? "glove-mode" : ""}>
+        <main
+          className={`${gloves ? "glove-mode" : ""} ${view === "garage" ? "spatial-workspace" : ""}`}
+        >
           <div className="page-heading">
             <div>
               <div className="eyebrow">AUTOHUB · VOTRE ESPACE AUTOMOBILE</div>
@@ -653,6 +657,7 @@ function App() {
             <div
               className={
                 "garage-layout " +
+                (selection ? "has-context " : "") +
                 (mode === "walk" && !selection ? "immersive" : "")
               }
             >
@@ -831,12 +836,15 @@ function App() {
                   <span>
                     <span className="dot" />{" "}
                     {hint ||
-                      "Touchez une zone, une voiture ou une personne. Le cadrage et les informations s’ouvrent automatiquement."}
+                      "Glissez pour explorer · pincez pour zoomer · touchez une zone ou un véhicule."}
                   </span>
                   <span>Véhicules illustratifs · navigation guidée</span>
                 </div>
               </section>
-              <aside className="context-panel">
+              <aside
+                key={`${selection?.kind || "none"}-${selection?.id || ""}-${fullDossier}`}
+                className="context-panel"
+              >
                 {selection?.kind === "zone" ||
                 selection?.kind === "inventory" ? (
                   <GuidedContext
@@ -856,6 +864,16 @@ function App() {
                     vehicle={car}
                     onVehicle={() => select({ kind: "vehicle", id: car.id })}
                     onQuotes={() => setView("devis")}
+                    onClose={() => {
+                      setSelection(null);
+                      changeMode("overview");
+                    }}
+                  />
+                ) : car && !fullDossier ? (
+                  <VehicleSummary
+                    db={db}
+                    vehicle={car}
+                    onDetails={() => setFullDossier(true)}
                     onClose={() => {
                       setSelection(null);
                       changeMode("overview");

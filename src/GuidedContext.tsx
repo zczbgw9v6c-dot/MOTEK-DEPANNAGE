@@ -50,6 +50,27 @@ export function GuidedContext({
         </button>
       </div>
       <div className="guided-context">
+        {zone === "atelier" && (
+          <div className="spatial-stats">
+            <strong>{cars.length} véhicules</strong>
+            <span>
+              {cars.filter((v) => v.status === "En intervention").length}{" "}
+              interventions
+            </span>
+            <span>
+              {cars.filter((v) => v.status === "Devis à valider").length}{" "}
+              accords attendus
+            </span>
+          </div>
+        )}
+        {zone === "livraison" && (
+          <div className="spatial-stats">
+            <strong>{cars.length} véhicules prêts</strong>
+            <span>
+              Choisissez une voiture pour suivre sa restitution et ses messages.
+            </span>
+          </div>
+        )}
         {inventory ? (
           <>
             <h2>
@@ -297,6 +318,84 @@ export function ClientContext({
         </button>
         <button className="secondary full" onClick={onQuotes}>
           Consulter les devis
+        </button>
+      </div>
+    </>
+  );
+}
+
+export function VehicleSummary({
+  db,
+  vehicle: v,
+  onDetails,
+  onClose,
+}: {
+  db: DB;
+  vehicle: DB["vehicles"][number];
+  onDetails: () => void;
+  onClose: () => void;
+}) {
+  const events = db.audit
+    .filter((a) => a.vehicle === v.id)
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, 4);
+  const drafts = db.messages.filter((m) => m.vehicle === v.id);
+  const quote = db.quotes
+    ?.filter((q) => q.vehicle === v.id)
+    .sort((a, b) => b.at.localeCompare(a.at))[0];
+  return (
+    <>
+      <div className="panel-top">
+        <strong>VÉHICULE · SYNTHÈSE</strong>
+        <button aria-label="Fermer la synthèse" onClick={onClose}>
+          ×
+        </button>
+      </div>
+      <div className="guided-context">
+        <h2>
+          {v.make} {v.model}
+        </h2>
+        <p>
+          {v.plate} · {v.client}
+        </p>
+        <div className="guided-item">
+          <strong>{v.status}</strong>
+          <span>Contrôle qualité : {v.quality ? "validé" : "à valider"}</span>
+        </div>
+        {quote && (
+          <div className="guided-item">
+            <strong>Devis · {quote.state}</strong>
+            <span>
+              {quoteTotals(quote).total.toLocaleString("fr-FR", {
+                style: "currency",
+                currency: "EUR",
+              })}
+            </span>
+          </div>
+        )}
+        <DeliveryDeadline db={db} vehicle={v} />
+        <div className="guided-item">
+          <strong>SMS de récupération · aucun envoi confirmé</strong>
+          <span>
+            {drafts.length
+              ? "Message WhatsApp préparé, non envoyé."
+              : "Aucun message préparé."}
+          </span>
+          <small>Le service SMS n’est pas connecté.</small>
+        </div>
+        <h3>Derniers événements</h3>
+        {events.length ? (
+          events.map((e) => (
+            <div className="guided-item" key={e.id}>
+              <strong>{e.action}</strong>
+              <small>{new Date(e.at).toLocaleString("fr-FR")}</small>
+            </div>
+          ))
+        ) : (
+          <p>Aucun événement enregistré.</p>
+        )}
+        <button className="primary" onClick={onDetails}>
+          Ouvrir le dossier complet
         </button>
       </div>
     </>

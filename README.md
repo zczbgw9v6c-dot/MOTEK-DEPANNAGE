@@ -159,3 +159,11 @@ Cette évolution remplace les anciens modes Libre et Immersion décrits dans l�
 Le mode « Mains sales » agrandit les commandes (64 px minimum, zones 74 px), simplifie l’en-tête et masque les commandes secondaires. Vérification dans Chrome avec viewport tablette 1024×768 ; pas de validation physique avec des gants. Attente : trois présences explicitement simulées dans la démonstration. Showroom : trois véhicules commerciaux simulés, séparés des 14 véhicules physiques du CRM. Les modèles restent illustratifs. Les garages réels ne reçoivent pas ces présences ou stocks fictifs.
 
 Stocks : commandes datées du jour selon Europe/Lisbon et commandes attendues. Les anciennes commandes non datées restent indiquées « Date non renseignée ». Aucun envoi externe. Validation : 42 tests réussis, compilation de production réussie, interactions salle d’attente → client → devis, atelier → technicien, stocks, showroom et mode tactile contrôlées dans Chrome. Captures dans `research/porto/atelier-mains-sales.jpg` et `technicien-guide.jpg`.
+
+### Maquette comme espace de travail (13 octobre, deuxième itération)
+
+La vue garage occupe maintenant la hauteur disponible, sans tableau de bord latéral permanent. Les panneaux de zone et la synthèse véhicule sont superposés dans la surface 3D. Le glissement souris ou tactile translate la vue sur le sol, sans rotation ; la molette ou le pincement permet le zoom. Les limites de translation et le bouton Vue d’ensemble servent de repères. Cette navigation remplace la restriction précédente interdisant tout déplacement manuel. Le brouillard a été éloigné pour préserver le contraste au fond de l’atelier.
+
+Atelier : véhicules, interventions et accords attendus. Livraison : véhicules prêts, puis synthèse du véhicule avec contrôle qualité, échéance, dernier devis et quatre derniers événements enregistrés. Le dossier complet reste accessible. Le statut SMS indique honnêtement aucun envoi confirmé : aucun service SMS connecté ni preuve d’envoi disponible ; les messages existants sont des brouillons WhatsApp non envoyés. Aucun envoi externe effectué.
+
+Contrôle Chrome : glissement sans sélection involontaire, retour au plan, Livraison → Volvo → synthèse, panneau intégré et remise à zéro du défilement en changeant de sélection. 42 tests passent et compilation validée. Capture : `research/porto/livraison-integree.jpg`.
