@@ -1,0 +1,11 @@
+{
+  "stats": {
+    "referenced": 20,
+    "licensesVerified": 10,
+    "downloaded": 10,
+    "knownBrandModelsImported": 0,
+    "genericVehiclesImported": 10,
+    "externalModelsAwaitingReview": 10
+  },
+  "failures": []
+}

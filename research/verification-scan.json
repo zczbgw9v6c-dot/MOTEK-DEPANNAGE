@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-13T09:36:18.066Z",
+  "scope": "Engine integration with fictitious clean fixtures. Browser file chooser verification blocked; does not establish accuracy on real cards.",
+  "results": [
+    {
+      "input": "PDF texte fictif",
+      "method": "PDF.js text extraction",
+      "fieldsVerified": [
+        "A",
+        "D.1",
+        "D.3",
+        "E"
+      ],
+      "result": "pass"
+    },
+    {
+      "input": "Photo fictive",
+      "method": "Tesseract French local OCR",
+      "fieldsVerified": [
+        "A",
+        "D.1",
+        "D.3",
+        "E"
+      ],
+      "result": "pass"
+    },
+    {
+      "input": "PDF scanné fictif",
+      "method": "Tesseract French local OCR",
+      "fieldsVerified": [
+        "A",
+        "D.1",
+        "D.3",
+        "E"
+      ],
+      "result": "pass"
+    }
+  ]
+}

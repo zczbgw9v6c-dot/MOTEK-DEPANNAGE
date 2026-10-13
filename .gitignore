@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env*
+!.env.example
+
+research/catalogue/kenney-original/
+research/catalogue/*.zip
+public/ocr/tesseract-core*.js
+public/ocr/tesseract-core*.wasm
+public/ocr/worker.min.js

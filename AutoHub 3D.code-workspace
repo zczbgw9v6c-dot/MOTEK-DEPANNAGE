@@ -1,0 +1,11 @@
+{
+  "folders": [{ "name": "AutoHub 3D — CRM Garage", "path": "." }],
+  "settings": {
+    "window.title": "AutoHub 3D · CRM Garage — ${activeEditorShort}",
+    "files.exclude": { "**/node_modules": true, "**/dist": true },
+    "search.exclude": {
+      "**/research/video-frames": true,
+      "**/research/catalogue/kenney-original": true,
+    },
+  },
+}

@@ -1,0 +1,10 @@
+{
+  "name": "fra.traineddata.gz",
+  "source": "https://tessdata.projectnaptha.com/4.0.0/fra.traineddata.gz",
+  "upstreamLicense": "https://github.com/tesseract-ocr/tessdata/blob/main/LICENSE",
+  "license": "Apache-2.0",
+  "licenseFile": "/ocr/data-license.txt",
+  "sha256": "1c0916fac2dbd6f121ca8a57a92f08e4a119227602c7c984da986222eab6cd3b",
+  "bytes": 6279601,
+  "verifiedAt": "2026-10-13"
+}
