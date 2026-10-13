@@ -1,6 +1,6 @@
 # AutoHub 3D — V2 fonctionnelle · version 0.3
 
-AutoHub est indépendant d’ORIA / Jarvis : dépôt, dépendances, serveur, base et modèles propres à ce dossier. Ouvrir `AutoHub 3D.code-workspace` pour une fenêtre de travail dédiée. Aucun dépôt distant ni service payant n’est configuré.
+AutoHub est indépendant d’ORIA / Jarvis : dépôt, dépendances, serveur, base et modèles propres à ce dossier. Ouvrir `AutoHub 3D.code-workspace` pour une fenêtre de travail dédiée. Dépôt GitHub privé : https://github.com/zczbgw9v6c-dot/AUTOHUB. Aucun service payant n’est configuré.
 
 ## Démarrer
 
