@@ -1,11 +1,11 @@
 /* ==========================================================================
-   CARROSSERIE CENTRALE — charte commune + barre du haut (styles d’origine de la démo)
+   MOTEK — charte commune + barre du haut (styles d’origine de la démo)
    ========================================================================== */
 :root{
   --bg:#e9ecf0; --card:#ffffff; --glass:rgba(255,255,255,.94);
   --line:#eef0f3; --line2:#e4e7eb;
   --ink:#121418; --ink2:#454b55; --ink3:#868c96; --ink4:#b9bec6;
-  --red:#e3262d; --red-d:#c41d24; --red-soft:#fdeeee; --red-soft2:#fad6d7;
+  --red:#1768ee; --red-d:#1157c4; --red-soft:#e8f0fe; --red-soft2:#cfe0fb;
   --green:#1b8a4b; --green-soft:#e5f5eb;
   --amber:#b96400; --amber-soft:#fff1dc;
   --slate:#4b5563; --slate-soft:#eef1f5;
@@ -20,12 +20,12 @@ svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .tnum{font-variant-numeric:tabular-nums}
 .top{position:fixed;top:0;left:0;right:0;height:64px;background:rgba(255,255,255,.97);border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:18px;padding:0 20px;z-index:20}
 .brand{display:flex;align-items:center;gap:11px;min-width:236px}
-.brand .mark{width:34px;height:34px;flex:none;filter:drop-shadow(0 4px 10px rgba(227,38,45,.28))}
+.brand .mark{width:34px;height:34px;flex:none;filter:drop-shadow(0 4px 10px rgba(23,104,238,.28))}
 .brand .nm{font-weight:800;font-size:16.5px;letter-spacing:-.02em;line-height:1.05}
 .brand .nm small{display:block;font-size:10.5px;font-weight:600;color:var(--ink3);letter-spacing:.08em;text-transform:uppercase;margin-top:3px}
 .search{position:relative;flex:0 1 430px}
 .search .box{display:flex;align-items:center;gap:10px;height:40px;border:1px solid var(--line2);border-radius:11px;padding:0 10px 0 13px;background:#fff;transition:border-color .15s,box-shadow .15s}
-.search .box:focus-within{border-color:#d7dbe0;box-shadow:0 0 0 4px rgba(227,38,45,.08)}
+.search .box:focus-within{border-color:#d7dbe0;box-shadow:0 0 0 4px rgba(23,104,238,.08)}
 .search input{flex:1;border:0;outline:0;font:inherit;font-size:13px;color:var(--ink);background:none}
 .search input::placeholder{color:var(--ink3)}
 .kbd{font-size:11px;font-weight:600;color:var(--ink3);border:1px solid var(--line2);border-radius:6px;padding:1px 7px;background:#fafbfc}

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CARROSSERIE CENTRALE — coque : bascule Atelier live / Back-office,
+   MOTEK — coque : bascule Atelier live / Back-office,
    recherche globale, cloche d'alertes, registre des modules (window.APP)
    ========================================================================== */
 (function () {
@@ -47,7 +47,7 @@
     nav.innerHTML = groups.map(g => `<div class="bo-grp">${esc(g)}</div>` + modules.filter(m => m.group === g).map(m => {
       let b = 0; try { b = m.badge ? m.badge() : 0; } catch (e) {}
       return `<a href="#bo/${m.id}" data-mod="${m.id}" class="${m.id === current ? 'on' : ''}">${UI.icon(m.icon, 17)}<span>${esc(m.label)}</span>${b ? `<em>${b}</em>` : ''}</a>`;
-    }).join('')).join('') + `<div class="nav-foot"><b>Carrosserie Centrale SA</b>Av. de Sévelin 24 · 1004 Lausanne<br>Données de démonstration · enregistrées localement</div>`;
+    }).join('')).join('') + `<div class="nav-foot"><b>MOTEK Garage</b>12 rue des Ateliers · 69007 Lyon<br>Données de démonstration · enregistrées localement</div>`;
   }
 
   /* ---------- « montre-moi cet objet » ---------- */

@@ -1,5 +1,5 @@
 @page{size:A4;margin:15mm}*{box-sizing:border-box}body{font-family:Inter,Arial,sans-serif;color:#121418;font-size:10pt;margin:0;padding:24px}
-    .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #e3262d;padding-bottom:14px;margin-bottom:22px}
+    .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1768ee;padding-bottom:14px;margin-bottom:22px}
     .brand{display:flex;gap:10px;align-items:center}.brand b{font-size:15pt;font-weight:800;letter-spacing:-.01em}.brand small{display:block;font-size:7.5pt;letter-spacing:.14em;font-weight:700;color:#868c96;text-transform:uppercase}
     .co{font-size:8.5pt;text-align:right;color:#454b55;line-height:1.45}.addr{margin:6px 0 22px auto;width:45%;line-height:1.45}
     h1{font-size:16pt;font-weight:800;margin:0 0 4px;letter-spacing:-.01em}.meta{color:#454b55;font-size:9pt;margin-bottom:14px}

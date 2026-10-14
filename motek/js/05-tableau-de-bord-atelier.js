@@ -33,10 +33,10 @@
     const ins = {}; S.invoices.filter(i => i.date.slice(0, 7) === today().slice(0, 7) && i.kind === 'assurance').forEach(i => { ins[i.payerId] = (ins[i.payerId] || 0) + i.ht; });
     const insParts = Object.entries(ins).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id, v]) => [CX.ins(id).short, v, CX.ins(id).color]);
     const priv = S.invoices.filter(i => i.date.slice(0, 7) === today().slice(0, 7) && i.kind === 'client').reduce((a, i) => a + i.ht, 0);
-    const months = S.ext.months.concat([[new Date().toLocaleDateString('fr-CH', { month: 'short' }).replace('.', '') + '.*', Math.round(k.caMonth)]]);
+    const months = S.ext.months.concat([[new Date().toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '') + '.*', Math.round(k.caMonth)]]);
 
     el.innerHTML = `<div class="bo-page">
-      ${BO.head(`${h} ${esc(me.first)}`, `${esc(new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))} · ${k.onsite} véhicules sur site · ${al.filter(a => a.level === 'high').length} urgences`,
+      ${BO.head(`${h} ${esc(me.first)}`, `${esc(new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))} · ${k.onsite} véhicules sur site · ${al.filter(a => a.level === 'high').length} urgences`,
         `<button class="btn" data-act="newdos">${BO.icon('plus', 15)}Nouveau dossier</button><button class="btn" data-open="quotes::new">${BO.icon('calc', 15)}Nouveau devis</button><button class="btn dark" data-act="map">${BO.icon('cube', 15)}Atelier live</button>`)}
       <div class="kpis">
         ${BO.kpi({ lb: 'CA du mois (HT)', v: chfK(k.caMonth), s: `<span class="delta ${pace >= target ? '' : 'neg'}">${pace >= target ? '▲' : '▼'} proj. ${chfK(pace)}</span> objectif ${chfK(target)}`, icon: 'trend', cls: 'hero click', go: 'invoices' })}
@@ -60,7 +60,7 @@
       </div>
       <div class="g g3 mt">
         <div class="card"><div class="card-h"><h3>${BO.icon('trend', 16)}Chiffre d’affaires HT <small>· 6 mois</small></h3></div><div class="card-b chart">${BO.bars(months.map(([l, v]) => [l.replace('*', ''), v]), { fmt: v => Math.round(v / 1000) + 'k' })}<div class="xs-t muted">* mois en cours au ${U.fmtD(today())}</div></div></div>
-        <div class="card"><div class="card-h"><h3>${BO.icon('shield', 16)}Assurances vs privés <small>· ce mois</small></h3></div><div class="card-b"><div class="donut-w">${BO.donut(insParts.concat([['Privés & flottes', priv, '#e3262d']]))}<div class="legend" style="flex-direction:column;gap:7px">${insParts.concat([['Privés & flottes', priv, '#e3262d']]).map(([l, v, c]) => `<span><i style="background:${c}"></i>${esc(l)} <b style="margin-left:auto;padding-left:10px">${chfK(v)}</b></span>`).join('')}</div></div></div></div>
+        <div class="card"><div class="card-h"><h3>${BO.icon('shield', 16)}Assurances vs privés <small>· ce mois</small></h3></div><div class="card-b"><div class="donut-w">${BO.donut(insParts.concat([['Privés & flottes', priv, '#1768ee']]))}<div class="legend" style="flex-direction:column;gap:7px">${insParts.concat([['Privés & flottes', priv, '#1768ee']]).map(([l, v, c]) => `<span><i style="background:${c}"></i>${esc(l)} <b style="margin-left:auto;padding-left:10px">${chfK(v)}</b></span>`).join('')}</div></div></div></div>
         <div class="card"><div class="card-h"><h3>${BO.icon('clock', 16)}Échéances proches</h3><a class="lnk sm-t" data-open="planning">Planning →</a></div><div class="card-b">${late.length ? `<div class="mini-list">${late.map(r => { const v = CX.veh(r.vehicleId), lt = CX.isLate(r); return `<div class="cl" data-open="ros:${r.id}">${BO.plate(v.plate)}<div style="flex:1;min-width:0"><b class="sm-t">${esc(CX.vlabel(v))}</b><div class="xs-t muted">${esc(CX.STAGES[r.stage].s)} · ${r.prog} %</div></div><span class="chip ${lt ? 'red' : U.dOf(r.dueAt) === today() ? 'amber' : ''}">${esc(BO.dt(r.dueAt))}</span></div>`; }).join('')}</div>` : BO.empty('check', 'Aucune échéance proche', '', '', true)}</div></div>
       </div>
     </div>`;

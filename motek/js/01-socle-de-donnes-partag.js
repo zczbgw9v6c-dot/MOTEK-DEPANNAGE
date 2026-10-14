@@ -1,11 +1,11 @@
 /* ==========================================================================
-   CARROSSERIE CENTRALE SA — socle de données partagé (atelier 3D + back-office)
+   MOTEK SA — socle de données partagé (atelier 3D + back-office)
    window.CX : état S (localStorage), événements, actions métier, calculs.
    Toute modification passe par une action CX.* qui émet un événement :
    la carte 3D et le back-office restent synchronisés.
    ========================================================================== */
 (function () {
-  const KEY = 'cc-demo-v2';
+  const KEY = 'motek-v3';
 
   /* ---------------- helpers dates / formats ---------------- */
   const pad = n => String(n).padStart(2, '0');
@@ -18,14 +18,14 @@
   const isWeekend = s => { const g = parse(s).getDay(); return g === 0 || g === 6; };
   /** prochain jour ouvré à partir de today()+n (n peut être négatif) */
   const wd = n => { let d = today(), k = 0; const st = n >= 0 ? 1 : -1; if (n === 0) return d; while (k < Math.abs(n)) { d = addDays(d, st); if (!isWeekend(d)) k++; } return d; };
-  const fmtDate = (s, o = { day: 'numeric', month: 'short' }) => s ? parse(s).toLocaleDateString('fr-CH', o) : '—';
-  const fmtD = s => s ? parse(s).toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+  const fmtDate = (s, o = { day: 'numeric', month: 'short' }) => s ? parse(s).toLocaleDateString('fr-FR', o) : '—';
+  const fmtD = s => s ? parse(s).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
   const hm = m => pad(Math.floor(m / 60)) + ':' + pad(Math.floor(m % 60));
   const toMin = s => { const [h, m] = String(s).split(':').map(Number); return h * 60 + (m || 0); };
-  const chf = n => 'CHF ' + Math.round(n || 0).toLocaleString('de-CH');
-  const chf2 = n => 'CHF ' + (Math.round((n || 0) * 100) / 100).toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const chfK = n => Math.abs(n) >= 1e4 ? 'CHF ' + (Math.round(n / 100) / 10).toLocaleString('de-CH') + ' k' : chf(n);
-  const round5 = n => Math.round((n || 0) * 20) / 20;
+  const chf = n => Math.round(n || 0).toLocaleString('fr-FR') + ' €';
+  const chf2 = n => (Math.round((n || 0) * 100) / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  const chfK = n => Math.abs(n) >= 1e4 ? (Math.round(n / 100) / 10).toLocaleString('fr-FR') + ' k€' : chf(n);
+  const round5 = n => Math.round((n || 0) * 100) / 100; // arrondi au centime (ex-au centime)
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let uidN = 0; const uid = p => (p || 'x') + Date.now().toString(36).slice(-5) + (uidN++).toString(36) + Math.random().toString(36).slice(2, 5);
   const hash = s => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
@@ -41,18 +41,18 @@
   const tOf = s => String(s || '').slice(11, 16);
 
   /* ---------------- référentiels ---------------- */
-  const TVA = 0.081;
+  const TVA = 0.2;
   const STAGES = [
     { k: 'rdv', l: 'Rendez-vous', s: 'RDV', ic: 'cal', map: 0, c: '#8a919a' },
     { k: 'recep', l: 'Réception / expertise', s: 'Réception', ic: 'key', map: 1, c: '#6b7280' },
     { k: 'devis', l: 'Devis', s: 'Devis', ic: 'file', map: 1, c: '#6b7280' },
     { k: 'accord', l: 'Accord assurance / client', s: 'Accord', ic: 'shield', map: 1, c: '#b96400' },
     { k: 'pieces', l: 'Commande pièces', s: 'Pièces', ic: 'box', map: 2, c: '#b96400' },
-    { k: 'demont', l: 'Démontage', s: 'Démontage', ic: 'wrench', map: 2, c: '#e3262d' },
-    { k: 'tole', l: 'Tôlerie / marbre', s: 'Tôlerie', ic: 'hammer', map: 2, c: '#e3262d' },
-    { k: 'prep', l: 'Préparation', s: 'Prépa', ic: 'layers', map: 3, c: '#e3262d' },
-    { k: 'peint', l: 'Peinture (cabine)', s: 'Peinture', ic: 'spray', map: 3, c: '#c41d24' },
-    { k: 'remont', l: 'Remontage', s: 'Remontage', ic: 'wrench', map: 4, c: '#e3262d' },
+    { k: 'demont', l: 'Démontage', s: 'Démontage', ic: 'wrench', map: 2, c: '#1768ee' },
+    { k: 'tole', l: 'Tôlerie / marbre', s: 'Tôlerie', ic: 'hammer', map: 2, c: '#1768ee' },
+    { k: 'prep', l: 'Préparation', s: 'Prépa', ic: 'layers', map: 3, c: '#1768ee' },
+    { k: 'peint', l: 'Peinture (cabine)', s: 'Peinture', ic: 'spray', map: 3, c: '#1157c4' },
+    { k: 'remont', l: 'Remontage', s: 'Remontage', ic: 'wrench', map: 4, c: '#1768ee' },
     { k: 'cq', l: 'Contrôle qualité', s: 'CQ', ic: 'check', map: 4, c: '#4b5563' },
     { k: 'lavage', l: 'Lavage', s: 'Lavage', ic: 'drop', map: 4, c: '#4b5563' },
     { k: 'pret', l: 'Prêt / livraison', s: 'Prêt', ic: 'car', map: 5, c: '#1b8a4b' },
@@ -100,7 +100,7 @@
   ];
 
   const ROLES = {
-    chef: { l: 'Chef d’atelier', prod: false }, carrossier: { l: 'Carrossier CFC', prod: true }, mecatro: { l: 'Mécatronicien CFC', prod: true },
+    chef: { l: 'Chef d’atelier', prod: false }, carrossier: { l: 'Carrossier (CAP)', prod: true }, mecatro: { l: 'Mécatronicien (Bac pro)', prod: true },
     peintre: { l: 'Peintre en carrosserie', prod: true }, prepa: { l: 'Préparateur peinture', prod: true }, apprenti: { l: 'Apprenti·e', prod: true },
     mag: { l: 'Magasinier', prod: false }, recep: { l: 'Réceptionniste', prod: false },
   };
@@ -111,104 +111,104 @@
   function seed() {
     const S = { v: 1, created: Date.now(), ext: {} };
     S.company = {
-      name: 'Carrosserie Centrale SA', address: 'Av. de Sévelin 24, 1004 Lausanne', phone: '+41 21 634 12 00', email: 'atelier@carrosserie-centrale.ch',
-      ide: 'CHE-112.874.390', iban: 'CH44 3199 9123 0008 8901 2', qriban: 'CH21 3080 8001 2345 6782 7', bank: 'BCV – Banque Cantonale Vaudoise', web: 'carrosserie-centrale.ch',
-      rates: { T1: 118, T2: 132, T3: 148, P: 128 }, paintMat: 46, smallPct: 0.03, smallMax: 85, tvaRate: TVA, hoursDay: 8.4, terms: 30, warrantyMonths: 24,
-      review: 'https://g.page/r/carrosserie-centrale-lausanne/review',
+      name: 'MOTEK Garage', address: '12 rue des Ateliers, 69007 Lyon', phone: '+33 4 72 634 12 00', email: 'atelier@motek-demo.fr',
+      siret: '123 456 789 00012', tvaIntra: 'FR12 123456789', iban: 'FR76 3000 6000 0112 3456 7890 189', bic: 'BNPAFRPP', bank: 'Banque de démonstration', web: 'motek-demo.fr',
+      rates: { T1: 62, T2: 72, T3: 85, P: 70 }, paintMat: 28, smallPct: 0.03, smallMax: 60, tvaRate: TVA, hoursDay: 8.4, terms: 30, warrantyMonths: 24,
+      review: 'https://g.page/r/motek-demo/review',
     };
     S.meId = 'E1';
 
     /* ---------- assureurs ---------- */
     S.insurers = [
-      ['axa', 'AXA', 'AXA Assurances SA', '#00008f', '0800 809 809', 'sinistres.auto@axa.ch', ['Philippe Gander', 'Nadia Weber'], 21],
-      ['mob', 'La Mobilière', 'La Mobilière Suisse SA', '#e3001b', '031 389 61 11', 'sinistres@mobiliere.ch', ['Christophe Rochat', 'Anne Python'], 15],
-      ['all', 'Allianz', 'Allianz Suisse', '#003781', '0800 22 33 44', 'claims.motor@allianz.ch', ['Marco Steiner'], 25],
-      ['zur', 'Zurich', 'Zurich Compagnie d’Assurances SA', '#2167ae', '0800 80 80 80', 'motorclaims@zurich.ch', ['Sébastien Bovet', 'Ivana Kovac'], 20],
-      ['hel', 'Helvetia', 'Helvetia Assurances', '#00a0af', '058 280 10 00', 'sinistres@helvetia.ch', ['Jean-Daniel Favre'], 18],
-      ['gen', 'Generali', 'Generali Assurances', '#c21b17', '0800 881 882', 'sinistres@generali.ch', ['Lorenzo Conti'], 24],
-      ['bal', 'Baloise', 'Baloise Assurance SA', '#0014aa', '058 285 85 85', 'motor@baloise.ch', ['Urs Meier'], 22],
-      ['vau', 'Vaudoise', 'Vaudoise Assurances', '#007a4d', '021 618 80 80', 'sinistres@vaudoise.ch', ['Pascal Mettraux', 'Céline Dutoit'], 14],
-      ['tcs', 'TCS', 'TCS Assurances SA', '#ffcc00', '058 827 15 00', 'sinistres@tcs.ch', ['Karim Haddad'], 20],
-      ['smi', 'Smile', 'smile.direct (Helvetia)', '#f05a28', '0848 577 577', 'claims@smile-direct.ch', ['Expertise photo en ligne'], 12],
+      ['axa', 'AXA', 'AXA France IARD', '#00008f', '09 70 80 81 82', 'sinistres.auto@axa.fr', ['Philippe Gander', 'Nadia Weber'], 21],
+      ['mob', 'MAIF', 'MAIF', '#e3001b', '09 72 72 15 15', 'sinistres@maif.fr', ['Christophe Rochat', 'Anne Python'], 15],
+      ['all', 'Allianz', 'Allianz France', '#003781', '09 69 32 02 03', 'sinistres.auto@allianz.fr', ['Marco Steiner'], 25],
+      ['zur', 'Macif', 'Macif', '#2167ae', '09 69 39 49 49', 'sinistres@macif.fr', ['Sébastien Bovet', 'Ivana Kovac'], 20],
+      ['hel', 'Groupama', 'Groupama Rhône-Alpes Auvergne', '#00a0af', '09 69 39 66 66', 'sinistres@groupama.fr', ['Jean-Daniel Favre'], 18],
+      ['gen', 'Generali', 'Generali France', '#c21b17', '09 69 32 21 21', 'sinistres@generali.fr', ['Lorenzo Conti'], 24],
+      ['bal', 'Matmut', 'Matmut', '#0014aa', '02 35 03 68 68', 'sinistres@matmut.fr', ['Urs Meier'], 22],
+      ['vau', 'MMA', 'MMA IARD', '#007a4d', '02 43 39 11 11', 'sinistres@mma.fr', ['Pascal Mettraux', 'Céline Dutoit'], 14],
+      ['tcs', 'GMF', 'GMF Assurances', '#ffcc00', '09 70 80 90 90', 'sinistres@gmf.fr', ['Karim Haddad'], 20],
+      ['smi', 'Leocare', 'Leocare (assurance en ligne)', '#f05a28', '01 76 49 00 00', 'sinistres@leocare.fr', ['Expertise photo en ligne'], 12],
     ].map(([id, short, name, color, phone, email, experts, payDays]) => ({ id, short, name, color, phone, email, experts, payDays, convention: id !== 'smi' }));
 
     /* ---------- équipe ---------- */
-    const E = (id, first, last, role, since, phone, extra = {}) => Object.assign({ id, first, last, name: first + ' ' + last, ini: first[0] + last[0], role, since, phone, email: (first[0] + '.' + last).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z.]/g, '') + '@carrosserie-centrale.ch', status: 'present', weeklyH: 42, costH: 58, skills: [] }, extra);
+    const E = (id, first, last, role, since, phone, extra = {}) => Object.assign({ id, first, last, name: first + ' ' + last, ini: first[0] + last[0], role, since, phone, email: (first[0] + '.' + last).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z.]/g, '') + '@motek-demo.fr', status: 'present', weeklyH: 42, costH: 58, skills: [] }, extra);
     S.staff = [
-      E('E1', 'Marc', 'Dubois', 'chef', 2009, '+41 79 301 44 18', { title: 'Chef d’atelier', costH: 74, skills: ['Brevet fédéral', 'Expertise sinistres', 'ADAS', 'Gestion équipe'], color: '#2a2e35' }),
-      E('E2', 'Luca', 'Bianchi', 'carrossier', 2014, '+41 78 622 10 57', { title: 'Carrossier-tôlier CFC', costH: 62, skills: ['Soudure MIG/MAG', 'Aluminium', 'Marbre Celette', 'Rivetage'], color: '#e3262d' }),
-      E('E3', 'Julien', 'Morand', 'carrossier', 2016, '+41 79 845 20 03', { title: 'Carrossier CFC', costH: 58, skills: ['Débosselage PDR', 'Pare-brise', 'Plastiques'], color: '#c41d24' }),
-      E('E4', 'Nuno', 'Ferreira', 'mecatro', 2019, '+41 76 330 91 26', { title: 'Mécatronicien CFC', costH: 57, skills: ['Diagnostic', 'Haute tension (HV2)', 'Géométrie', 'ADAS'], color: '#3a3f47' }),
-      E('E5', 'Kevin', 'Pittet', 'carrossier', 2021, '+41 79 512 67 40', { title: 'Carrossier CFC', costH: 54, skills: ['Grêle / PDR', 'Expertise photo', 'Plastiques'], color: '#59606b' }),
-      E('E6', 'Yannick', 'Perrin', 'peintre', 2012, '+41 78 909 14 82', { title: 'Peintre en carrosserie', costH: 61, skills: ['Colorimétrie', 'Base eau', 'Vernis 2K', 'Spot-repair'], color: '#b96400' }),
-      E('E10', 'Diego', 'Santos', 'prepa', 2022, '+41 77 205 63 11', { title: 'Préparateur peinture', costH: 49, skills: ['Ponçage', 'Masquage', 'Apprêts'], color: '#868c96' }),
-      E('E7', 'Damien', 'Crettenand', 'mag', 2018, '+41 79 233 58 90', { title: 'Magasinier', costH: 46, skills: ['Commandes', 'Inventaire', 'Réception livraisons'], color: '#5b616b' }),
-      E('E8', 'Léa', 'Marchand', 'recep', 2020, '+41 21 634 12 00', { title: 'Réceptionniste', costH: 44, skills: ['Planning', 'Facturation', 'Assurances'], color: '#9aa0a8' }),
-      E('E9', 'Sarah', 'Pasche', 'apprenti', 2025, '+41 77 418 33 26', { title: 'Apprentie carrossière (2e)', costH: 18, weeklyH: 32, status: 'ecole', skills: ['Préparation', 'Masquage'], color: '#d16a6e' }),
+      E('E1', 'Marc', 'Dubois', 'chef', 2009, '+33 69 301 44 18', { title: 'Chef d’atelier', costH: 74, skills: ['BTS après-vente automobile', 'Expertise sinistres', 'ADAS', 'Gestion équipe'], color: '#2a2e35' }),
+      E('E2', 'Luca', 'Bianchi', 'carrossier', 2014, '+33 68 622 10 57', { title: 'Carrossier-tôlier (CAP/Bac pro)', costH: 62, skills: ['Soudure MIG/MAG', 'Aluminium', 'Marbre Celette', 'Rivetage'], color: '#1768ee' }),
+      E('E3', 'Julien', 'Morand', 'carrossier', 2016, '+33 69 845 20 03', { title: 'Carrossier (CAP)', costH: 58, skills: ['Débosselage PDR', 'Pare-brise', 'Plastiques'], color: '#1157c4' }),
+      E('E4', 'Nuno', 'Ferreira', 'mecatro', 2019, '+33 66 330 91 26', { title: 'Mécatronicien (Bac pro)', costH: 57, skills: ['Diagnostic', 'Haute tension (HV2)', 'Géométrie', 'ADAS'], color: '#3a3f47' }),
+      E('E5', 'Kevin', 'Pittet', 'carrossier', 2021, '+33 69 512 67 40', { title: 'Carrossier (CAP)', costH: 54, skills: ['Grêle / PDR', 'Expertise photo', 'Plastiques'], color: '#59606b' }),
+      E('E6', 'Yannick', 'Perrin', 'peintre', 2012, '+33 68 909 14 82', { title: 'Peintre en carrosserie', costH: 61, skills: ['Colorimétrie', 'Base eau', 'Vernis 2K', 'Spot-repair'], color: '#b96400' }),
+      E('E10', 'Diego', 'Santos', 'prepa', 2022, '+33 67 205 63 11', { title: 'Préparateur peinture', costH: 49, skills: ['Ponçage', 'Masquage', 'Apprêts'], color: '#868c96' }),
+      E('E7', 'Damien', 'Crettenand', 'mag', 2018, '+33 69 233 58 90', { title: 'Magasinier', costH: 46, skills: ['Commandes', 'Inventaire', 'Réception livraisons'], color: '#5b616b' }),
+      E('E8', 'Léa', 'Marchand', 'recep', 2020, '+33 4 72 634 12 00', { title: 'Réceptionniste', costH: 44, skills: ['Planning', 'Facturation', 'Assurances'], color: '#9aa0a8' }),
+      E('E9', 'Sarah', 'Pasche', 'apprenti', 2025, '+33 67 418 33 26', { title: 'Apprentie carrossière (2e)', costH: 18, weeklyH: 32, status: 'ecole', skills: ['Préparation', 'Masquage'], color: '#d16a6e' }),
     ];
 
     /* ---------- clients ---------- */
     const C = (id, type, name, city, addr, phone, email, since, insurerId, pref, rating, note, extra = {}) => Object.assign({ id, type, name, ini: name.split(/[\s-]+/).filter(w => /^[A-ZÉÈ]/.test(w)).slice(0, 2).map(w => w[0]).join(''), city, addr, phone, email, since, insurerId, pref, rating, note, hist: [], comms: [], fleet: null, contact: '' }, extra);
     S.customers = [
-      C('C1', 'prive', 'Nathalie Favre', '1004 Lausanne', 'Av. de Morges 58', '+41 79 412 38 61', 'n.favre@bluewin.ch', 2017, 'mob', 'SMS', 5, 'Préfère être contactée après 17h. Véhicule de remplacement souhaité.', { hist: [['2025-03-14', 'Remplacement pare-brise', 1180], ['2023-11-02', 'Débosselage portière AR G (PDR)', 640], ['2021-06-19', 'Grêle — 18 impacts', 2350]] }),
-      C('C2', 'prive', 'Pierre-Alain Gilliéron', '1110 Morges', 'Ch. du Banc-Vert 12', '+41 79 207 55 14', 'pa.gillieron@gmail.com', 2022, 'hel', 'Appel', 4, 'Sur place — signe le devis grêle.', { hist: [['2024-05-08', 'Rétroviseur ext. D', 412]] }),
-      C('C3', 'prive', 'Sandrine Rey', '1020 Renens', 'Rue de Lausanne 31', '+41 78 640 72 09', 'sandrine.rey@sunrise.ch', 2015, 'axa', 'SMS', 5, 'Cliente fidèle — attend la restitution de sa Clio.', { hist: [['2025-09-21', 'Pare-chocs AR + capteurs', 1940], ['2024-01-11', 'Révision + pneus hiver', 860], ['2022-07-03', 'Aile AV G + peinture', 2210]] }),
-      C('C4', 'prive', 'Thomas Weber', '1009 Pully', 'Av. de Lavaux 104', '+41 79 158 90 37', 't.weber@hispeed.ch', 2019, 'axa', 'E-mail', 4, 'Voiture de remplacement en cours (Fiat 500 · VD 9031).', { hist: [['2024-10-16', 'Pare-brise + caméra', 1420]] }),
-      C('C5', 'prive', 'Fatima Benali', '1018 Lausanne', 'Ch. de Bérée 7', '+41 76 532 18 44', 'f.benali@outlook.com', 2023, 'zur', 'SMS', 5, 'Prévenir dès réception du pare-brise.'),
-      C('C6', 'prive', 'Olivier Monnier', '1700 Fribourg', 'Rte de la Glâne 22', '+41 79 380 61 25', 'olivier.monnier@bluewin.ch', 2020, 'vau', 'Appel', 4, 'Dossier assurance validé. Véhicule de remplacement Toyota Yaris.', { hist: [['2023-08-30', 'Portière AV D', 1780]] }),
-      C('C7', 'prive', 'Claire Jaquet', '1800 Vevey', 'Quai Perdonnet 9', '+41 78 211 47 62', 'claire.jaquet@icloud.com', 2018, null, 'SMS', 5, 'Paiement par carte à la restitution.', { hist: [['2025-02-12', 'Polissage + céramique', 690], ['2023-06-07', 'Spot-repair pare-chocs', 380]] }),
-      C('C8', 'prive', 'Marco Rossi', '1007 Lausanne', 'Av. de Cour 41', '+41 79 666 02 18', 'm.rossi@gmail.com', 2016, 'gen', 'Appel', 5, 'Sur place — restitution Classe C.', { hist: [['2025-04-18', 'Capot + calandre', 2980], ['2023-12-09', 'Pneus + géométrie', 1150]] }),
-      C('C9', 'prive', 'Élodie Perret', '1095 Lutry', 'Grand-Rue 18', '+41 78 455 39 70', 'elodie.perret@bluewin.ch', 2021, 'smi', 'SMS', 5, 'Restitution prévue ce matin.', { hist: [['2024-11-22', 'Pare-chocs AV', 1260]] }),
-      C('C10', 'prive', 'Stéphane Burnier', '1196 Gland', 'Rue Mauverney 6', '+41 79 724 81 33', 's.burnier@netplus.ch', 2026, 'all', 'SMS', 0, 'Nouveau client — recommandé par Allianz.'),
-      C('C11', 'entreprise', 'Romandie Services SA', '1020 Renens', 'Rue du Simplon 40', '+41 21 555 40 40', 'flotte@romandie-services.ch', 2014, 'zur', 'E-mail', 4, 'Contrat cadre — facturation mensuelle.', { contact: 'Sylvie Aebischer (gestionnaire flotte)', fleet: { size: 24, contract: 'Contrat cadre 2024-2027', discount: 8, terms: 45, billing: 'Mensuelle', sla: 'Devis < 24 h · immobilisation < 5 j' }, hist: [['2026-09-02', 'Trafic #12 — porte latérale', 2140], ['2026-08-14', 'Kangoo #7 — pare-chocs', 980], ['2026-07-29', 'Master #3 — rétroviseurs', 760]] }),
-      C('C12', 'entreprise', 'Léman Leasing SA', '1003 Lausanne', 'Rue du Grand-Chêne 5', '+41 21 310 77 00', 'remarketing@leman-leasing.ch', 2019, 'bal', 'E-mail', 4, 'Remise en état fin de leasing. Accord préalable obligatoire > CHF 1’500.', { contact: 'Jérôme Vuilleumier (remarketing)', fleet: { size: 310, contract: 'Accord-cadre remise en état', discount: 10, terms: 30, billing: 'Par dossier', sla: 'Rapport photo sous 48 h' } }),
-      C('C13', 'entreprise', 'Garage des Alpes Sàrl', '1052 Le Mont-sur-Lausanne', 'Rte de Cugy 14', '+41 21 652 18 18', 'atelier@garage-des-alpes.ch', 2012, null, 'Appel', 5, 'Garage partenaire : nous sous-traite la carrosserie de ses clients.', { contact: 'Fabrice Chappuis (chef d’atelier)', fleet: { size: 0, contract: 'Partenariat sous-traitance', discount: 12, terms: 30, billing: 'Mensuelle', sla: 'Prise en charge J+1' } }),
-      C('C14', 'prive', 'Julie Rochat', '1012 Lausanne', 'Ch. de Pierrefleur 33', '+41 78 902 44 10', 'julie.rochat@gmail.com', 2024, 'tcs', 'SMS', 5, '', { hist: [['2025-11-04', 'Spot-repair aile AR D', 520]] }),
-      C('C15', 'prive', 'Antoine Mercier', '1066 Épalinges', 'Rte de la Croix-Blanche 3', '+41 79 118 73 52', 'a.mercier@protonmail.ch', 2026, 'bal', 'E-mail', 0, 'Nouveau client — trouvé via Google.'),
-      C('C16', 'prive', 'Laura Gomes', '1008 Prilly', 'Av. de la Rochelle 9', '+41 76 744 20 81', 'laura.gomes@bluewin.ch', 2022, 'mob', 'SMS', 4, ''),
-      C('C17', 'prive', 'Patrick Zbinden', '1073 Savigny', 'Ch. de la Branche 21', '+41 79 640 55 93', 'p.zbinden@bluewin.ch', 2018, 'axa', 'Appel', 5, 'Collectionneur — exigeant sur les raccords de teinte.'),
+      C('C1', 'prive', 'Nathalie Favre', '69007 Lyon', '58 avenue Jean-Jaurès', '+33 69 412 38 61', 'n.favre@orange.fr', 2017, 'mob', 'SMS', 5, 'Préfère être contactée après 17h. Véhicule de remplacement souhaité.', { hist: [['2025-03-14', 'Remplacement pare-brise', 1180], ['2023-11-02', 'Débosselage portière AR G (PDR)', 640], ['2021-06-19', 'Grêle — 18 impacts', 2350]] }),
+      C('C2', 'prive', 'Pierre-Alain Gilliéron', '69200 Vénissieux', '12 chemin des Vignes', '+33 69 207 55 14', 'pa.gillieron@gmail.com', 2022, 'hel', 'Appel', 4, 'Sur place — signe le devis grêle.', { hist: [['2024-05-08', 'Rétroviseur ext. D', 412]] }),
+      C('C3', 'prive', 'Sandrine Rey', '69100 Villeurbanne', 'Rue de Lyon 31', '+33 68 640 72 09', 'sandrine.rey@free.fr', 2015, 'axa', 'SMS', 5, 'Cliente fidèle — attend la restitution de sa Clio.', { hist: [['2025-09-21', 'Pare-chocs AR + capteurs', 1940], ['2024-01-11', 'Révision + pneus hiver', 860], ['2022-07-03', 'Aile AV G + peinture', 2210]] }),
+      C('C4', 'prive', 'Thomas Weber', '69300 Caluire-et-Cuire', '104 avenue de Saxe', '+33 69 158 90 37', 't.weber@sfr.fr', 2019, 'axa', 'E-mail', 4, 'Voiture de remplacement en cours (Fiat 500 · GH-031-KD).', { hist: [['2024-10-16', 'Pare-brise + caméra', 1420]] }),
+      C('C5', 'prive', 'Fatima Benali', '69009 Lyon', '7 chemin des Peupliers', '+33 66 532 18 44', 'f.benali@outlook.com', 2023, 'zur', 'SMS', 5, 'Prévenir dès réception du pare-brise.'),
+      C('C6', 'prive', 'Olivier Monnier', '69500 Bron', '22 route de Grenoble', '+33 69 380 61 25', 'olivier.monnier@orange.fr', 2020, 'vau', 'Appel', 4, 'Dossier assurance validé. Véhicule de remplacement Toyota Yaris.', { hist: [['2023-08-30', 'Portière AV D', 1780]] }),
+      C('C7', 'prive', 'Claire Jaquet', '69600 Oullins', '9 quai Claude-Bernard', '+33 68 211 47 62', 'claire.jaquet@icloud.com', 2018, null, 'SMS', 5, 'Paiement par carte à la restitution.', { hist: [['2025-02-12', 'Polissage + céramique', 690], ['2023-06-07', 'Spot-repair pare-chocs', 380]] }),
+      C('C8', 'prive', 'Marco Rossi', '69007 Lyon', '41 avenue Berthelot', '+33 69 666 02 18', 'm.rossi@gmail.com', 2016, 'gen', 'Appel', 5, 'Sur place — restitution Classe C.', { hist: [['2025-04-18', 'Capot + calandre', 2980], ['2023-12-09', 'Pneus + géométrie', 1150]] }),
+      C('C9', 'prive', 'Élodie Perret', '69330 Meyzieu', '18 Grande Rue', '+33 68 455 39 70', 'elodie.perret@orange.fr', 2021, 'smi', 'SMS', 5, 'Restitution prévue ce matin.', { hist: [['2024-11-22', 'Pare-chocs AV', 1260]] }),
+      C('C10', 'prive', 'Stéphane Burnier', '69800 Saint-Priest', '6 rue Pasteur', '+33 69 724 81 33', 's.burnier@laposte.net', 2026, 'all', 'SMS', 0, 'Nouveau client — recommandé par Allianz.'),
+      C('C11', 'entreprise', 'Rhône Services SAS', '69100 Villeurbanne', '40 rue Garibaldi', '+33 4 72 555 40 40', 'flotte@romandie-services.fr', 2014, 'zur', 'E-mail', 4, 'Contrat cadre — facturation mensuelle.', { contact: 'Sylvie Aebischer (gestionnaire flotte)', fleet: { size: 24, contract: 'Contrat cadre 2024-2027', discount: 8, terms: 45, billing: 'Mensuelle', sla: 'Devis < 24 h · immobilisation < 5 j' }, hist: [['2026-09-02', 'Trafic #12 — porte latérale', 2140], ['2026-08-14', 'Kangoo #7 — pare-chocs', 980], ['2026-07-29', 'Master #3 — rétroviseurs', 760]] }),
+      C('C12', 'entreprise', 'Lyon Leasing SAS', '69002 Lyon', '5 rue de la Part-Dieu', '+33 4 72 310 77 00', 'remarketing@leman-leasing.fr', 2019, 'bal', 'E-mail', 4, 'Remise en état fin de leasing. Accord préalable obligatoire > 1 500 €.', { contact: 'Jérôme Vuilleumier (remarketing)', fleet: { size: 310, contract: 'Accord-cadre remise en état', discount: 10, terms: 30, billing: 'Par dossier', sla: 'Rapport photo sous 48 h' } }),
+      C('C13', 'entreprise', 'Garage des Monts SARL', '69120 Vaulx-en-Velin', '14 route de Vienne', '+33 4 72 652 18 18', 'atelier@garage-des-alpes.fr', 2012, null, 'Appel', 5, 'Garage partenaire : nous sous-traite la carrosserie de ses clients.', { contact: 'Fabrice Chappuis (chef d’atelier)', fleet: { size: 0, contract: 'Partenariat sous-traitance', discount: 12, terms: 30, billing: 'Mensuelle', sla: 'Prise en charge J+1' } }),
+      C('C14', 'prive', 'Julie Rochat', '69003 Lyon', '33 chemin des Cerisiers', '+33 68 902 44 10', 'julie.rochat@gmail.com', 2024, 'tcs', 'SMS', 5, '', { hist: [['2025-11-04', 'Spot-repair aile AR D', 520]] }),
+      C('C15', 'prive', 'Antoine Mercier', '69130 Écully', '3 route de Paris', '+33 69 118 73 52', 'a.mercier@proton.me', 2026, 'bal', 'E-mail', 0, 'Nouveau client — trouvé via Google.'),
+      C('C16', 'prive', 'Laura Gomes', '69700 Givors', '9 avenue Gambetta', '+33 66 744 20 81', 'laura.gomes@orange.fr', 2022, 'mob', 'SMS', 4, ''),
+      C('C17', 'prive', 'Patrick Zbinden', '69960 Corbas', '21 chemin du Vallon', '+33 69 640 55 93', 'p.zbinden@orange.fr', 2018, 'axa', 'Appel', 5, 'Collectionneur — exigeant sur les raccords de teinte.'),
     ];
 
     /* ---------- véhicules (V1-V11 = véhicules visibles dans l'atelier 3D) ---------- */
     const V = (id, customerId, make, model, plate, year, km, colorName, colorCode, hex, vin, extra = {}) => Object.assign({ id, customerId, make, model, plate, year, km, colorName, colorCode, hex, vin, fuel: 'Essence', build: {}, hist: [], nextCT: null }, extra);
     S.vehicles = [
-      V('V1', 'C1', 'VW', 'Golf VIII 1.5 eTSI', 'VD 452 118', 2022, 38420, 'Blanc pur', 'LC9A', '#f2f3f4', 'WVWZZZCDZNW118452', { build: { primer: 'front' }, hist: [['2025-03-14', 'Remplacement pare-brise', 'Pare-brise + calibrage caméra'], ['2023-11-02', 'Débosselage portière AR G', 'Sans peinture (PDR)']], nextCT: addDays(today(), 210) }),
-      V('V2', 'C4', 'BMW', 'Série 3 Touring 320d', 'VD 712 903', 2021, 64110, 'Gris minéral', 'B39', '#4a4f57', 'WBA8K510X0FJ71290', { fuel: 'Diesel', build: { primer: 'side' }, hist: [['2024-10-16', 'Pare-brise + caméra', 'Remplacement & calibrage']], nextCT: addDays(today(), 95) }),
-      V('V3', 'C5', 'Tesla', 'Model 3 Long Range', 'VD 207 446', 2023, 21870, 'Rouge multicouche', 'PPMR', '#b8242b', '5YJ3E7EB0PF207446', { fuel: 'Électrique', nextCT: addDays(today(), 800) }),
-      V('V4', 'C6', 'Škoda', 'Octavia Combi 2.0 TDI', 'FR 88 412', 2020, 97300, 'Argent brillant', '8E8E', '#c4c8ce', 'TMBJJ7NX5L0884120', { fuel: 'Diesel', build: { primer: 'front' }, hist: [['2023-08-30', 'Portière AV D', 'Remplacement + peinture']], nextCT: addDays(today(), 41) }),
-      V('V5', 'C7', 'Audi', 'A3 Sportback 35 TFSI', 'VD 590 031', 2024, 12640, 'Blanc glacier', 'LS9R', '#f4f5f6', 'WAUZZZGY4RA590031', { build: { masked: true }, hist: [['2025-02-12', 'Polissage + céramique', 'Traitement 3 ans']], nextCT: addDays(today(), 1200) }),
-      V('V6', 'C2', 'Toyota', 'Yaris 1.5 Hybrid', 'VD 144 980', 2021, 45010, 'Blanc nacré', '070', '#eef0f1', 'VNKKAAD320A144980', { fuel: 'Hybride', hist: [['2024-05-08', 'Rétroviseur ext. D', 'Remplacement']], nextCT: addDays(today(), 160) }),
-      V('V7', 'C3', 'Renault', 'Clio V E-Tech', 'VD 318 554', 2022, 29300, 'Gris titanium', 'KPN', '#9aa0a8', 'VF1RJA00X68318554', { fuel: 'Hybride', hist: [['2025-09-21', 'Pare-chocs AR + capteurs', 'Remplacement + peinture']], nextCT: addDays(today(), 18) }),
-      V('V8', 'C8', 'Mercedes', 'Classe C 220d', 'VD 403 227', 2023, 31900, 'Noir obsidienne', '197', '#1f2125', 'W1K2060161R403227', { fuel: 'Diesel', hist: [['2025-04-18', 'Capot + calandre', 'Remplacement']], nextCT: addDays(today(), 600) }),
-      V('V9', 'C9', 'VW', 'Tiguan 2.0 TSI 4Motion', 'VD 266 841', 2022, 52780, 'Blanc pur', 'LC9A', '#eef0f2', 'WVGZZZ5NZNW266841', { build: { type: 'suv' }, hist: [['2024-11-22', 'Pare-chocs AV', 'Réparation plastique']], nextCT: addDays(today(), 330) }),
-      V('V10', 'C11', 'Renault', 'Trafic L2 · flotte #18', 'VD 581 330', 2020, 148200, 'Blanc glacier', '369', '#f3f4f5', 'VF1FL000X64581330', { fuel: 'Diesel', build: { type: 'van' }, hist: [['2026-09-02', 'Porte latérale (#12)', 'Flotte']], nextCT: addDays(today(), 12) }),
-      V('V11', 'C10', 'Peugeot', '308 SW Hybrid', 'VD 611 207', 2024, 8930, 'Gris platinium', 'EVL', '#8d939b', 'VR3F4DGZTRY611207', { fuel: 'Hybride', build: { primer: 'rear' }, nextCT: addDays(today(), 1300) }),
-      V('V12', 'C15', 'Mazda', 'CX-5 2.5 AWD', 'VD 778 015', 2023, 26400, 'Soul Red Crystal', '46V', '#a3121e', 'JMZKF6W1A00778015', { build: { type: 'suv' } }),
-      V('V13', 'C12', 'VW', 'ID.4 Pro (leasing #4471)', 'VD 330 912', 2023, 61200, 'Gris lune', '2R2R', '#aeb3b8', 'WVGZZZE2ZPP330912', { fuel: 'Électrique', build: { type: 'suv' } }),
-      V('V14', 'C14', 'Kia', 'Niro HEV', 'VD 102 664', 2022, 33100, 'Bleu Gravity', 'B4U', '#2f3d55', 'KNACC81CVN5102664', { fuel: 'Hybride' }),
-      V('V15', 'C16', 'Fiat', '500e La Prima', 'VD 455 870', 2023, 14200, 'Vert Ocean', '5AF', '#4e7c74', 'ZFAEFAC39PX455870', { fuel: 'Électrique' }),
-      V('V16', 'C17', 'Porsche', '911 Carrera (992)', 'VD 911 017', 2021, 22800, 'Gris craie', 'M7S', '#c9c7c0', 'WP0ZZZ99ZMS911017', {}),
-      V('V17', 'C11', 'Renault', 'Kangoo · flotte #7', 'VD 581 307', 2021, 98500, 'Blanc glacier', '369', '#f3f4f5', 'VF1KW000X65581307', { fuel: 'Diesel', build: { type: 'van' } }),
-      V('V18', 'C13', 'Volvo', 'XC60 B4 (client garage)', 'VD 640 288', 2022, 47300, 'Bleu Denim', '720', '#40516b', 'YV1UZK1V3N1640288', { fuel: 'Hybride', build: { type: 'suv' } }),
-      V('V19', 'C3', 'Renault', 'Captur TCe 140', 'VD 318 990', 2020, 61000, 'Orange Atacama', 'EOD', '#d7642a', 'VF1RJB00X63318990', {}),
-      V('V20', 'C1', 'Mini', 'Cooper SE', 'VD 452 990', 2021, 30100, 'Noir Midnight', 'B45', '#22252a', 'WMWXP3102M2452990', { fuel: 'Électrique' }),
+      V('V1', 'C1', 'VW', 'Golf VIII 1.5 eTSI', 'MB-118-CC', 2022, 38420, 'Blanc pur', 'LC9A', '#f2f3f4', 'WVWZZZCDZNW118452', { build: { primer: 'front' }, hist: [['2025-03-14', 'Remplacement pare-brise', 'Pare-brise + calibrage caméra'], ['2023-11-02', 'Débosselage portière AR G', 'Sans peinture (PDR)']], nextCT: addDays(today(), 210) }),
+      V('V2', 'C4', 'BMW', 'Série 3 Touring 320d', 'ZR-903-JT', 2021, 64110, 'Gris minéral', 'B39', '#4a4f57', 'WBA8K510X0FJ71290', { fuel: 'Diesel', build: { primer: 'side' }, hist: [['2024-10-16', 'Pare-brise + caméra', 'Remplacement & calibrage']], nextCT: addDays(today(), 95) }),
+      V('V3', 'C5', 'Tesla', 'Model 3 Long Range', 'XC-446-HT', 2023, 21870, 'Rouge multicouche', 'PPMR', '#b8242b', '5YJ3E7EB0PF207446', { fuel: 'Électrique', nextCT: addDays(today(), 800) }),
+      V('V4', 'C6', 'Škoda', 'Octavia Combi 2.0 TDI', 'PH-412-LM', 2020, 97300, 'Argent brillant', '8E8E', '#c4c8ce', 'TMBJJ7NX5L0884120', { fuel: 'Diesel', build: { primer: 'front' }, hist: [['2023-08-30', 'Portière AV D', 'Remplacement + peinture']], nextCT: addDays(today(), 41) }),
+      V('V5', 'C7', 'Audi', 'A3 Sportback 35 TFSI', 'KZ-031-HF', 2024, 12640, 'Blanc glacier', 'LS9R', '#f4f5f6', 'WAUZZZGY4RA590031', { build: { masked: true }, hist: [['2025-02-12', 'Polissage + céramique', 'Traitement 3 ans']], nextCT: addDays(today(), 1200) }),
+      V('V6', 'C2', 'Toyota', 'Yaris 1.5 Hybrid', 'SW-980-XK', 2021, 45010, 'Blanc nacré', '070', '#eef0f1', 'VNKKAAD320A144980', { fuel: 'Hybride', hist: [['2024-05-08', 'Rétroviseur ext. D', 'Remplacement']], nextCT: addDays(today(), 160) }),
+      V('V7', 'C3', 'Renault', 'Clio V E-Tech', 'FJ-554-BN', 2022, 29300, 'Gris titanium', 'KPN', '#9aa0a8', 'VF1RJA00X68318554', { fuel: 'Hybride', hist: [['2025-09-21', 'Pare-chocs AR + capteurs', 'Remplacement + peinture']], nextCT: addDays(today(), 18) }),
+      V('V8', 'C8', 'Mercedes', 'Classe C 220d', 'KB-227-JT', 2023, 31900, 'Noir obsidienne', '197', '#1f2125', 'W1K2060161R403227', { fuel: 'Diesel', hist: [['2025-04-18', 'Capot + calandre', 'Remplacement']], nextCT: addDays(today(), 600) }),
+      V('V9', 'C9', 'VW', 'Tiguan 2.0 TSI 4Motion', 'BD-841-TR', 2022, 52780, 'Blanc pur', 'LC9A', '#eef0f2', 'WVGZZZ5NZNW266841', { build: { type: 'suv' }, hist: [['2024-11-22', 'Pare-chocs AV', 'Réparation plastique']], nextCT: addDays(today(), 330) }),
+      V('V10', 'C11', 'Renault', 'Trafic L2 · flotte #18', 'XS-330-HW', 2020, 148200, 'Blanc glacier', '369', '#f3f4f5', 'VF1FL000X64581330', { fuel: 'Diesel', build: { type: 'van' }, hist: [['2026-09-02', 'Porte latérale (#12)', 'Flotte']], nextCT: addDays(today(), 12) }),
+      V('V11', 'C10', 'Peugeot', '308 SW Hybrid', 'FX-207-PB', 2024, 8930, 'Gris platinium', 'EVL', '#8d939b', 'VR3F4DGZTRY611207', { fuel: 'Hybride', build: { primer: 'rear' }, nextCT: addDays(today(), 1300) }),
+      V('V12', 'C15', 'Mazda', 'CX-5 2.5 AWD', 'DC-015-WG', 2023, 26400, 'Soul Red Crystal', '46V', '#a3121e', 'JMZKF6W1A00778015', { build: { type: 'suv' } }),
+      V('V13', 'C12', 'VW', 'ID.4 Pro (leasing #4471)', 'BB-912-HT', 2023, 61200, 'Gris lune', '2R2R', '#aeb3b8', 'WVGZZZE2ZPP330912', { fuel: 'Électrique', build: { type: 'suv' } }),
+      V('V14', 'C14', 'Kia', 'Niro HEV', 'KG-664-HT', 2022, 33100, 'Bleu Gravity', 'B4U', '#2f3d55', 'KNACC81CVN5102664', { fuel: 'Hybride' }),
+      V('V15', 'C16', 'Fiat', '500e La Prima', 'MW-870-NV', 2023, 14200, 'Vert Ocean', '5AF', '#4e7c74', 'ZFAEFAC39PX455870', { fuel: 'Électrique' }),
+      V('V16', 'C17', 'Porsche', '911 Carrera (992)', 'PK-017-KF', 2021, 22800, 'Gris craie', 'M7S', '#c9c7c0', 'WP0ZZZ99ZMS911017', {}),
+      V('V17', 'C11', 'Renault', 'Kangoo · flotte #7', 'TB-307-VZ', 2021, 98500, 'Blanc glacier', '369', '#f3f4f5', 'VF1KW000X65581307', { fuel: 'Diesel', build: { type: 'van' } }),
+      V('V18', 'C13', 'Volvo', 'XC60 B4 (client garage)', 'KR-288-KK', 2022, 47300, 'Bleu Denim', '720', '#40516b', 'YV1UZK1V3N1640288', { fuel: 'Hybride', build: { type: 'suv' } }),
+      V('V19', 'C3', 'Renault', 'Captur TCe 140', 'KV-990-RN', 2020, 61000, 'Orange Atacama', 'EOD', '#d7642a', 'VF1RJB00X63318990', {}),
+      V('V20', 'C1', 'Mini', 'Cooper SE', 'XJ-990-ZF', 2021, 30100, 'Noir Midnight', 'B45', '#22252a', 'WMWXP3102M2452990', { fuel: 'Électrique' }),
     ];
 
     /* ---------- sinistres ---------- */
     const CL = (id, no, insurerId, vehicleId, kind, cover, franchise, extra = {}) => Object.assign({ id, no, insurerId, vehicleId, customerId: S.vehicles.find(v => v.id === vehicleId).customerId, kind, cover, franchise, date: wd(-4), declaredAt: wd(-3), expert: null, expertiseAt: null, expertiseMode: 'Sur place', report: null, approval: 'Déclaré', approvedAmount: null, cession: false, cessionAt: null, reminders: [], notes: '', log: [] }, extra);
     S.claims = [
-      CL('K1', '26-418 552', 'mob', 'V1', 'Collision', 'Casco complète', 500, { date: wd(-3), expert: 'Christophe Rochat', expertiseAt: dt(-2, '10:45'), report: 'Reçu', approval: 'Accordé', approvedAmount: 3438, cession: true, cessionAt: dt(-2, '08:20') }),
+      CL('K1', '26-418 552', 'mob', 'V1', 'Collision', 'Tous risques', 500, { date: wd(-3), expert: 'Christophe Rochat', expertiseAt: dt(-2, '10:45'), report: 'Reçu', approval: 'Accordé', approvedAmount: 3438, cession: true, cessionAt: dt(-2, '08:20') }),
       CL('K2', '9.402.118', 'axa', 'V2', 'Collision (tiers identifié)', 'RC adverse', 0, { date: wd(-2), expert: 'Philippe Gander', expertiseAt: dt(-1, '09:15'), report: 'Reçu', approval: 'Accordé', approvedAmount: 4180, cession: true, cessionAt: dt(-1, '07:50') }),
-      CL('K3', '31-0077-26', 'zur', 'V3', 'Bris de glace', 'Casco partielle', 200, { date: wd(-4), expert: 'Expertise photo', expertiseMode: 'Photos', expertiseAt: dt(-3, '15:00'), report: 'Reçu', approval: 'Accordé', approvedAmount: 1760, cession: true, cessionAt: dt(-3, '14:30') }),
-      CL('K4', '77-26-1190', 'vau', 'V4', 'Collision frontale', 'Casco complète', 1000, { date: wd(-2), expert: 'Pascal Mettraux', expertiseAt: dt(-1, '15:20'), report: 'Reçu', approval: 'Accordé', approvedAmount: 5980, cession: true, cessionAt: dt(-1, '13:10'), notes: 'Supplément D-24819-2 (traverse cachée) envoyé, en attente de validation.' }),
-      CL('K6', '26-55821', 'hel', 'V6', 'Grêle', 'Casco partielle', 0, { date: wd(-6), declaredAt: wd(-5), expert: 'Jean-Daniel Favre', expertiseAt: dt(0, '11:30'), approval: 'Expertise planifiée', cession: false }),
-      CL('K7', '9.398.557', 'axa', 'V7', 'Accrochage parking', 'Casco complète', 500, { date: wd(-7), expert: 'Nadia Weber', expertiseAt: dt(-4, '09:10'), report: 'Reçu', approval: 'Accordé', approvedAmount: 2360, cession: true, cessionAt: dt(-4, '08:05') }),
-      CL('K8', '44-20187', 'gen', 'V8', 'Collision', 'Casco complète', 300, { date: wd(-8), expert: 'Lorenzo Conti', expertiseAt: dt(-5, '11:00'), report: 'Reçu', approval: 'Accordé', approvedAmount: 2985, cession: true, cessionAt: dt(-5, '10:35') }),
-      CL('K9', 'SM-26-0442', 'smi', 'V9', 'Collision', 'Casco complète', 500, { date: wd(-9), expert: 'Expertise photo en ligne', expertiseMode: 'Photos', expertiseAt: dt(-6, '09:00'), report: 'Reçu', approval: 'Accordé', approvedAmount: 1940, cession: true, cessionAt: dt(-6, '08:00') }),
-      CL('K11', 'AZ-7741-26', 'all', 'V11', 'Accrochage parking', 'Casco complète', 500, { date: wd(-1), declaredAt: wd(-1), approval: 'Déclaré', notes: 'Client envoyé par Allianz (garage partenaire).' }),
+      CL('K3', '31-0077-26', 'zur', 'V3', 'Bris de glace', 'Tiers étendu', 200, { date: wd(-4), expert: 'Expertise photo', expertiseMode: 'Photos', expertiseAt: dt(-3, '15:00'), report: 'Reçu', approval: 'Accordé', approvedAmount: 1760, cession: true, cessionAt: dt(-3, '14:30') }),
+      CL('K4', '77-26-1190', 'vau', 'V4', 'Collision frontale', 'Tous risques', 1000, { date: wd(-2), expert: 'Pascal Mettraux', expertiseAt: dt(-1, '15:20'), report: 'Reçu', approval: 'Accordé', approvedAmount: 5980, cession: true, cessionAt: dt(-1, '13:10'), notes: 'Supplément D-24819-2 (traverse cachée) envoyé, en attente de validation.' }),
+      CL('K6', '26-55821', 'hel', 'V6', 'Grêle', 'Tiers étendu', 0, { date: wd(-6), declaredAt: wd(-5), expert: 'Jean-Daniel Favre', expertiseAt: dt(0, '11:30'), approval: 'Expertise planifiée', cession: false }),
+      CL('K7', '9.398.557', 'axa', 'V7', 'Accrochage parking', 'Tous risques', 500, { date: wd(-7), expert: 'Nadia Weber', expertiseAt: dt(-4, '09:10'), report: 'Reçu', approval: 'Accordé', approvedAmount: 2360, cession: true, cessionAt: dt(-4, '08:05') }),
+      CL('K8', '44-20187', 'gen', 'V8', 'Collision', 'Tous risques', 300, { date: wd(-8), expert: 'Lorenzo Conti', expertiseAt: dt(-5, '11:00'), report: 'Reçu', approval: 'Accordé', approvedAmount: 2985, cession: true, cessionAt: dt(-5, '10:35') }),
+      CL('K9', 'SM-26-0442', 'smi', 'V9', 'Collision', 'Tous risques', 500, { date: wd(-9), expert: 'Expertise photo en ligne', expertiseMode: 'Photos', expertiseAt: dt(-6, '09:00'), report: 'Reçu', approval: 'Accordé', approvedAmount: 1940, cession: true, cessionAt: dt(-6, '08:00') }),
+      CL('K11', 'AZ-7741-26', 'all', 'V11', 'Accrochage parking', 'Tous risques', 500, { date: wd(-1), declaredAt: wd(-1), approval: 'Déclaré', notes: 'Client envoyé par Allianz (garage partenaire).' }),
       CL('K13', 'BA-26-88015', 'bal', 'V13', 'Dégâts fin de leasing', 'Hors assurance (bailleur)', 0, { date: wd(-2), approval: 'Déclaré', notes: 'Accord du bailleur (Léman Leasing) requis — pas d’expert assureur.' }),
-      CL('K14', 'TCS-26-30441', 'tcs', 'V14', 'Grêle', 'Casco partielle', 0, { date: wd(-12), declaredAt: wd(-10), approval: 'Déclaré', notes: 'Expertise grêle à planifier — client disponible le matin.' }),
-      CL('K16', '27-118 004', 'mob', 'V15', 'Vandalisme', 'Casco complète', 200, { date: wd(-5), expert: 'Anne Python', expertiseAt: dt(-3, '14:00'), report: 'Reçu', approval: 'Partiel', approvedAmount: 1180, notes: 'Accord partiel : l’assureur refuse le remplacement de la jante (réparation demandée).', cession: true, cessionAt: dt(-3, '13:40') }),
+      CL('K14', 'TCS-26-30441', 'tcs', 'V14', 'Grêle', 'Tiers étendu', 0, { date: wd(-12), declaredAt: wd(-10), approval: 'Déclaré', notes: 'Expertise grêle à planifier — client disponible le matin.' }),
+      CL('K16', '27-118 004', 'mob', 'V15', 'Vandalisme', 'Tous risques', 200, { date: wd(-5), expert: 'Anne Python', expertiseAt: dt(-3, '14:00'), report: 'Reçu', approval: 'Partiel', approvedAmount: 1180, notes: 'Accord partiel : l’assureur refuse le remplacement de la jante (réparation demandée).', cession: true, cessionAt: dt(-3, '13:40') }),
     ];
 
     /* ---------- devis (lignes façon chiffrage Audatex / GT Motive) ---------- */
@@ -267,7 +267,7 @@
         stageLog: SL(['recep', dt(-2, '09:00')], ['devis', dt(-2, '09:40')], ['accord', dt(-2, '09:40')], ['demont', dt(-1, '08:10')], ['tole', dt(-1, '09:00')], ['prep', dt(-1, '13:30')], ['peint', dt(0, '09:05')]),
         tasks: T(['Ponçage & mastic hayon', 1], ['Apprêt', 1], ['Base + vernis', 1], ['Cuisson 60 °C', .6], ['Lustrage', 0]), planned: { tole: 2.5, prep: 3, peint: 3.5 } }),
       R('R6', 'OR-24823', 'V6', ST.recep, 'P4', { claimId: 'K6', quoteId: 'D6', posteId: 'P4', lead: 'E5', team: ['E5'], damage: 'Grêle — capot & toit (32 impacts)', prog: 12, apptAt: dt(0, '08:30'), inAt: dt(0, '08:45'), dueAt: dt(5, '12:00'),
-        stageLog: SL(['recep', dt(0, '08:45')]), tasks: T(['Photos & cartographie impacts', 1], ['Rapport expertise Helvetia', .5], ['Débosselage sans peinture', 0]), planned: { tole: 12.5, montage: 2 } }),
+        stageLog: SL(['recep', dt(0, '08:45')]), tasks: T(['Photos & cartographie impacts', 1], ['Rapport expertise Groupama', .5], ['Débosselage sans peinture', 0]), planned: { tole: 12.5, montage: 2 } }),
       R('R7', 'OR-24809', 'V7', ST.pret, 'PARK0', { claimId: 'K7', quoteId: 'D7', posteId: 'P1', lead: 'E3', team: ['E3', 'E6'], damage: 'Porte AV D + rétroviseur', prog: 100, apptAt: dt(-4, '08:00'), inAt: dt(-4, '08:00'), dueAt: dt(0, '10:00'), notified: true,
         stageLog: SL(['recep', dt(-4, '08:00')], ['devis', dt(-4, '09:10')], ['accord', dt(-4, '09:10')], ['tole', dt(-3, '08:00')], ['peint', dt(-2, '13:40')], ['cq', dt(-1, '16:20')], ['pret', dt(0, '08:15')]),
         tasks: T(['Porte AV D', 1], ['Rétroviseur', 1], ['Peinture', 1], ['Contrôle qualité', 1], ['Lavage', 1]), planned: { tole: 3, peint: 3.8, montage: 1.5 } }),
@@ -314,13 +314,13 @@
     const HV = [['VW', 'Polo 1.0 TSI', '#c9cdd3'], ['Toyota', 'C-HR Hybrid', '#b8242b'], ['Škoda', 'Kodiaq 2.0 TDI', '#3a3f47'], ['BMW', 'X1 sDrive20i', '#eef0f2'], ['Audi', 'Q3 35 TFSI', '#59606b'], ['Mercedes', 'GLA 200', '#1f2125'], ['Hyundai', 'Tucson HEV', '#2f3d55'], ['Ford', 'Kuga PHEV', '#9aa0a8'],
       ['Volvo', 'V60 B4', '#7a8590'], ['Seat', 'Leon ST 1.5', '#f2f3f4'], ['Opel', 'Corsa-e', '#d7642a'], ['Peugeot', '2008 PureTech', '#4a4f57'], ['Tesla', 'Model Y', '#f4f5f6'], ['Dacia', 'Duster 4x4', '#6b7a5a'], ['Citroën', 'C5 Aircross', '#8d939b'], ['Subaru', 'Outback 2.5', '#40516b']];
     const HN = ['Michel Pidoux', 'Isabelle Chevalley', 'Yves Rochat', 'Sophie Blanc', 'Daniel Kohler', 'Catherine Mottier', 'Nicolas Jaccard', 'Valérie Tschopp', 'Bruno Cuendet', 'Martine Golay', 'Alain Bovard', 'Céline Vuagnat', 'Frédéric Monod', 'Nadia Berset', 'Grégoire Hofer', 'Aline Duc'];
-    const HC = ['1004 Lausanne', '1110 Morges', '1020 Renens', '1009 Pully', '1018 Lausanne', '1095 Lutry', '1052 Le Mont', '1023 Crissier', '1028 Préverenges', '1073 Savigny', '1012 Lausanne', '1008 Prilly', '1066 Épalinges', '1026 Echandens', '1030 Bussigny', '1005 Lausanne'];
+    const HC = ['69007 Lyon', '69200 Vénissieux', '69100 Villeurbanne', '69300 Caluire-et-Cuire', '69009 Lyon', '69330 Meyzieu', '1052 Le Mont', '1023 Saint-Priest', '1028 Préverenges', '69960 Corbas', '69003 Lyon', '69700 Givors', '69130 Écully', '1026 Echandens', '1030 Bussigny', '1005 Lyon'];
     const HI = ['axa', 'mob', 'zur', 'hel', 'gen', 'bal', 'vau', 'all', 'tcs', null, 'axa', 'mob', 'zur', 'vau', null, 'hel'];
     const HL = ['Pare-chocs AV + calandre', 'Porte AV G + aile', 'Hayon + feu AR', 'Grêle — 22 impacts (PDR)', 'Aile AR D + bas de caisse', 'Capot + optique', 'Rétroviseur + porte AR D', 'Pare-brise + caméra ADAS', 'Spot-repair pare-chocs AR', 'Choc latéral G (2 portes)'];
     const hr = rng(hash('hist' + today()));
     HN.forEach((nm, i) => {
       const cid = 'C' + (20 + i), vid = 'V' + (21 + i), [mk, md, hex] = HV[i];
-      S.customers.push(C(cid, 'prive', nm, HC[i], ['Ch. des Vignes', 'Av. de la Gare', 'Rue du Bourg', 'Ch. du Levant', 'Rte de Berne'][i % 5] + ' ' + (3 + i * 7 % 40), '+41 7' + (6 + i % 4) + ' ' + (200 + i * 37) + ' ' + pad(10 + i * 3 % 89) + ' ' + pad(20 + i * 7 % 79), nm.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(' ', '.') + '@bluewin.ch', 2015 + i % 10, HI[i], i % 3 ? 'SMS' : 'E-mail', 4 + (i % 2), ''));
+      S.customers.push(C(cid, 'prive', nm, HC[i], ['Ch. des Vignes', 'Av. de la Gare', 'Rue du Bourg', 'Ch. du Levant', 'Rte de Berne'][i % 5] + ' ' + (3 + i * 7 % 40), '+41 7' + (6 + i % 4) + ' ' + (200 + i * 37) + ' ' + pad(10 + i * 3 % 89) + ' ' + pad(20 + i * 7 % 79), nm.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(' ', '.') + '@orange.fr', 2015 + i % 10, HI[i], i % 3 ? 'SMS' : 'E-mail', 4 + (i % 2), ''));
       S.vehicles.push(V(vid, cid, mk, md, 'VD ' + (100 + Math.floor(hr() * 899)) + ' ' + (100 + Math.floor(hr() * 899)), 2016 + i % 9, 20000 + Math.floor(hr() * 120000), 'Teinte d’origine', 'ZZ' + i, hex, 'ZZZ' + String(hash(vid)).padStart(14, '0').slice(0, 14)));
     });
     for (let i = 0; i < 20; i++) {
@@ -334,7 +334,7 @@
       const lines = [L('', label.split(' (')[0], 'E', 'T2', lab, ph, 'DIV-' + (100 + i), parts)];
       const q = Q(qid, 'D-' + no.slice(3), vid, kid, 'Converti', lines, { date: wd(off - 5), decidedAt: dt(off - 4, '10:00'), roId: id });
       S.quotes.push(q);
-      if (ins) S.claims.push(CL(kid, (ins.toUpperCase()) + '-26-' + (40100 + i * 37), ins, vid, 'Collision', 'Casco complète', fr, { date: wd(off - 7), expert: S.insurers.find(x => x.id === ins).experts[0], expertiseAt: dt(off - 5, '10:00'), report: 'Reçu', approval: 'Accordé', approvedAmount: ttc, cession: true, cessionAt: dt(off - 5, '09:00'), roId: id }));
+      if (ins) S.claims.push(CL(kid, (ins.toUpperCase()) + '-26-' + (40100 + i * 37), ins, vid, 'Collision', 'Tous risques', fr, { date: wd(off - 7), expert: S.insurers.find(x => x.id === ins).experts[0], expertiseAt: dt(off - 5, '10:00'), report: 'Reçu', approval: 'Accordé', approvedAmount: ttc, cession: true, cessionAt: dt(off - 5, '09:00'), roId: id }));
       S.ros.push(R(id, no, vid, ST.facture, 'OUT', { claimId: kid, quoteId: qid, lead, team: [lead], damage: label, prog: 100, apptAt: dt(off - 5, '08:00'), inAt: dt(off - 3 - (i % 4), '08:00'), dueAt: dt(off - (i % 7 === 3 ? 1 : 0), '17:00'), outAt: out, notified: true,
         review: i % 3 === 0 ? { sentAt: out, rating: 5 } : i % 3 === 1 ? { sentAt: out } : null,
         stageLog: SL(['recep', dt(off - 5, '08:00')], ['tole', dt(off - 4, '08:00')], ['peint', dt(off - 2, '09:00')], ['cq', dt(off - 1, '14:00')], ['pret', dt(off - 1, '16:00')], ['facture', out]), tasks: T(['Travaux carrosserie', 1], ['Peinture', 1], ['Contrôle qualité', 1]), planned: { tole: lab, peint: ph } }));
@@ -346,7 +346,7 @@
       const mk = (kind, payer, amount, n) => { const inv = { id: 'I' + r.id + kind[0], no: 'F-2026-' + String(388 + i * 2 + n).padStart(4, '0'), roId: r.id, kind, payerType: kind === 'assurance' ? 'insurer' : 'customer', payerId: payer, amount: round5(amount), ht: round5(amount / (1 + TVA)), date, due: addDays(date, kind === 'assurance' ? 30 : terms), status: 'Émise', paid: 0, reminders: [], label: r.no + ' · ' + r.damage }; S.invoices.push(inv); return inv; };
       const k = r.claimId ? S.claims.find(c => c.id === r.claimId) : null;
       if (k && t.insurer > 0) { const a = mk('assurance', k.insurerId, t.insurer, 0); const old = diffDays(a.date, today()); if (old > 12 || (i % 4 === 0 && old > 3)) pay(a, a.amount, addDays(a.date, Math.min(old, 9 + i % 5)), 'Virement'); }
-      if (t.client > 0) { const c = mk('client', r.customerId, t.client, 1); const old = diffDays(c.date, today()); if (!cust.fleet || old > 10) { if (i !== 2 && i !== 6) pay(c, c.amount, old === 0 ? today() : addDays(c.date, Math.min(old, 2)), old === 0 ? 'Carte (TWINT)' : 'Carte'); } }
+      if (t.client > 0) { const c = mk('client', r.customerId, t.client, 1); const old = diffDays(c.date, today()); if (!cust.fleet || old > 10) { if (i !== 2 && i !== 6) pay(c, c.amount, old === 0 ? today() : addDays(c.date, Math.min(old, 2)), old === 0 ? 'Carte sans contact' : 'Carte'); } }
     });
     function pay(inv, amount, date, method) { inv.paid = round5((inv.paid || 0) + amount); inv.status = inv.paid >= inv.amount - .01 ? 'Payée' : 'Partiel'; S.payments.push({ id: uid('pay'), invoiceId: inv.id, date, amount, method }); }
     // acompte sur l'OR privé en cours (Audi A3)
@@ -359,11 +359,11 @@
 
     /* ---------- fournisseurs, stock, commandes ---------- */
     S.suppliers = [
-      ['SU1', 'AMAG Parts (VW · Audi · Škoda)', 'Agent de marque', 'pieces@amag.ch', '+41 44 846 20 00', 1], ['SU2', 'BMW (Suisse) SA — pièces', 'Agent de marque', 'parts@bmw.ch', '+41 58 269 11 11', 2],
-      ['SU3', 'Tesla Service Lausanne', 'Agent de marque', 'service-lausanne@tesla.com', '+41 21 510 10 10', 2], ['SU4', 'Emil Frey — pièces (Toyota · Mercedes)', 'Agent de marque', 'pieces.crissier@emilfrey.ch', '+41 21 631 21 21', 1],
-      ['SU5', 'Derendinger SA', 'Grossiste pièces', 'commande@derendinger.ch', '+41 44 838 18 18', 0], ['SU6', 'Technomag SA', 'Grossiste pièces', 'lausanne@technomag.ch', '+41 21 637 44 44', 0],
-      ['SU7', 'ColorLab Lack SA (Standox)', 'Peinture & ingrédients', 'commandes@colorlab.ch', '+41 21 701 33 33', 1], ['SU8', 'Würth AG', 'Consommables', 'service@wuerth-ag.ch', '+41 61 705 91 11', 1],
-      ['SU9', 'Stellantis &You — pièces', 'Agent de marque', 'pieces.lausanne@stellantis.com', '+41 21 641 50 50', 2], ['SU10', 'Renault Retail Group — pièces', 'Agent de marque', 'pieces.vd@renault.ch', '+41 21 621 21 00', 1],
+      ['SU1', 'Volkswagen Group France — pièces', 'Agent de marque', 'pieces@vwgroup-demo.fr', '+33 14 846 20 00', 1], ['SU2', 'BMW France — pièces', 'Agent de marque', 'pieces@bmw-demo.fr', '+33 18 269 11 11', 2],
+      ['SU3', 'Tesla Service Lyon', 'Agent de marque', 'service-lyon@tesla-demo.fr', '+33 4 72 510 10 10', 2], ['SU4', 'Distributeur Toyota · Mercedes — pièces', 'Agent de marque', 'pieces@distrib-demo.fr', '+33 4 72 631 21 21', 1],
+      ['SU5', 'Autodistribution', 'Grossiste pièces', 'commande@autodistribution-demo.fr', '+33 14 838 18 18', 0], ['SU6', 'Alliance Automotive', 'Grossiste pièces', 'lyon@alliance-demo.fr', '+33 4 72 637 44 44', 0],
+      ['SU7', 'Peintures Axalta (Standox)', 'Peinture & ingrédients', 'commandes@axalta-demo.fr', '+33 4 72 701 33 33', 1], ['SU8', 'Würth France', 'Consommables', 'service@wurth-demo.fr', '+33 11 705 91 11', 1],
+      ['SU9', 'Stellantis &You — pièces', 'Agent de marque', 'pieces.lyon@stellantis-demo.fr', '+33 4 72 641 50 50', 2], ['SU10', 'Renault Retail Group — pièces', 'Agent de marque', 'pieces.lyon@renault-demo.fr', '+33 4 72 621 21 00', 1],
     ].map(([id, name, kind, email, phone, lead]) => ({ id, name, kind, email, phone, leadDays: lead, rating: 4 + (id.length % 2) * .5 }));
     const P = (id, ref, name, cat, rack, loc, qty, min, unit, cost, supplierId, extra = {}) => Object.assign({ id, ref, name, cat, rack, loc, qty, min, unit, cost, price: round5(cost * 1.35), supplierId, reserved: 0, roId: null }, extra);
     S.parts = [
@@ -432,11 +432,11 @@
 
     /* ---------- véhicules de remplacement ---------- */
     S.courtesy = [
-      { id: 'K-1', plate: 'VD 9031', model: 'Fiat 500 1.0 Hybrid', km: 28410, fuel: 0.5, state: 'Bon état', status: 'Prêté', color: '#e9e2d6', nextService: addDays(today(), 64), cat: 'Citadine' },
-      { id: 'K-2', plate: 'VD 9032', model: 'VW Polo 1.0 TSI', km: 41200, fuel: 1, state: 'Bon état', status: 'Disponible', color: '#d5d8dd', nextService: addDays(today(), 120), cat: 'Compacte' },
-      { id: 'K-3', plate: 'VD 9033', model: 'Toyota Yaris Hybrid', km: 35780, fuel: 0.75, state: 'Rayure pare-chocs AR (connue)', status: 'Prêté', color: '#eef0f1', nextService: addDays(today(), 22), cat: 'Compacte' },
-      { id: 'K-4', plate: 'VD 9034', model: 'Škoda Fabia Combi', km: 66020, fuel: 0.25, state: 'Service en cours', status: 'Entretien', color: '#7a8590', nextService: today(), cat: 'Break' },
-      { id: 'K-5', plate: 'VD 9035', model: 'Renault Zoe R135', km: 19870, fuel: 0.9, state: 'Bon état', status: 'Disponible', color: '#3b6fa8', nextService: addDays(today(), 200), cat: 'Électrique' },
+      { id: 'K-1', plate: 'GH-031-KD', model: 'Fiat 500 1.0 Hybrid', km: 28410, fuel: 0.5, state: 'Bon état', status: 'Prêté', color: '#e9e2d6', nextService: addDays(today(), 64), cat: 'Citadine' },
+      { id: 'K-2', plate: 'GH-032-KD', model: 'VW Polo 1.0 TSI', km: 41200, fuel: 1, state: 'Bon état', status: 'Disponible', color: '#d5d8dd', nextService: addDays(today(), 120), cat: 'Compacte' },
+      { id: 'K-3', plate: 'GH-033-KD', model: 'Toyota Yaris Hybrid', km: 35780, fuel: 0.75, state: 'Rayure pare-chocs AR (connue)', status: 'Prêté', color: '#eef0f1', nextService: addDays(today(), 22), cat: 'Compacte' },
+      { id: 'K-4', plate: 'GH-034-KD', model: 'Škoda Fabia Combi', km: 66020, fuel: 0.25, state: 'Service en cours', status: 'Entretien', color: '#7a8590', nextService: today(), cat: 'Break' },
+      { id: 'K-5', plate: 'GH-035-KD', model: 'Renault Zoe R135', km: 19870, fuel: 0.9, state: 'Bon état', status: 'Disponible', color: '#3b6fa8', nextService: addDays(today(), 200), cat: 'Électrique' },
     ];
     S.loans = [
       { id: 'L1', carId: 'K-1', customerId: 'C4', roId: 'R2', from: wd(-1), to: wd(2), kmOut: 28140, kmIn: null, fuelOut: 1, fuelIn: null, signed: true, status: 'En cours', fee: 0, notes: 'Pris en charge par AXA (RC adverse).' },
@@ -453,16 +453,16 @@
       A(wd(0), '09:55', 30, 'Réception', 'R11', 'Dépôt sinistre Allianz — Peugeot 308 SW'),
       A(wd(0), '10:15', 20, 'Livraison', 'R9', 'Restitution VW Tiguan'),
       A(wd(0), '10:30', 20, 'Livraison', 'R8', 'Restitution Classe C'),
-      A(wd(0), '11:30', 60, 'Expertise', 'R6', 'Expert Helvetia — grêle Yaris', { expert: 'Jean-Daniel Favre' }),
+      A(wd(0), '11:30', 60, 'Expertise', 'R6', 'Expert Groupama — grêle Yaris', { expert: 'Jean-Daniel Favre' }),
       A(wd(0), '14:00', 20, 'Pièces', 'R3', 'Livraison pare-brise Tesla Model 3'),
       A(wd(0), '16:00', 20, 'Livraison', 'R5', 'Restitution Audi A3'),
       A(wd(0), '17:00', 20, 'Livraison', 'R7', 'Restitution Clio (S. Rey)'),
       A(wd(1), '08:00', 30, 'Réception', 'R12', 'Nouveau client — Mazda CX-5'),
-      A(wd(1), '10:00', 40, 'Expertise', 'R15', 'Contre-expertise jante (La Mobilière)', { expert: 'Anne Python' }),
+      A(wd(1), '10:00', 40, 'Expertise', 'R15', 'Contre-expertise jante (MAIF)', { expert: 'Anne Python' }),
       A(wd(1), '16:30', 20, 'Livraison', 'R3', 'Restitution Tesla Model 3'),
       A(wd(2), '08:00', 30, 'Réception', 'R13', 'Dépôt ID.4 fin de leasing'),
       A(wd(2), '17:00', 20, 'Livraison', 'R2', 'Restitution BMW Série 3'),
-      A(wd(3), '08:00', 45, 'Expertise', 'R14', 'Expertise grêle Kia Niro (TCS)', { expert: 'Karim Haddad', status: 'À confirmer' }),
+      A(wd(3), '08:00', 45, 'Expertise', 'R14', 'Expertise grêle Kia Niro (GMF)', { expert: 'Karim Haddad', status: 'À confirmer' }),
       A(wd(3), '17:00', 20, 'Livraison', 'R10', 'Restitution Trafic #18'),
       A(wd(4), '09:00', 30, 'Devis', 'R16', 'Devis sur place — Porsche 911'),
       A(wd(4), '16:00', 20, 'Livraison', 'R4', 'Restitution Octavia'),
@@ -488,7 +488,7 @@
 
     /* ---------- CRM : rappels & communications ---------- */
     S.reminders = [
-      { id: 'RM1', customerId: 'C3', vehicleId: 'V7', kind: 'Contrôle technique', due: addDays(today(), 18), status: 'À faire', note: 'Proposer le passage au SAN avec contrôle préalable.' },
+      { id: 'RM1', customerId: 'C3', vehicleId: 'V7', kind: 'Contrôle technique', due: addDays(today(), 18), status: 'À faire', note: 'Proposer le contrôle technique avec contrôle préalable.' },
       { id: 'RM2', customerId: 'C11', vehicleId: 'V10', kind: 'Contrôle technique', due: addDays(today(), 12), status: 'À faire', note: 'Trafic #18 — profiter de l’immobilisation.' },
       { id: 'RM3', customerId: 'C6', vehicleId: 'V4', kind: 'Contrôle technique', due: addDays(today(), 41), status: 'À faire', note: '' },
       { id: 'RM4', customerId: 'C3', vehicleId: 'V19', kind: 'Retouche garantie', due: wd(2), status: 'Planifié', note: 'Lié à la réclamation Q1.' },
@@ -505,7 +505,7 @@
     S.activity = [];
     S.feed = [
       { id: uid('fd'), at: dt(0, '08:52'), ic: 'box', tone: 'green', t: 'Pièce reçue', s: 'Bas de caisse BMW → OR-24821', target: { type: 'ro', id: 'R2' } },
-      { id: uid('fd'), at: dt(0, '08:31'), ic: 'shield', tone: 'slate', t: 'Devis accepté · La Mobilière', s: 'OR-24817 · VW Golf · CHF 3’438', target: { type: 'ro', id: 'R1' } },
+      { id: uid('fd'), at: dt(0, '08:31'), ic: 'shield', tone: 'slate', t: 'Devis accepté · MAIF', s: 'OR-24817 · VW Golf · 3 438 €', target: { type: 'ro', id: 'R1' } },
       { id: uid('fd'), at: dt(0, '08:05'), ic: 'alert', tone: 'amber', t: 'Stock bas', s: 'Vernis HS 2K · 3 bidons restants', target: { type: 'part', id: 'PT8' } },
     ];
     S.ext.months = [['Mai', 168200], ['Juin', 181900], ['Juil.', 142700], ['Août', 129300], ['Sept.', 176400]];
@@ -791,7 +791,7 @@
     const mk = (kind, payerType, payerId, amount, label) => { const inv = { id: uid('I'), no: nextInvNo(), roId, kind, payerType, payerId, amount: round5(amount), ht: round5(amount / (1 + (S.company.tvaRate || TVA))), date: today(), due: addDays(today(), kind === 'assurance' ? 30 : terms), status: 'Émise', paid: 0, reminders: [], label }; S.invoices.unshift(inv); out.push(inv); return inv; };
     if (k && t.insurer > 0) mk('assurance', 'insurer', k.insurerId, t.insurer, r.no + ' · sinistre ' + k.no + ' (cession de créance)');
     const cl = t.client - dep;
-    if (cl > 0.04) { const i = mk('client', 'customer', r.customerId, cl, r.no + ' · ' + (t.insurer > 0 ? 'franchise' + (t.clientExtra ? ' + travaux hors sinistre' : '') : 'travaux de carrosserie') + (dep ? ' (acompte déduit)' : '')); if (payClient && !(c && c.fleet)) payInvoice(i.id, i.amount, 'Carte (TWINT)', true); }
+    if (cl > 0.04) { const i = mk('client', 'customer', r.customerId, cl, r.no + ' · ' + (t.insurer > 0 ? 'franchise' + (t.clientExtra ? ' + travaux hors sinistre' : '') : 'travaux de carrosserie') + (dep ? ' (acompte déduit)' : '')); if (payClient && !(c && c.fleet)) payInvoice(i.id, i.amount, 'Carte sans contact', true); }
     log(r, out.length + ' facture·s émise·s'); save(); emit('invoice', { roId });
     return out;
   }

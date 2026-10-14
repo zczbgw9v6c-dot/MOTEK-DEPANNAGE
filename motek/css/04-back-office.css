@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CARROSSERIE CENTRALE — Back-office (ERP carrosserie)
+   MOTEK — Back-office (ERP carrosserie)
    Tous les composants sont limités à .bo (vue back-office, tiroirs, modales)
    pour ne jamais interférer avec l'atelier 3D.
    ========================================================================== */
@@ -70,7 +70,7 @@
 .bo .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 14px;border-radius:10px;font-weight:700;font-size:12.5px;background:#fff;border:1px solid var(--line2);white-space:nowrap;cursor:pointer;text-decoration:none;transition:background .12s,border-color .12s,box-shadow .12s}
 .bo .btn:hover{background:#f6f7f9;border-color:#d7dbe0}
 .bo .btn svg.i{width:15px;height:15px}
-.bo .btn.pri{background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 6px 16px rgba(227,38,45,.22)}
+.bo .btn.pri{background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 6px 16px rgba(23,104,238,.22)}
 .bo .btn.pri:hover{background:var(--red-d)}
 .bo .btn.dark{background:#16181c;border-color:#16181c;color:#fff}
 .bo .btn.dark:hover{background:#2a2e35}
@@ -93,11 +93,11 @@
 .bo .chip.red{background:var(--red-soft);color:var(--red-d)}.bo .chip.amber{background:var(--amber-soft);color:var(--amber)}.bo .chip.green{background:var(--green-soft);color:var(--green)}
 .bo .chip.dark{background:#22252b;color:#fff}.bo .chip.line{background:#fff;box-shadow:inset 0 0 0 1px var(--line2);color:var(--ink2)}.bo .chip.blue{background:#e8eefb;color:#2c4f9e}
 .bo .tag{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:6px;font-size:10.5px;font-weight:800;letter-spacing:.03em;background:#eef0f3;color:var(--ink2);white-space:nowrap}
-/* plaque suisse */
+/* plaque française (bande bleue européenne) */
 .bo .plate{display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 6px 0 3px;border:1.5px solid #16181c;border-radius:4px;background:#fff;font-weight:800;font-size:11.5px;letter-spacing:.03em;color:#16181c;white-space:nowrap;font-variant-numeric:tabular-nums;line-height:1}
-.bo .plate::before{content:"";width:11px;height:13px;border-radius:2px;background:linear-gradient(#fff,#fff) center/2px 7px no-repeat,linear-gradient(#fff,#fff) center/7px 2px no-repeat,#e3262d}
+.bo .plate::before{content:"F";width:11px;height:19px;margin:-3px 0 -3px -3px;border-radius:2px 0 0 2px;background:#1a3fb0;color:#fff;font-size:7px;font-weight:800;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px}
 .bo .plate.lg{height:28px;font-size:15px;padding:0 9px 0 4px;gap:7px;border-width:2px;border-radius:5px}
-.bo .plate.lg::before{width:15px;height:18px}
+.bo .plate.lg::before{width:15px;height:26px;font-size:9px;margin:-4px 0 -4px -4px}
 /* assureur */
 .bo .ins{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:12px;white-space:nowrap}
 .bo .ins i{width:9px;height:9px;border-radius:3px;flex:none}
@@ -128,7 +128,7 @@
 .bo .kpi .ki svg.i{width:15px;height:15px}
 .bo .kpi.hero{background:#16181c;border-color:#16181c;color:#fff}
 .bo .kpi.hero .lb,.bo .kpi.hero .s,.bo .kpi.hero .v small{color:rgba(255,255,255,.66)}
-.bo .kpi.hero .ki{background:rgba(227,38,45,.22);color:#ff6b70}
+.bo .kpi.hero .ki{background:rgba(23,104,238,.22);color:#ff6b70}
 .bo .kpi.click{cursor:pointer;transition:transform .15s,box-shadow .15s}
 .bo .kpi.click:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
 .bo .kpi .spark{position:absolute;right:12px;bottom:12px}
@@ -216,9 +216,9 @@
 .bo .field .help{font-size:11px;color:var(--ink3)}
 .bo .field .em{font-size:11px;color:var(--red-d);font-weight:700;display:none}
 .bo .field.err .em{display:block}
-.bo .field.err .inp{border-color:var(--red);box-shadow:0 0 0 3px rgba(227,38,45,.12)}
+.bo .field.err .inp{border-color:var(--red);box-shadow:0 0 0 3px rgba(23,104,238,.12)}
 .bo .inp{height:38px;border-radius:10px;border:1px solid var(--line2);padding:0 11px;background:#fff;outline:none;width:100%;font-size:13px;transition:border-color .12s,box-shadow .12s}
-.bo .inp:focus{border-color:#c9ced5;box-shadow:0 0 0 4px rgba(227,38,45,.09)}
+.bo .inp:focus{border-color:#c9ced5;box-shadow:0 0 0 4px rgba(23,104,238,.09)}
 .bo textarea.inp{height:auto;min-height:84px;padding:9px 11px;resize:vertical;line-height:1.45}
 .bo select.inp{padding-right:28px;appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23868c96' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center}
 .bo .inp.sm{height:30px;font-size:12.5px;border-radius:8px;padding:0 8px}
@@ -353,7 +353,7 @@
 .bo .ph .kd.ap{background:var(--green)}
 .bo .ph.add{border:1.5px dashed #c3c8cf;background:#fafbfc;cursor:pointer;color:var(--ink3);font-weight:700;font-size:11.5px;display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:center}
 .bo .ph.add:hover{border-color:var(--red);color:var(--red-d);background:var(--red-soft)}
-.bo .ph .dmg{position:absolute;width:22px;height:22px;border-radius:50%;border:2px solid var(--red);box-shadow:0 0 0 3px rgba(227,38,45,.25)}
+.bo .ph .dmg{position:absolute;width:22px;height:22px;border-radius:50%;border:2px solid var(--red);box-shadow:0 0 0 3px rgba(23,104,238,.25)}
 
 /* ---------- schéma carrosserie ---------- */
 .bo .cardiag{display:block;width:100%;max-width:260px;margin:0 auto;user-select:none}
@@ -393,7 +393,7 @@
 .bo .ag .ev.k-Expertise{background:#fff3e2;border-color:#e08a00;color:#7d4600}
 .bo .ag .ev.k-Livraison{background:#e7f6ed;border-color:#22a35a;color:#14663a}
 .bo .ag .ev.k-Pièces{background:#eef1f8;border-color:#7d8db0;color:#3a4766}
-.bo .ag .ev.k-Devis{background:#fdeeee;border-color:var(--red);color:#9a1a1f}
+.bo .ag .ev.k-Devis{background:#e8f0fe;border-color:var(--red);color:#9a1a1f}
 .bo .ag .ev.done{opacity:.55}
 .bo .ag .now{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:3;pointer-events:none}
 .bo .ag .now::before{content:"";position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--red)}
@@ -421,7 +421,7 @@
 .bo .pl .pr.drop .pl-t{background:#fdf0f0}
 .bo .pl .pr.over-row .pl-t{background:repeating-linear-gradient(135deg,#fff 0,#fff 8px,#fdf2f2 8px,#fdf2f2 16px)}
 .bo .pl .nowl{position:absolute;top:0;bottom:0;width:2px;background:var(--red);z-index:2;pointer-events:none}
-.bo .pl .ghost{position:absolute;top:7px;height:32px;border-radius:8px;border:2px dashed var(--red);background:rgba(227,38,45,.08);pointer-events:none;z-index:5;display:none}
+.bo .pl .ghost{position:absolute;top:7px;height:32px;border-radius:8px;border:2px dashed var(--red);background:rgba(23,104,238,.08);pointer-events:none;z-index:5;display:none}
 .bo .unpl > div{display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid var(--line2);border-radius:11px;margin-bottom:7px;background:#fff;cursor:grab}
 .bo .unpl > div:hover{border-color:#cdd2d8;box-shadow:var(--shadow)}
 
@@ -525,7 +525,7 @@
 .utoasts{position:fixed;right:18px;bottom:18px;z-index:300;display:flex;flex-direction:column;gap:8px;pointer-events:none;align-items:flex-end}
 .utoast{pointer-events:auto;display:flex;gap:11px;align-items:flex-start;min-width:290px;max-width:390px;padding:11px 13px;border-radius:13px;background:#16181c;color:#fff;box-shadow:0 18px 50px rgba(16,18,24,.35);animation:utin .32s cubic-bezier(.2,1.1,.4,1);font-size:12.5px}
 .utoast .ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none;background:rgba(255,255,255,.1);color:#fff}
-.utoast.ok .ic{background:rgba(34,163,90,.25);color:#6fdc9c}.utoast.warn .ic{background:rgba(224,138,0,.25);color:#ffbf57}.utoast.err .ic{background:rgba(227,38,45,.3);color:#ff8a8e}
+.utoast.ok .ic{background:rgba(34,163,90,.25);color:#6fdc9c}.utoast.warn .ic{background:rgba(224,138,0,.25);color:#ffbf57}.utoast.err .ic{background:rgba(23,104,238,.3);color:#ff8a8e}
 .utoast b{display:block;font-weight:700;font-size:13px}.utoast span{color:rgba(255,255,255,.7)}
 .utoast.out{animation:utout .28s forwards}
 @keyframes utin{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}

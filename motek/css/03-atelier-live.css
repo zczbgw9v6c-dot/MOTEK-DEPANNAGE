@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CARROSSERIE CENTRALE — Atelier live (carte 3D) : styles d’origine, limités à #view-map
+   MOTEK — Atelier live (carte 3D) : styles d’origine, limités à #view-map
    ========================================================================== */
 #view-map #scene{position:fixed;inset:0}
 #view-map #scene canvas{display:block;outline:none}
@@ -31,7 +31,7 @@
 #view-map .dh{display:flex;gap:11px;align-items:flex-start}
 #view-map .dh .di{width:44px;height:44px;border-radius:12px;background:#f3f4f6;display:grid;place-items:center;color:var(--ink);flex:none;overflow:hidden}
 #view-map .dh .di svg.i{width:22px;height:22px}
-#view-map .dh .di.av{background:linear-gradient(135deg,#ef3a40,#c41d24);border-radius:50%;font-size:14px}
+#view-map .dh .di.av{background:linear-gradient(135deg,#ef3a40,#1157c4);border-radius:50%;font-size:14px}
 #view-map .dh .di.av.cl{background:linear-gradient(135deg,#59606b,#2d3138)}
 #view-map .dh .tt{flex:1;min-width:0}
 #view-map .kick{font-size:10.5px;font-weight:800;letter-spacing:.08em;color:var(--red);text-transform:uppercase}
@@ -102,7 +102,7 @@
 #view-map .cta{display:flex;gap:8px;margin-top:14px}
 #view-map .btn{flex:1;height:36px;border-radius:10px;font-weight:700;font-size:12.5px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line2);background:#fff}
 #view-map .btn:hover{background:#f7f8fa}
-#view-map .btn.p{background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 6px 16px rgba(227,38,45,.25)}
+#view-map .btn.p{background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 6px 16px rgba(23,104,238,.25)}
 #view-map .btn.p:hover{background:var(--red-d)}
 #view-map .btn svg.i{width:14px;height:14px}
 #view-map .vcard{display:flex;gap:10px;align-items:center;padding:9px 10px;border:1px solid var(--line2);border-radius:11px;margin-bottom:6px;cursor:pointer;background:#fff}
@@ -178,7 +178,7 @@
 #view-map .ic.slate{background:var(--slate-soft);color:var(--slate)}
 #view-map .labels{position:fixed;inset:0;pointer-events:none;z-index:5}
 #view-map .lab{position:absolute;left:0;top:0;transform:translate(-50%,-100%);white-space:nowrap;display:flex;align-items:center;gap:6px;height:24px;padding:0 9px 0 8px;border-radius:7px;font-size:11.5px;font-weight:750;transition:opacity .2s}
-#view-map .lab.sel{background:var(--red);color:#fff;box-shadow:0 6px 18px rgba(227,38,45,.35)}
+#view-map .lab.sel{background:var(--red);color:#fff;box-shadow:0 6px 18px rgba(23,104,238,.35)}
 #view-map .lab.sel small{font-weight:600;opacity:.85;font-size:10.5px;padding-left:6px;border-left:1px solid rgba(255,255,255,.35)}
 #view-map .lab.sel:after{content:"";position:absolute;left:50%;bottom:-5px;margin-left:-5px;border:5px solid transparent;border-bottom:0;border-top-color:var(--red)}
 #view-map .lab.hov{background:#fff;color:var(--ink);box-shadow:var(--shadow);border:1px solid var(--line2)}
@@ -209,7 +209,7 @@
 #view-map .sheet{width:min(940px,100%);max-height:calc(100vh - 60px);overflow:auto;background:#fff;border-radius:20px;box-shadow:var(--shadow-lg);animation:sh .35s cubic-bezier(.2,.9,.25,1.1)}
 #view-map .sheet .sh{display:flex;gap:16px;align-items:center;padding:22px 24px 18px;border-bottom:1px solid var(--line)}
 #view-map .sheet .sh .di{width:56px;height:56px;border-radius:16px;background:#f3f4f6;display:grid;place-items:center;flex:none;font-weight:800;font-size:18px}
-#view-map .sheet .sh .di.av{border-radius:50%;background:linear-gradient(135deg,#ef3a40,#c41d24);color:#fff}
+#view-map .sheet .sh .di.av{border-radius:50%;background:linear-gradient(135deg,#ef3a40,#1157c4);color:#fff}
 #view-map .sheet .sh .di.av.cl{background:linear-gradient(135deg,#59606b,#2d3138)}
 #view-map .sheet .sh h2{font-size:21px;font-weight:800;letter-spacing:-.02em}
 #view-map .sheet .sh .sb{color:var(--ink3);font-size:12.5px;margin-top:3px}
