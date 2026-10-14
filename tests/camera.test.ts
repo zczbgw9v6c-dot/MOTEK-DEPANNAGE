@@ -130,3 +130,73 @@ test("guided workshop and showroom views fit their complete floor on tablet scre
           }
       }
 });
+
+test("a zone view hides a wall crossing any part of the room, not only its centre", async () => {
+  const { zoneOffsets } = await import("../src/camera-occlusion.ts");
+  const { zoneExtent } = await import("../src/camera-navigation.ts");
+  // Delivery room: centre (17, 15); the camera looks from the south-east.
+  const view = zoneView("livraison", 17, 15, 1.6);
+  const camera = new THREE.Vector3(...view.position),
+    aim = new THREE.Vector3(...view.target);
+  const extent = zoneExtent("livraison");
+  // The exterior wall on the camera side: it ends before the centre line of sight,
+  // and a high camera looks over it, yet it hides the cars parked along it.
+  const edgeWall = new THREE.Box3(
+    new THREE.Vector3(21.9, 0, 12),
+    new THREE.Vector3(22.1, 2.9, 18),
+  );
+  assert.equal(occludesTarget(edgeWall, camera, aim), false);
+  assert.equal(
+    occludesTarget(
+      edgeWall,
+      camera,
+      aim,
+      zoneOffsets(extent.halfWidth, extent.halfDepth),
+    ),
+    true,
+  );
+  // The floor corners of every small room remain inside the frame, on tablets too.
+  for (const aspect of [0.7, 1.2, 1.6])
+    for (const [id, cx, cz] of [
+      ["livraison", 17, 15],
+      ["stock", 17, -12],
+      ["bureau", -17, -13],
+    ] as const) {
+      const framing = zoneView(id, cx, cz, aspect);
+      const room = zoneExtent(id);
+      const cam = new THREE.PerspectiveCamera(48, aspect, 0.1, 300);
+      cam.position.set(...framing.position);
+      cam.lookAt(new THREE.Vector3(...framing.target));
+      cam.updateMatrixWorld();
+      for (const x of [cx - room.halfWidth, cx + room.halfWidth])
+        for (const z of [
+          framing.target[2] - room.halfDepth,
+          framing.target[2] + room.halfDepth,
+        ]) {
+          const point = new THREE.Vector3(x, 0, z).project(cam);
+          assert.ok(
+            Math.abs(point.x) < 1 && Math.abs(point.y) < 1,
+            `${id} ${aspect}: ${x},${z}`,
+          );
+        }
+    }
+});
+
+test("a technician standing on the line of sight is hidden, one beside or behind the car is not", async () => {
+  const { blocksLineOfSight } = await import("../src/camera-occlusion.ts");
+  const view = vehicleView(7, -22, 1.6);
+  const camera = new THREE.Vector3(...view.position),
+    aim = new THREE.Vector3(...view.target);
+  const between = camera.clone().lerp(aim, 0.5);
+  assert.equal(blocksLineOfSight(between, camera, aim), true);
+  // Where technicians now stand: beside the car, towards the back of the bay.
+  assert.equal(
+    blocksLineOfSight(new THREE.Vector3(7 - 2.4, 0, -22 - 2.2), camera, aim),
+    false,
+  );
+  // Behind the car, seen from the camera.
+  assert.equal(
+    blocksLineOfSight(new THREE.Vector3(7 + 4, 0, -22 - 6), camera, aim),
+    false,
+  );
+});

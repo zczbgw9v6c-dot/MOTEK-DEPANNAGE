@@ -1,0 +1,18 @@
+# Blueprint Render : service web Docker gratuit pour la démonstration MOTEK.
+# Limites du plan gratuit : mise en veille après ~15 min sans trafic (réveil lent),
+# disque éphémère → la base SQLite repart du jeu d’essai à chaque déploiement ou redémarrage.
+# Pour des données durables : plan payant + disque persistant monté sur /app/.data.
+services:
+  - type: web
+    name: motek-demo
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/state
+    envVars:
+      - key: MOTEK_DEMO_USER
+        value: motek
+      - key: MOTEK_DEMO_PASSWORD
+        sync: false # à saisir dans le tableau de bord Render, jamais dans le dépôt
+      - key: AUTOHUB_DB
+        value: /app/.data/autohub.sqlite

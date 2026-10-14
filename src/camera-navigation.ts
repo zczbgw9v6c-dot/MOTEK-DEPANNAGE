@@ -26,6 +26,16 @@ export function shortestTurn(current: number, target: number, dt: number) {
   );
 }
 
+/** Room extents used both for framing and for the occlusion samples of a zone view. */
+export function zoneExtent(id: string, depth = 52) {
+  const workshop = id === "atelier" || id === "parking";
+  return {
+    halfWidth: workshop ? 12 : id === "showroom" ? 12 : 5,
+    halfDepth: workshop ? (depth - 9) / 2 : id === "showroom" ? 5 : 6,
+    // The delivery room spans z 6–18: its marker sits at 15, its floor centre at 12.
+    z: workshop ? (-depth - 9) / 2 : id === "livraison" ? 12 : null,
+  };
+}
 export function zoneView(
   id: string,
   x: number,
@@ -34,15 +44,20 @@ export function zoneView(
   depth = 52,
 ) {
   const workshop = id === "atelier" || id === "parking";
-  if (workshop) z = (-depth - 9) / 2;
-  const halfWidth = workshop ? 12 : id === "showroom" ? 12 : 5;
-  const halfDepth = workshop ? (depth - 9) / 2 : id === "showroom" ? 5 : 7;
+  const extent = zoneExtent(id, depth);
+  if (extent.z !== null) z = extent.z;
+  const { halfWidth, halfDepth } = extent;
+  const large = workshop || id === "showroom";
+  // Small rooms (stock, offices, delivery…) are looked at more from above, so the whole
+  // floor stays in frame on tablets too and the workshop behind no longer fills the view.
   const distance = Math.max(
-    halfDepth * 2.8,
-    ((halfWidth + halfDepth * 0.6) * 3.2) / Math.max(aspect, 0.35),
+    halfDepth * (large ? 2.8 : 3.2),
+    ((halfWidth + halfDepth * 0.6) * (large ? 3.2 : 2.4)) /
+      Math.max(aspect, 0.35),
   );
+  const height = large ? 0.72 : 0.9;
   return {
-    position: [x + distance * 0.45, distance * 0.72, z + distance * 0.63] as [
+    position: [x + distance * 0.45, distance * height, z + distance * 0.63] as [
       number,
       number,
       number,

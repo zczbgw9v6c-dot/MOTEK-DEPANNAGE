@@ -1,10 +1,15 @@
 import { demoShowroom } from "./guided-domain";
-import { occludesTarget } from "./camera-occlusion";
+import {
+  blocksLineOfSight,
+  occludesTarget,
+  zoneOffsets,
+} from "./camera-occlusion";
 import {
   vehicleView,
   zoneView,
   isRendered,
   shortestTurn,
+  zoneExtent,
 } from "./camera-navigation";
 import { portoLayout, type DealershipLayout } from "./dealership-layout";
 import * as THREE from "three";
@@ -90,6 +95,12 @@ export class GarageScene {
   private selected: string | null = null;
   private focusedVehicle: string | null = null;
   private focusRear = false;
+  private focusedZone: {
+    x: number;
+    z: number;
+    halfWidth: number;
+    halfDepth: number;
+  } | null = null;
   private currentCars: Vehicle[] = [];
   private down = [0, 0];
   private disposed = false;
@@ -171,6 +182,8 @@ export class GarageScene {
     fill.position.set(24, 18, -35);
     this.scene.add(fill);
     this.build();
+    // Accès de débogage en développement uniquement (inspection des occultations).
+    if (import.meta.env.DEV) (window as any).__motekScene = this;
     for (const object of this.scene.children) {
       if (object.userData.occluder)
         this.occlusionBounds.set(
@@ -2150,10 +2163,11 @@ export class GarageScene {
           );
       }
       if (v.bay) {
+        // Beside the car, towards the back of the bay: the aisle-side camera keeps the car clear.
         const person = this.person(
           v.technician,
           x + (x < 0 ? 2.4 : -2.4),
-          z + 1.3,
+          z - 2.2,
         );
         this.cars.add(person);
       }
@@ -2269,6 +2283,7 @@ export class GarageScene {
     const g = new THREE.Group();
     g.position.set(x, 0, z);
     g.userData.select = { kind, id: name };
+    g.userData.person = true;
     const torso = new THREE.Mesh(
       new THREE.CylinderGeometry(0.22, 0.24, 0.57, 18),
       this.material("#38596d"),
@@ -2571,6 +2586,7 @@ export class GarageScene {
     this.controls.target.copy(target);
     this.focusedVehicle = id;
     this.focusRear = rear;
+    this.focusedZone = null;
     const view = vehicleView(x, z, this.camera.aspect, rear);
     this.controls.maxDistance = Math.max(18, 8 / this.camera.aspect);
     this.cameraFlight = {
@@ -2587,6 +2603,7 @@ export class GarageScene {
   setMode(mode: Mode) {
     this.cameraFlight = null;
     this.focusedVehicle = null;
+    this.focusedZone = null;
     this.controls.maxDistance = mode === "overview" ? 120 : 85;
     this.path = [];
     if (document.pointerLockElement) document.exitPointerLock();
@@ -2627,6 +2644,13 @@ export class GarageScene {
         this.depth,
       );
       this.controls.maxDistance = 150;
+      const extent = zoneExtent(zoneId, this.depth);
+      this.focusedZone = {
+        x: framing.target[0],
+        z: framing.target[2],
+        halfWidth: extent.halfWidth,
+        halfDepth: extent.halfDepth,
+      };
       this.cameraFlight = {
         position: new THREE.Vector3(...framing.position),
         target: new THREE.Vector3(...framing.target),
@@ -2852,6 +2876,10 @@ export class GarageScene {
     }
     const focused = this.mode === "free" && !!this.focusedVehicle;
     const aim = this.controls.target;
+    // A zone view samples the whole room; a vehicle view only its silhouette.
+    const offsets = this.focusedZone
+      ? zoneOffsets(this.focusedZone.halfWidth, this.focusedZone.halfDepth)
+      : undefined;
     for (const object of this.scene.children) {
       if (object.userData.overhead) object.visible = this.mode === "walk";
       if (object.userData.sceneLabel) object.visible = this.mode === "overview";
@@ -2861,7 +2889,12 @@ export class GarageScene {
           const bounds =
             this.occlusionBounds.get(object) ||
             new THREE.Box3().setFromObject(object);
-          object.visible = !occludesTarget(bounds, this.camera.position, aim);
+          object.visible = !occludesTarget(
+            bounds,
+            this.camera.position,
+            aim,
+            offsets,
+          );
         }
       }
     }
@@ -2870,6 +2903,11 @@ export class GarageScene {
         object.visible =
           !focused || object.userData.vehicleLabel === this.focusedVehicle;
       }
+      // People never hide the framed car: anyone on the line of sight steps out of the picture.
+      if (object.userData.person)
+        object.visible =
+          !focused ||
+          !blocksLineOfSight(object.position, this.camera.position, aim);
     }
     this.renderer.render(this.scene, this.camera);
     this.frame = requestAnimationFrame((n) => this.tick(n));

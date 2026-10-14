@@ -96,6 +96,15 @@ test("Core: reception to delivery persists a real work order, quote, work, manua
       channel: "Téléphone",
       note: "Client joint, récupération convenue",
     });
+    assert.throws(
+      () => send("core.pickup", { at: "2026-10-14T16:00:00Z" }),
+      /horaires/,
+    );
+    send("core.hours", {
+      opens: "08:00",
+      closes: "18:00",
+      weekdays: [1, 2, 3, 4, 5],
+    });
     send("core.pickup", { at: "2026-10-14T16:00:00Z" });
     assert.equal(deliveryBlocks(store.read().db, "v1").length, 0);
     assert.throws(() => send("core.deliver", {}), /clés/);

@@ -712,11 +712,13 @@ export function CoreDesk({
                             Récupération confirmée · heure de cet appareil
                             <input type="datetime-local" required name="at" />
                           </label>
-                          <button disabled={busy}>
-                            Enregistrer le créneau
+                          <button disabled={busy || !db.openingHours}>
+                            {db.openingHours
+                              ? "Enregistrer le créneau"
+                              : "Confirmez d’abord les horaires"}
                           </button>
                         </form>
-                        <details>
+                        <details open={!db.openingHours}>
                           <summary>
                             Horaires du garage ·{" "}
                             {db.openingHours
@@ -786,9 +788,10 @@ export function CoreDesk({
                         </details>
                         {!db.openingHours && (
                           <p className="core-warning">
-                            Horaires du garage non renseignés : les créneaux
-                            hors ouverture ne sont pas détectés. Confirmez-les
-                            ci-dessus pour activer ce contrôle.
+                            Horaires du garage non renseignés : confirmez-les
+                            ci-dessus avant d’enregistrer un créneau. La
+                            proposition lundi–vendredi, 08:00–18:00 est une
+                            suggestion à vérifier, pas un horaire enregistré.
                           </p>
                         )}
                         <button

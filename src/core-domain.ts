@@ -349,6 +349,10 @@ export function coreAction(
     );
   }
   if (action === "pickup") {
+    if (!db.openingHours)
+      throw Error(
+        "Confirmez d’abord les horaires du garage : sans eux, un créneau hors ouverture ne peut pas être détecté.",
+      );
     const stamp = Date.parse(String(p.at));
     if (!Number.isFinite(stamp) || stamp < now)
       throw Error("Choisissez un créneau futur.");
