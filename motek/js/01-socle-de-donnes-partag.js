@@ -385,6 +385,40 @@
   /* ==========================================================================
      SEED — données de démonstration (cohérentes avec la carte 3D)
      ========================================================================== */
+  // Véhicules exposés à la vente : fiches de démonstration (fictives).
+  function seedShowroom() {
+    const t = today();
+    const mk = (i, v) =>
+      Object.assign(
+        {
+          id: "SR-" + (i + 1),
+          status: "En vente",
+          hands: 1,
+          gearbox: "Manuelle",
+          fuel: "Essence",
+          warranty: 12,
+          photos: 6,
+          leads: 0,
+          customerId: null,
+          soldAt: null,
+          soldPrice: null,
+          notes: "",
+        },
+        v,
+      );
+    return [
+      mk(0, { make: "Peugeot", model: "208", version: "1.2 PureTech 100 Allure", year: 2022, km: 31200, price: 16990, buyPrice: 14200, hands: 1, color: "#f2b31c", colorName: "Jaune Faro", plate: "GB-412-TR", ct: addDays(t, 540), entry: addDays(t, -18), leads: 3 }),
+      mk(1, { make: "Renault", model: "Clio V", version: "1.0 TCe 90 Intens", year: 2021, km: 44800, price: 14490, buyPrice: 12100, hands: 2, color: "#c9ced6", colorName: "Gris Highland", plate: "FY-207-LM", ct: addDays(t, 320), entry: addDays(t, -41), leads: 5 }),
+      mk(2, { make: "Volkswagen", model: "Golf VIII", version: "2.0 TDI 150 Life DSG", year: 2021, km: 68500, price: 21900, buyPrice: 19000, hands: 1, fuel: "Diesel", gearbox: "Automatique", color: "#1d2a44", colorName: "Bleu Atlantique", plate: "FW-981-QA", ct: addDays(t, 410), entry: addDays(t, -9), leads: 2 }),
+      mk(3, { make: "Toyota", model: "Yaris", version: "1.5 Hybride 116 Design", year: 2023, km: 12300, price: 20490, buyPrice: 17900, hands: 1, fuel: "Hybride", gearbox: "Automatique", color: "#d7261e", colorName: "Rouge Émotion", plate: "GK-558-PE", ct: addDays(t, 980), entry: addDays(t, -4), leads: 1 }),
+      mk(4, { make: "Dacia", model: "Sandero", version: "1.0 ECO-G 100 Stepway", year: 2022, km: 39700, price: 13290, buyPrice: 11300, hands: 1, fuel: "GPL", color: "#f4f5f6", colorName: "Blanc Glacier", plate: "GE-134-ZN", ct: addDays(t, 600), entry: addDays(t, -27), leads: 4 }),
+      mk(5, { make: "BMW", model: "Série 1", version: "118i 136 M Sport", year: 2020, km: 58900, price: 23900, buyPrice: 20800, hands: 2, color: "#121418", colorName: "Noir Saphir", plate: "FR-740-HS", ct: addDays(t, 200), entry: addDays(t, -63), leads: 6, status: "Réservé", customerId: "C3" }),
+      mk(6, { make: "Citroën", model: "C3", version: "1.2 PureTech 83 Feel", year: 2019, km: 81200, price: 9990, buyPrice: 8200, hands: 3, color: "#8aa7c4", colorName: "Bleu Eden", plate: "FG-316-WJ", ct: addDays(t, 95), entry: addDays(t, -88), leads: 2 }),
+      mk(7, { make: "Tesla", model: "Model 3", version: "Standard Range Plus", year: 2021, km: 47600, price: 27900, buyPrice: 24500, hands: 1, fuel: "Électrique", gearbox: "Automatique", color: "#e9ebee", colorName: "Blanc Nacré", plate: "FV-622-KC", ct: addDays(t, 365), entry: addDays(t, -12), leads: 7 }),
+      mk(8, { make: "Peugeot", model: "3008", version: "1.5 BlueHDi 130 GT EAT8", year: 2022, km: 36100, price: 28490, buyPrice: 25200, hands: 1, fuel: "Diesel", gearbox: "Automatique", color: "#5b6670", colorName: "Gris Platinium", plate: "GC-905-FD", ct: addDays(t, 700), entry: addDays(t, -2), leads: 0, status: "Préparation" }),
+      mk(9, { make: "Fiat", model: "500", version: "1.0 Hybrid 70 Dolcevita", year: 2021, km: 26400, price: 11990, buyPrice: 10100, hands: 1, color: "#9fd0c3", colorName: "Vert Rugiada", plate: "FX-089-RB", ct: addDays(t, 450), entry: addDays(t, -120), leads: 3, status: "Vendu", customerId: "C7", soldAt: addDays(t, -3), soldPrice: 11500 }),
+    ];
+  }
   function seed() {
     const S = { v: 1, created: Date.now(), ext: {} };
     S.company = {
@@ -3490,6 +3524,9 @@
       B("R12", "P3", 2, "08:00", 3, "E3"),
     ];
 
+    /* ---------- showroom / véhicules à vendre (activité concession) ---------- */
+    S.showroom = seedShowroom();
+
     /* ---------- véhicules de remplacement ---------- */
     S.courtesy = [
       {
@@ -4221,6 +4258,7 @@
       st.company.activities = defaultActivities("garage");
       st.company.profile = "garage";
     }
+    if (st && !st.showroom) st.showroom = seedShowroom();
     return st;
   };
   const load = () => {
@@ -5853,6 +5891,7 @@
     receiveOrder,
     adjustStock,
     lendCar,
+    seedShowroom,
     startLoan,
     returnCar,
     addTime,
