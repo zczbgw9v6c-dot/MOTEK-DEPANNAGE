@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MOTEK SA — socle de données partagé (atelier 3D + back-office)
+   MOTEK — socle de données partagé (atelier 3D + back-office)
    window.CX : état S (localStorage), événements, actions métier, calculs.
    Toute modification passe par une action CX.* qui émet un événement :
    la carte 3D et le back-office restent synchronisés.

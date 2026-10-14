@@ -240,3 +240,9 @@
 #view-map .bars small{font-size:10.5px;color:var(--ink3);font-weight:600}
 @media (max-width:1280px){#view-map .kpi:nth-child(3){display:none}#view-map .track .mini{display:none}}
 @media (max-width:900px){#view-map .kpis{display:none}#view-map .track{display:none}#view-map .board{display:none}#view-map .ctl{display:none}#view-map .detail{width:calc(100vw - 40px);max-height:45vh;top:auto;bottom:20px}}
+
+/* ---- atelier live épuré : un seul indicateur, panneaux contextuels ---- */
+#view-map.epure .kpis .kpi:not(:first-child){display:none}
+#view-map .board,#view-map .track{transition:opacity .28s ease,transform .28s ease}
+#view-map .board.hid,#view-map .track.hid{opacity:0;pointer-events:none;transform:translateY(14px)}
+#view-map.epure .detail{max-height:calc(100vh - 100px)}
