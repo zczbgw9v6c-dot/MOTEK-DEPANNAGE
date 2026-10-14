@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 const execute = promisify(execFile);
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Store } from "./store.ts";
+import { V3Store } from "./v3-store.ts";
 import { proposeVoice } from "../src/voice-domain.ts";
 type Handler = ((
   req: IncomingMessage,
@@ -18,7 +19,16 @@ export function createApiHandler(
 ): Handler {
   mkdirSync(".data", { recursive: true });
   const store = new Store(databaseFile);
+  const v3 = new V3Store(databaseFile);
   const clients = new Set<ServerResponse>();
+  const v3clients = new Set<ServerResponse>();
+  const v3broadcast = (snapshot: { revision: number }) => {
+    // Seule la révision circule ; chaque écran recharge l’état s’il est en retard.
+    for (const client of v3clients)
+      client.write(
+        "data: " + JSON.stringify({ revision: snapshot.revision }) + "\n\n",
+      );
+  };
   const broadcast = () => {
     const state = store.read();
     for (const client of clients)
@@ -48,6 +58,24 @@ export function createApiHandler(
         });
       if (path === "/api/state" && req.method === "GET")
         return json(200, store.read());
+      if (path === "/api/v3/state" && req.method === "GET")
+        return json(200, { ...v3.read(), serverNow: Date.now() });
+      if (path === "/api/v3/events" && req.method === "GET") {
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          Connection: "keep-alive",
+        });
+        res.write(
+          "data: " + JSON.stringify({ revision: v3.read().revision }) + "\n\n",
+        );
+        v3clients.add(res);
+        const heartbeat = setInterval(() => res.write(": ping\n\n"), 15000);
+        res.on("close", () => {
+          clearInterval(heartbeat);
+          v3clients.delete(res);
+        });
+        return;
+      }
       if (path === "/api/events" && req.method === "GET") {
         res.writeHead(200, {
           "Content-Type": "text/event-stream",
@@ -99,6 +127,25 @@ export function createApiHandler(
         }
       }
       const body = JSON.parse(bytesBuffer.toString());
+      if (path === "/api/v3/state") {
+        const snapshot = v3.write(
+          body.state,
+          typeof body.revision === "number" ? body.revision : undefined,
+        );
+        json(200, {
+          revision: snapshot.revision,
+          updatedAt: snapshot.updatedAt,
+          serverNow: Date.now(),
+        });
+        v3broadcast(snapshot);
+        return;
+      }
+      if (path === "/api/v3/reset") {
+        v3.reset();
+        json(200, { revision: 0 });
+        v3broadcast({ revision: 0 });
+        return;
+      }
       if (path === "/api/voice/propose")
         return json(
           200,
@@ -118,8 +165,11 @@ export function createApiHandler(
   return Object.assign(handler, {
     close() {
       for (const c of clients) c.end();
+      for (const c of v3clients) c.end();
       clients.clear();
+      v3clients.clear();
       store.close();
+      v3.close();
     },
   });
 }

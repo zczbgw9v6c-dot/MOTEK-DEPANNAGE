@@ -1,6 +1,6 @@
 /* ==========================================================================
    MOTEK — composants d'interface partagés (window.UI)
-   icônes, toasts, modale, avatars, plaque suisse, pastille assureur, voiture.
+   icônes, toasts, modale, avatars, plaque française, pastille assureur, voiture.
    ========================================================================== */
 (function () {
   const { esc } = CX.util;
@@ -73,7 +73,7 @@
     map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
   };
   const icon = (n, s = 16, st = '') => `<svg class="i" viewBox="0 0 24 24" style="width:${s}px;height:${s}px;${st}" aria-hidden="true">${P[n] || P.layers}</svg>`;
-  const logo = (s = 34) => `<svg viewBox="0 0 40 40" style="width:${s}px;height:${s}px"><rect width="40" height="40" rx="11" fill="#1768ee"/><path d="M27.4 14.2a9.2 9.2 0 1 0 0 11.6" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/><circle cx="27.6" cy="20" r="2.5" fill="#fff"/></svg>`;
+  const logo = (s = 34) => `<svg viewBox="0 0 40 40" style="width:${s}px;height:${s}px"><rect width="40" height="40" rx="11" fill="#1768ee"/><path d="M11 29V11l9 10 9-10v18" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   /** silhouette de voiture (profil) — couleur de carrosserie */
   const carPic = (col = '#f4f5f6', w = 66, h = 52) => `<svg class="car" viewBox="0 0 66 52" style="width:${w}px;height:${h}px"><ellipse cx="33" cy="44" rx="29" ry="4" fill="#000" opacity=".08"/><path d="M8 34c0-4 2-6 6-7l7-8c1.5-1.6 3-2 5-2h14c2 0 3.6.6 5 2l6 8c5 1 7 3 7 7v4c0 1.2-.8 2-2 2H10c-1.2 0-2-.8-2-2z" fill="${esc(col)}" stroke="#c9cdd3" stroke-width="1.2"/><path d="M23 20.5c1-1.2 2-1.6 3.5-1.6H33V27H17z M35 18.9h5.5c1.5 0 2.5.4 3.5 1.6l5 6.5H35z" fill="#2f3640"/><rect x="52" y="30" width="5" height="3" rx="1" fill="#fff" stroke="#d0d3d8" stroke-width=".8"/><rect x="8.5" y="30" width="4" height="3" rx="1" fill="#1768ee"/><circle cx="19" cy="40" r="5.5" fill="#2b2e33"/><circle cx="19" cy="40" r="2.2" fill="#c9cdd3"/><circle cx="47" cy="40" r="5.5" fill="#2b2e33"/><circle cx="47" cy="40" r="2.2" fill="#c9cdd3"/></svg>`;
   const plate = (p, lg = false) => p ? `<span class="plate ${lg ? 'lg' : ''}">${esc(p)}</span>` : '<span class="muted">—</span>';

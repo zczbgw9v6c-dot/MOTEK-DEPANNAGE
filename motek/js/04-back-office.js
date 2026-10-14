@@ -2,7 +2,7 @@
    MOTEK — Back-office : socle commun des modules (window.BO)
    - synchronisation live (CX.on('change') → APP.refresh débouncé)
    - composants : tableaux triables, formulaires validés, tiroirs, confirmations,
-     messages pré-rédigés, schéma de carrosserie, frise workflow, plaque suisse,
+     messages pré-rédigés, schéma de carrosserie, frise workflow, plaque française,
      répartition assurance / client, QR-facture, aperçus imprimables
    ========================================================================== */
 (function () {
