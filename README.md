@@ -183,3 +183,7 @@ Validation : 45 tests réussis, typecheck et build de production réussis ; revu
 L'accueil s'ouvre sur la vue de travail 2D. Réceptionner un véhicule ou le prendre en charge ouvre un OR ; affectation, devis accepté, travaux cochés, contrôles atelier, décompte interne, règlement déclaré, contact et remise des clés forment un parcours persistant. Le plan 3D reste accessible séparément. Les présences en salle d'attente nécessitent une arrivée enregistrée.
 
 Voir `docs/MOTEK_CRM_FIRST_AUDIT.md` pour l'audit, le parcours, les migrations compatibles et les limites. Le décompte interne n'est pas une facture réglementaire ; aucun débit bancaire, SMS ou appel extérieur n'est déclenché. Voice téléphonique et Vision caméra restent des modules prioritaires à construire, non raccordés. L'environnement local ne fournit pas encore d'authentification ni d'isolation multi-tenant.
+
+### Reprise du 14 octobre 2026 (Claude)
+
+Audit pratique dans le navigateur, corrections prioritaires et parcours client vérifié de bout en bout : voir `docs/MOTEK_REPRISE_CLAUDE.md`. Principales corrections : saisies perdues (checklist atelier, sélecteurs du dossier 3D et du planning), refus d’affectation d’un technicien déjà en intervention, blocages et pièces attendues visibles dans le dossier, état « devis refusé », étapes carrosserie, lisibilité (plaque, filtres actifs). `AUTOHUB_DB=.data/verify-ui.sqlite npm run dev` puis `npm run verify:ui` rejoue le parcours complet dans Chromium sur une base isolée (Playwright à installer séparément). 61 tests, compilation et build vérifiés.

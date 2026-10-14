@@ -14,7 +14,8 @@
     "format": "prettier --write src server/*.ts tests scripts index.html package.json tsconfig.json vite.config.ts",
     "verify:scan": "node --experimental-strip-types scripts/verify-scan.mjs",
     "speech:setup": "node scripts/setup-speech.mjs",
-    "verify:api": "node --experimental-strip-types scripts/verify-api.mjs"
+    "verify:api": "node --experimental-strip-types scripts/verify-api.mjs",
+    "verify:ui": "node scripts/verify-ui.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.3.0",

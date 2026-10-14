@@ -1111,3 +1111,11 @@ body {
 .core-car b + b {
   margin-left: 8px;
 }
+/* Mode mains sales : la barre latérale réduite ne laisse plus dépasser « Gestion ». */
+body:has(.glove-mode) .sidebar .management-menu summary span,
+body:has(.glove-mode) .sidebar .management-menu button {
+  display: none;
+}
+body:has(.glove-mode) .sidebar .management-menu summary {
+  justify-content: center;
+}

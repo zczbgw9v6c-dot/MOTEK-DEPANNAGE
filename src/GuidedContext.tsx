@@ -392,15 +392,30 @@ export function VehicleSummary({
           </div>
         )}
         <DeliveryDeadline db={db} vehicle={v} />
-        <div className="guided-item">
-          <strong>SMS de récupération · aucun envoi confirmé</strong>
-          <span>
-            {drafts.length
-              ? "Message WhatsApp préparé, non envoyé."
-              : "Aucun message préparé."}
-          </span>
-          <small>Le service SMS n’est pas connecté.</small>
-        </div>
+        {drafts.length > 0 && (
+          <div className="guided-item">
+            <strong>
+              {drafts.length} message{drafts.length > 1 ? "s" : ""} préparé
+              {drafts.length > 1 ? "s" : ""} · à envoyer
+            </strong>
+            {drafts.slice(0, 2).map((m) => (
+              <span key={m.id}>
+                {m.channel || "Message"} ·{" "}
+                {m.kind === "quote"
+                  ? "devis"
+                  : m.kind === "closing"
+                    ? "horaires"
+                    : "véhicule prêt"}
+                {m.plannedAt
+                  ? ` · souhaité le ${new Date(m.plannedAt).toLocaleString("fr-FR")}`
+                  : ""}
+              </span>
+            ))}
+            <small>
+              Aucun fournisseur SMS/WhatsApp connecté : envoi manuel.
+            </small>
+          </div>
+        )}
         <h3>Derniers événements</h3>
         {events.length ? (
           events.map((e) => (

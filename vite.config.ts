@@ -1,7 +1,8 @@
 import { defineConfig } from "vite";
 import { autohubAPI } from "./server/plugin";
 export default defineConfig({
-  plugins: [autohubAPI()],
+  // AUTOHUB_DB permet d’isoler une base (tests UI) sans toucher aux dossiers réels.
+  plugins: [autohubAPI(process.env.AUTOHUB_DB || undefined)],
   build: {
     rollupOptions: {
       output: {
