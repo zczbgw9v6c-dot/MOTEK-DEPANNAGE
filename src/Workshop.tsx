@@ -367,7 +367,10 @@ export function Workshop({
               <input
                 type="checkbox"
                 checked={state.checks[key]}
-                onChange={(e) =>
+                onChange={(e) => {
+                  // React restores a controlled checkbox right after the
+                  // handler: read the value now, not inside the queued commit.
+                  const checked = e.target.checked;
                   commit((d) =>
                     patchWorkshop(
                       d,
@@ -375,13 +378,13 @@ export function Workshop({
                       {
                         checks: {
                           ...workshopFor(d, car.id).checks,
-                          [key]: e.target.checked,
+                          [key]: checked,
                         },
                       },
                       "Checklist : " + label,
                     ),
-                  )
-                }
+                  );
+                }}
               />
               {label}
             </label>

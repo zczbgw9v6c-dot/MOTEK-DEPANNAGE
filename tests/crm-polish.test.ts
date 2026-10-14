@@ -108,6 +108,7 @@ test("guidance progresses from reception to assignment and quote instead of show
       (v) => v.status !== "Livré" && v.status !== "Prêt à livrer",
     )!;
   v.technician = "Non affecté";
+  v.status = "Réception";
   assert.equal(nextWorkStep(db, v).action, "receive");
   const next = coreAction(db, v.id, "receive", {});
   assert.equal(nextWorkStep(next, v).action, "assign");

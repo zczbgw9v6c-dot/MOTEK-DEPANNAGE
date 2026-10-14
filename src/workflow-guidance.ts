@@ -18,11 +18,17 @@ export function nextWorkStep(
       hint: "Le contrôle est déjà validé. Complétez maintenant le règlement et la remise des clés.",
     };
   if (!o)
-    return {
-      action: "receive",
-      label: "Prendre en charge",
-      hint: "Enregistrez le travail demandé pour démarrer le suivi.",
-    };
+    return v.status === "Réception"
+      ? {
+          action: "receive",
+          label: "Prendre en charge",
+          hint: "Enregistrez le travail demandé pour démarrer le suivi.",
+        }
+      : {
+          action: "open",
+          label: "Ouvrir le suivi des travaux",
+          hint: "Ce dossier n’a pas encore de liste de travaux : ouvrez-la pour suivre la progression, le règlement et la restitution.",
+        };
   if (v.technician === "Non affecté")
     return {
       action: "assign",

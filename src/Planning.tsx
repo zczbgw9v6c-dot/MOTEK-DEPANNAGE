@@ -267,15 +267,13 @@ export function Planning({
               Technicien
               <select
                 value={selected.technician}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const technician = e.target.value;
                   commit(
-                    (d) =>
-                      moveAppointment(d, selected.id, {
-                        technician: e.target.value,
-                      }),
+                    (d) => moveAppointment(d, selected.id, { technician }),
                     "Technicien réaffecté.",
-                  )
-                }
+                  );
+                }}
               >
                 {team.map((t) => (
                   <option key={t.id}>{t.name}</option>
@@ -286,15 +284,13 @@ export function Planning({
               Ressource
               <select
                 value={selected.resource}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const resource = e.target.value;
                   commit(
-                    (d) =>
-                      moveAppointment(d, selected.id, {
-                        resource: e.target.value,
-                      }),
+                    (d) => moveAppointment(d, selected.id, { resource }),
                     "Ressource modifiée.",
-                  )
-                }
+                  );
+                }}
               >
                 {resources.map((r) => (
                   <option value={r.id} key={r.id}>

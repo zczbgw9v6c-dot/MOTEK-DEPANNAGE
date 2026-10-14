@@ -1079,3 +1079,28 @@ body {
     height: 380px;
   }
 }
+/* Plaque lisible sur les en-têtes sombres */
+.core-vehicle-title .plate,
+.workshop-top .plate {
+  color: #0f2238;
+}
+/* Filtre actif visible sur les compteurs et la liste */
+.core-kpis button[aria-pressed="true"],
+.core-filters button[aria-pressed="true"],
+.workspace-tabs button[aria-pressed="true"] {
+  border-color: #226bc4;
+  box-shadow: inset 0 0 0 2px #226bc4;
+  background: #eaf2fd;
+}
+.core-kpis button[aria-pressed="true"] span:last-child {
+  font-weight: 600;
+}
+.core-warning {
+  background: #fff4e0;
+  border-left: 4px solid #d98a16;
+  color: #6b4300;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin: 10px 0;
+  font-size: 14px;
+}

@@ -1223,15 +1223,13 @@ function App() {
                           <select
                             id="technician"
                             value={car.technician}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const technician = e.target.value;
                               commit(
-                                (d) =>
-                                  updateVehicle(d, car.id, {
-                                    technician: e.target.value,
-                                  }),
+                                (d) => updateVehicle(d, car.id, { technician }),
                                 "Affectation sauvegardée.",
-                              )
-                            }
+                              );
+                            }}
                           >
                             {technicians.map((t) => (
                               <option key={t}>{t}</option>
@@ -1241,17 +1239,15 @@ function App() {
                           <select
                             id="bay"
                             value={car.bay ?? ""}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const bay = e.target.value
+                                ? Number(e.target.value)
+                                : null;
                               commit(
-                                (d) =>
-                                  updateVehicle(d, car.id, {
-                                    bay: e.target.value
-                                      ? Number(e.target.value)
-                                      : null,
-                                  }),
+                                (d) => updateVehicle(d, car.id, { bay }),
                                 "Poste sauvegardé.",
-                              )
-                            }
+                              );
+                            }}
                           >
                             <option value="">Sans poste</option>
                             {Array.from({ length: 8 }, (_, i) => (
@@ -1271,15 +1267,13 @@ function App() {
                           <select
                             id="status"
                             value={car.status}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const status = e.target.value as Status;
                               commit(
-                                (d) =>
-                                  updateVehicle(d, car.id, {
-                                    status: e.target.value as Status,
-                                  }),
+                                (d) => updateVehicle(d, car.id, { status }),
                                 "Statut mis à jour.",
-                              )
-                            }
+                              );
+                            }}
                           >
                             {statuses.map((s) => (
                               <option key={s}>{s}</option>
@@ -1289,15 +1283,13 @@ function App() {
                             <input
                               type="checkbox"
                               checked={car.quality}
-                              onChange={(e) =>
+                              onChange={(e) => {
+                                const quality = e.target.checked;
                                 commit(
-                                  (d) =>
-                                    updateVehicle(d, car.id, {
-                                      quality: e.target.checked,
-                                    }),
+                                  (d) => updateVehicle(d, car.id, { quality }),
                                   "Contrôle qualité sauvegardé.",
-                                )
-                              }
+                                );
+                              }}
                             />
                             Contrôle qualité validé
                           </label>
@@ -1314,12 +1306,10 @@ function App() {
                             key={car.id}
                             defaultValue={car.notes}
                             onBlur={(e) => {
-                              if (e.target.value !== car.notes)
+                              const notes = e.target.value;
+                              if (notes !== car.notes)
                                 commit(
-                                  (d) =>
-                                    updateVehicle(d, car.id, {
-                                      notes: e.target.value,
-                                    }),
+                                  (d) => updateVehicle(d, car.id, { notes }),
                                   "Notes sauvegardées.",
                                 );
                             }}

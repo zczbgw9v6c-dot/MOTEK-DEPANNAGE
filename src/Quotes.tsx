@@ -424,6 +424,14 @@ export function Quotes({
               Choisissez un véhicule et créez un devis. Ajoutez uniquement les
               opérations et montants que vous connaissez.
             </p>
+            {db.vehicles
+              .filter((v) => v.id === vehicle)
+              .map((v) => (
+                <button className="primary" key={v.id} onClick={create}>
+                  <Plus size={18} />
+                  Créer le devis · {v.make} {v.model} ({v.plate})
+                </button>
+              ))}
           </div>
         )}
       </section>

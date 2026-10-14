@@ -210,6 +210,18 @@ export function coreAction(
     if (!tech) throw Error("Choisissez un technicien.");
     if (v.department && !tech.skills.includes(v.department))
       throw Error("Compétence du technicien incompatible avec le service.");
+    const busyOn = db.vehicles.find(
+      (c) =>
+        c.id !== id &&
+        c.technician === tech.name &&
+        c.present !== false &&
+        c.status !== "Livré" &&
+        !!workshopFor(db, c.id).runningSince,
+    );
+    if (busyOn)
+      throw Error(
+        `${tech.name} a déjà une intervention active sur ${busyOn.plate}. Mettez-la en pause ou choisissez un technicien disponible.`,
+      );
     const bay = p.bay === null ? null : Number(p.bay);
     if (bay !== null && (!Number.isInteger(bay) || bay < 1 || bay > 8))
       throw Error("Poste invalide.");

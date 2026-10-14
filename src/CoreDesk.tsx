@@ -137,8 +137,17 @@ export function CoreDesk({
       setBusy(false);
     }
   }
+  const activeJobOf = (technician: string) =>
+    db.vehicles.find(
+      (c) =>
+        c.id !== v?.id &&
+        c.technician === technician &&
+        c.present !== false &&
+        c.status !== "Livré" &&
+        !!workshopFor(db, c.id).runningSince,
+    );
   const card = (label: string, count: number, kind: string) => (
-    <button onClick={() => setFilter(kind)}>
+    <button aria-pressed={filter === kind} onClick={() => setFilter(kind)}>
       <span className="metric-icon" aria-hidden="true">
         {kind === "present" ? (
           <Car size={27} />
@@ -208,7 +217,12 @@ export function CoreDesk({
             onChange={(e) => setSearch(e.target.value)}
           />
           <div className="core-filters">
-            <button onClick={() => setFilter("all")}>Tous les dossiers</button>
+            <button
+              aria-pressed={filter === "all"}
+              onClick={() => setFilter("all")}
+            >
+              Tous les dossiers
+            </button>
           </div>
           {scope === "waiting" && (
             <p>
@@ -274,7 +288,9 @@ export function CoreDesk({
                 <strong>
                   {o
                     ? "Prise en charge enregistrée"
-                    : "Véhicule à prendre en charge"}
+                    : v.status === "Réception"
+                      ? "Véhicule à prendre en charge"
+                      : "Suivi des travaux à ouvrir"}
                 </strong>
               </header>
               <div className="core-toolbar">
@@ -299,9 +315,12 @@ export function CoreDesk({
                     if (step.action === "quote") onQuotes(v.id);
                     else if (step.action === "work") onWorkshop(v.id);
                     else if (
-                      ["receive", "quality", "resume-delivery"].includes(
-                        step.action,
-                      )
+                      [
+                        "receive",
+                        "open",
+                        "quality",
+                        "resume-delivery",
+                      ].includes(step.action)
                     )
                       run(step.action);
                   }}
@@ -379,9 +398,15 @@ export function CoreDesk({
                     <label>
                       Technicien
                       <select name="tech" defaultValue={v.technician}>
-                        {technicians.map((t) => (
-                          <option key={t}>{t}</option>
-                        ))}
+                        {technicians.map((t) => {
+                          const job = activeJobOf(t);
+                          return (
+                            <option key={t} value={t}>
+                              {t}
+                              {job ? ` · en intervention sur ${job.plate}` : ""}
+                            </option>
+                          );
+                        })}
                       </select>
                     </label>
                     <label>
@@ -396,6 +421,11 @@ export function CoreDesk({
                       </select>
                     </label>
                     <button disabled={busy}>Confirmer l’affectation</button>
+                    <p>
+                      Un technicien déjà en intervention active ne peut pas être
+                      affecté : mettez son chrono en pause ou choisissez
+                      quelqu’un de disponible.
+                    </p>
                   </form>
                 )}
               </details>
@@ -720,6 +750,13 @@ export function CoreDesk({
                             fériés non configurés.
                           </p>
                         </details>
+                        {!db.openingHours && (
+                          <p className="core-warning">
+                            Horaires du garage non renseignés : les créneaux
+                            hors ouverture ne sont pas détectés. Confirmez-les
+                            ci-dessus pour activer ce contrôle.
+                          </p>
+                        )}
                         <button
                           disabled={busy || v.status !== "Contrôle qualité"}
                           onClick={() => run("quality")}
