@@ -1,3 +1,4 @@
+import { prepareClientMessage } from "./communication-domain.ts";
 import { type DB } from "./domain.ts";
 import {
   reportIssue,
@@ -11,8 +12,17 @@ import {
   elapsedSeconds,
 } from "./workshop-domain.ts";
 export type VoiceAction = {
-  type: "pause" | "resume" | "piece" | "issue" | "note" | "alert" | "finish";
+  type:
+    | "pause"
+    | "resume"
+    | "piece"
+    | "issue"
+    | "note"
+    | "alert"
+    | "finish"
+    | "message";
   label: string;
+  messageKind?: "quote" | "pickup" | "closing";
   part?: string;
   quantity?: number;
   text?: string;
@@ -39,6 +49,25 @@ export function proposeVoice(
 ): VoiceProposal {
   const v = db.vehicles.find((v) => v.id === id);
   if (!v) throw Error("Ouvrez un dossier.");
+  if (mode === "report") {
+    if (!text.trim() || text.length > 8000)
+      throw Error("Dictez un compte rendu entre 1 et 8 000 caractères.");
+    return {
+      vehicle: id,
+      text,
+      actions: [
+        {
+          type: "note",
+          label: "Joindre le compte rendu au dossier et au devis",
+          text: text.trim(),
+        },
+      ],
+      warnings: [],
+      reply:
+        "Le texte sera joint après confirmation. Aucun travail ni envoi ne sera validé automatiquement.",
+      conflict: false,
+    };
+  }
   const t = normalize(text);
   const actions: VoiceAction[] = [],
     warnings: string[] = [];
@@ -192,6 +221,26 @@ export function proposeVoice(
       type: "finish",
       label: "Terminer les travaux et demander le contrôle qualité",
     });
+  if (/envoi|envoie|envoyer|message.*client/.test(t)) {
+    const kind = /devis/.test(t)
+      ? "quote"
+      : /horaire|fermeture/.test(t)
+        ? "closing"
+        : "pickup";
+    if (
+      kind === "pickup" &&
+      (!v.quality || !["Prêt à livrer", "Livré"].includes(v.status))
+    )
+      warnings.push(
+        "Le message véhicule prêt sera disponible après validation du contrôle final.",
+      );
+    else
+      actions.push({
+        type: "message",
+        messageKind: kind,
+        label: "Préparer le message client, sans envoi automatique",
+      });
+  }
   if (!actions.length && !warnings.length)
     warnings.push("Commande non comprise. Aucune action ne sera exécutée.");
   return {
@@ -252,6 +301,8 @@ export function applyVoice(
       );
     }
     if (a.type === "finish") next = finishWork(next, id, now);
+    if (a.type === "message")
+      next = prepareClientMessage(next, id, a.messageKind!);
   }
   return next;
 }

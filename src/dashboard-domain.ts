@@ -31,6 +31,10 @@ export function dashboard(db: DB, now = Date.now()) {
     (t) => !running.some((v) => v.technician === t.name),
   );
   return {
+    recordedPayments:
+      Object.values(db.workOrders || {})
+        .flatMap((o) => o.payments)
+        .reduce((n, p) => n + p.cents, 0) / 100,
     present,
     ready,
     blocked,

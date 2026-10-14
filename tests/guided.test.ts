@@ -13,7 +13,7 @@ test("guided zones separate workshop, delivery, waiting and showroom inventory",
   assert.equal(zoneVehicles(db, "atelier").length, 6);
   assert.equal(zoneVehicles(db, "livraison").length, 4);
   assert.equal(zoneVehicles(db, "parking").length, 4);
-  assert.equal(waitingVehicles(db).length, 3);
+  assert.equal(waitingVehicles(db).length, 0);
   assert.equal(showroomCars(db).filter((v) => v.available).length, 3);
   assert.equal(
     db.vehicles.filter((v) => v.present !== false && v.status !== "Livré")

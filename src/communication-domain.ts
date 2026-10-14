@@ -4,21 +4,27 @@ import type { DB } from "./domain.ts";
 export function prepareClientMessage(
   db: DB,
   vehicleId: string,
-  kind: "pickup" | "quote",
+  kind: "pickup" | "quote" | "closing",
 ): DB {
   const v = db.vehicles.find((v) => v.id === vehicleId);
   if (!v) throw Error("Dossier introuvable.");
   let text: string;
-  if (kind === "pickup") {
+  if (kind === "closing") {
+    if (!db.openingHours)
+      throw Error(
+        "Renseignez les horaires du garage avant de préparer ce rappel.",
+      );
+    text = `Bonjour ${v.client}, pour votre ${v.make} ${v.model} (${v.plate}), nous vous rappelons nos horaires : ${db.openingHours.opens}–${db.openingHours.closes} (Europe/Lisbon), les jours d’ouverture convenus avec l’accueil. Merci de confirmer votre passage. L’équipe MOTEK.`;
+  } else if (kind === "pickup") {
     if (!v.quality || !["Prêt à livrer", "Livré"].includes(v.status))
       throw Error(
         "Validez le contrôle qualité avant de préparer la restitution.",
       );
-    text = `Bonjour ${v.client}, votre ${v.make} ${v.model} (${v.plate}) est prêt à être récupéré. Contactez l’accueil pour convenir de votre passage. L’équipe AutoHub.`;
+    text = `Bonjour ${v.client}, votre ${v.make} ${v.model} (${v.plate}) est prêt à être récupéré. Contactez l’accueil pour convenir de votre passage. L’équipe MOTEK.`;
   } else {
-    const q = db.quotes?.find(
-      (q) => q.vehicle === v.id && q.state === "À valider",
-    );
+    const q = db.quotes
+      ?.filter((q) => q.vehicle === v.id && q.state === "À valider")
+      .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
     if (!q?.lines.length)
       throw Error(
         "Enregistrez un devis avec des lignes et soumettez-le à validation.",
@@ -31,13 +37,19 @@ export function prepareClientMessage(
       style: "currency",
       currency: "EUR",
     }).format(Math.round((ht + Math.round(ht * q.vat) / 100) * 100) / 100);
-    text = `Bonjour ${v.client}, le devis pour votre ${v.make} ${v.model} (${v.plate}) s’élève à ${total} TTC. Travaux proposés : ${q.lines.map((l) => l.label).join(", ")}. Merci de nous confirmer votre accord avant la poursuite des travaux. L’équipe AutoHub.`;
+    text = `Bonjour ${v.client}, le devis pour votre ${v.make} ${v.model} (${v.plate}) s’élève à ${total} TTC. Travaux proposés : ${q.lines.map((l) => l.label).join(", ")}. Merci de nous confirmer votre accord avant la poursuite des travaux. L’équipe MOTEK.`;
   }
   if (db.messages.some((m) => m.vehicle === v.id && m.text === text)) return db;
   return {
     ...db,
     messages: [
-      { id: crypto.randomUUID(), vehicle: v.id, text },
+      {
+        id: crypto.randomUUID(),
+        vehicle: v.id,
+        text,
+        kind,
+        createdAt: new Date().toISOString(),
+      },
       ...db.messages,
     ],
     audit: [
@@ -45,7 +57,7 @@ export function prepareClientMessage(
         id: crypto.randomUUID(),
         at: new Date().toISOString(),
         vehicle: v.id,
-        action: `Agent WhatsApp : brouillon ${kind === "pickup" ? "restitution" : "devis"} préparé, non envoyé`,
+        action: `Agent WhatsApp : brouillon ${kind === "pickup" ? "restitution" : kind === "closing" ? "horaires" : "devis"} préparé, non envoyé`,
       },
       ...db.audit,
     ],

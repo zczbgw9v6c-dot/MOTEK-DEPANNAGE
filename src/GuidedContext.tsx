@@ -1,3 +1,6 @@
+import { CurrentWork } from "./CoreDesk";
+import { ReceptionArrival } from "./ReceptionArrival";
+import { receptionLabel } from "./reception-domain";
 import { team } from "./team-data";
 import { DeliveryDeadline } from "./DeliveryDeadline";
 import { quoteTotals } from "./quote-domain";
@@ -16,6 +19,7 @@ export function GuidedContext({
   onSelect,
   onView,
   onReception,
+  onArrival,
   onClose,
 }: {
   db: DB;
@@ -23,6 +27,7 @@ export function GuidedContext({
   onSelect: (s: Selection) => void;
   onView: (v: string) => void;
   onReception: () => void;
+  onArrival: (id: string) => Promise<boolean>;
   onClose: () => void;
 }) {
   const zone = selection.id;
@@ -177,9 +182,14 @@ export function GuidedContext({
                     : "Dossiers de cette zone"}
             </h2>
             {(zone === "attente" || zone === "accueil") && (
-              <p className="warning-small">
-                Présences simulées dans le garage de démonstration.
-              </p>
+              <>
+                <ReceptionArrival db={db} onArrival={onArrival} />
+                <p className="warning-small">
+                  {cars.some((v) => !v.reception)
+                    ? "Arrivée à enregistrer."
+                    : "Présences enregistrées à la réception."}
+                </p>
+              </>
             )}
             {cars.map((v) => (
               <button
@@ -203,6 +213,11 @@ export function GuidedContext({
                   </strong>
                   <small>
                     {v.plate} · {v.status}
+                    {(zone === "attente" || zone === "accueil") && (
+                      <span className="waiting-row-state">
+                        {receptionLabel(v)}
+                      </span>
+                    )}
                   </small>
                 </span>
               </button>
@@ -354,6 +369,7 @@ export function VehicleSummary({
         </button>
       </div>
       <div className="guided-context">
+        <CurrentWork db={db} vehicle={v} />
         <h2>
           {v.make} {v.model}
         </h2>

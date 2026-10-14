@@ -1,3 +1,4 @@
+import { validOrders, type WorkOrder } from "./core-schema.ts";
 import type { DealershipLayout } from "./dealership-layout.ts";
 import { prepareClientMessage } from "./communication-domain.ts";
 import { createDemo } from "./demo.ts";
@@ -45,6 +46,11 @@ export type Vehicle = {
   present?: boolean;
   demo?: boolean;
   arrivedAt?: string;
+  reception?: {
+    arrivedAt: string;
+    state: "waiting" | "received" | "left";
+    receivedAt?: string;
+  };
   estimatedMinutes?: number;
   engine?: string;
   department?: Department;
@@ -69,6 +75,13 @@ export type Part = {
 };
 export type Audit = { id: string; at: string; vehicle: string; action: string };
 export type DB = {
+  openingHours?: {
+    opens: string;
+    closes: string;
+    weekdays: number[];
+    timeZone: "Europe/Lisbon";
+  };
+  workOrders?: Record<string, WorkOrder>;
   version: 1;
   vehicles: Vehicle[];
   parts: Part[];
@@ -80,7 +93,15 @@ export type DB = {
     status: string;
     at?: string;
   }[];
-  messages: { id: string; vehicle: string; text: string }[];
+  messages: {
+    id: string;
+    vehicle: string;
+    text: string;
+    kind?: "quote" | "pickup" | "closing";
+    channel?: "SMS" | "WhatsApp";
+    plannedAt?: string;
+    createdAt?: string;
+  }[];
   workshop?: Record<string, WorkshopState>;
   quotes?: Quote[];
   assetDisabled?: string[];
@@ -155,7 +176,13 @@ export function vehiclePosition(
 export const zones = [
   { id: "accueil", name: "Accueil", short: "Accueil", x: -17, z: 10 },
   { id: "atelier", name: "Atelier mécanique", short: "Atelier", x: 0, z: -28 },
-  { id: "attente", name: "Salle d’attente", short: "Attente", x: -17, z: -3 },
+  {
+    id: "attente",
+    name: "Salle d’attente",
+    short: "Salle d’attente",
+    x: -17,
+    z: -3,
+  },
   { id: "stock", name: "Magasin & stocks", short: "Stocks", x: 17, z: -12 },
   { id: "carrosserie", name: "Carrosserie", short: "Carrosserie", x: 17, z: 0 },
   {
@@ -340,6 +367,17 @@ export function loadDB(raw: string | null): DB {
     return invalid();
   for (const v of d.vehicles) {
     if (
+      v?.reception !== undefined &&
+      (!v.reception ||
+        !["waiting", "received", "left"].includes(v.reception.state) ||
+        !str(v.reception.arrivedAt) ||
+        !Number.isFinite(Date.parse(v.reception.arrivedAt)) ||
+        (v.reception.receivedAt !== undefined &&
+          (!str(v.reception.receivedAt) ||
+            !Number.isFinite(Date.parse(v.reception.receivedAt)))))
+    )
+      return invalid();
+    if (
       !v ||
       ![
         "id",
@@ -368,6 +406,28 @@ export function loadDB(raw: string | null): DB {
     )
       return invalid();
   }
+  if (
+    d.workOrders !== undefined &&
+    !validOrders(
+      d.workOrders,
+      d.vehicles.map((v: Vehicle) => v.id),
+    )
+  )
+    return invalid();
+  if (
+    d.openingHours !== undefined &&
+    (!d.openingHours ||
+      d.openingHours.timeZone !== "Europe/Lisbon" ||
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(d.openingHours.opens) ||
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(d.openingHours.closes) ||
+      d.openingHours.opens >= d.openingHours.closes ||
+      !Array.isArray(d.openingHours.weekdays) ||
+      !d.openingHours.weekdays.length ||
+      !d.openingHours.weekdays.every(
+        (n: number) => Number.isInteger(n) && n >= 0 && n <= 6,
+      ))
+  )
+    return invalid();
   for (const p of d.parts) {
     if (
       !p ||
@@ -396,6 +456,18 @@ export function loadDB(raw: string | null): DB {
       return invalid();
   }
   for (const m of d.messages) {
+    if (
+      m &&
+      ((m.kind !== undefined &&
+        !["quote", "pickup", "closing"].includes(m.kind)) ||
+        (m.channel !== undefined && !["SMS", "WhatsApp"].includes(m.channel)) ||
+        ["plannedAt", "createdAt"].some(
+          (k) =>
+            m[k] !== undefined &&
+            (!str(m[k]) || !Number.isFinite(Date.parse(m[k]))),
+        ))
+    )
+      return invalid();
     if (!m || !["id", "vehicle", "text"].every((k) => str(m[k])))
       return invalid();
   }

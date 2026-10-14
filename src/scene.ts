@@ -11,6 +11,7 @@ import * as THREE from "three";
 import { team } from "./team-data";
 import { isPresent } from "./dashboard-domain";
 import { loadVehicleAsset, disposeObject, supportedAsset } from "./assets";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { bayPosition, vehiclePosition, zones, type Vehicle } from "./domain";
@@ -38,11 +39,12 @@ export type Selection = {
     | "door"
     | "part";
   id: string;
+  detail?: boolean;
 };
 export type Mode = "overview" | "walk" | "free";
 const palette = {
-  floor: "#747b80",
-  wall: "#8d969b",
+  floor: "#505a61",
+  wall: "#e2e4df",
   navy: "#202a32",
   blue: "#48647c",
   wood: "#917457",
@@ -81,6 +83,8 @@ export class GarageScene {
   private ray = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
   private highlight = new THREE.Group();
+  private customerHighlight = new THREE.Group();
+  private selectedCustomer: string | null = null;
   private cohortHighlight = new THREE.Group();
   private cohortIDs: string[] = [];
   private selected: string | null = null;
@@ -174,7 +178,12 @@ export class GarageScene {
           new THREE.Box3().setFromObject(object),
         );
     }
-    this.scene.add(this.cars, this.highlight, this.cohortHighlight);
+    this.scene.add(
+      this.cars,
+      this.highlight,
+      this.cohortHighlight,
+      this.customerHighlight,
+    );
     this.setMode("overview");
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(host);
@@ -533,6 +542,663 @@ export class GarageScene {
       this.scene.add(leaf);
     }
   }
+  private roundedBox(
+    parent: THREE.Object3D,
+    x: number,
+    y: number,
+    z: number,
+    w: number,
+    h: number,
+    d: number,
+    color: string,
+    radius = 0.06,
+  ) {
+    const mesh = new THREE.Mesh(
+      new RoundedBoxGeometry(w, h, d, 3, Math.min(radius, w / 2, h / 2, d / 2)),
+      this.material(color, 0.05, 0.48),
+    );
+    mesh.position.set(x, y, z);
+    mesh.castShadow = mesh.receiveShadow = true;
+    parent.add(mesh);
+    return mesh;
+  }
+  private loungeScreen(
+    w: number,
+    h: number,
+    type: "television" | "magazine" | "coffee",
+  ) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = type === "magazine" ? 640 : 288;
+    const ctx = canvas.getContext("2d")!;
+    const gradient = ctx.createLinearGradient(
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+    gradient.addColorStop(0, "#132e42");
+    gradient.addColorStop(1, "#395765");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#8cbfc8";
+    ctx.fillRect(30, 30, 40, 5);
+    ctx.fillStyle = "#eef6f4";
+    ctx.font = "600 34px Arial";
+    ctx.fillText(type === "magazine" ? "MOTEK / DRIVE" : "MOTEK", 30, 80);
+    ctx.font = "18px Arial";
+    ctx.fillStyle = "#b8ced5";
+    ctx.fillText(
+      type === "coffee" ? "CAFÉ · ESPRESSO" : "Bienvenue dans votre garage",
+      30,
+      119,
+    );
+    if (type !== "coffee") {
+      // Local illustration, not a stream, advertisement or third-party image.
+      ctx.fillStyle = "#101d28";
+      ctx.beginPath();
+      ctx.moveTo(70, 224);
+      ctx.lineTo(91, 186);
+      ctx.lineTo(179, 180);
+      ctx.lineTo(215, 147);
+      ctx.lineTo(335, 148);
+      ctx.lineTo(379, 181);
+      ctx.lineTo(443, 194);
+      ctx.lineTo(446, 224);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#6b91a3";
+      ctx.beginPath();
+      ctx.moveTo(207, 180);
+      ctx.lineTo(232, 158);
+      ctx.lineTo(323, 158);
+      ctx.lineTo(353, 181);
+      ctx.closePath();
+      ctx.fill();
+      for (const x of [139, 383]) {
+        ctx.fillStyle = "#0c151c";
+        ctx.beginPath();
+        ctx.arc(x, 222, 24, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#9cabb3";
+        ctx.beginPath();
+        ctx.arc(x, 222, 11, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (type === "magazine") {
+        ctx.fillStyle = "#f0ede4";
+        ctx.font = "600 32px Arial";
+        ctx.fillText("DESIGN & AUTOMOBILE", 30, 325);
+        ctx.font = "21px Arial";
+        ctx.fillText("Le plaisir de prendre la route", 30, 374);
+        ctx.fillStyle = "#91a5ae";
+        for (let i = 0; i < 5; i++)
+          ctx.fillRect(30, 430 + i * 23, 310 - i * 20, 5);
+      }
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }),
+    );
+  }
+  private waitingLounge() {
+    const tag: Selection = { kind: "zone", id: "attente" };
+    const lounge = new THREE.Group();
+    lounge.userData.select = tag;
+    this.scene.add(lounge);
+    // Two full-size leather sofas share a clear central circulation aisle.
+    for (const z of [-4.7, -0.7]) {
+      this.furniture.push({ x: -20, z, w: 1.35, d: 3.3 });
+      this.roundedBox(lounge, -20, 0.34, z, 1.35, 0.32, 3.3, "#373c3d");
+      this.roundedBox(lounge, -20.54, 0.86, z, 0.24, 0.94, 3.3, "#3e4545", 0.1);
+      for (const end of [-1, 1]) {
+        this.roundedBox(
+          lounge,
+          -20,
+          0.67,
+          z + end * 1.52,
+          1.35,
+          0.58,
+          0.25,
+          "#454d4c",
+          0.09,
+        );
+        for (const x of [-20.45, -19.55])
+          this.cylinder(lounge, x, 0.15, z + end * 1.3, 0.055, 0.23, "#7e888b");
+      }
+      for (const offset of [-0.93, 0, 0.93]) {
+        this.roundedBox(
+          lounge,
+          -19.96,
+          0.57,
+          z + offset,
+          1.02,
+          0.2,
+          0.89,
+          "#4d5654",
+          0.075,
+        );
+        const cushion = this.roundedBox(
+          lounge,
+          -20.36,
+          0.91,
+          z + offset,
+          0.23,
+          0.63,
+          0.89,
+          "#48514f",
+          0.075,
+        );
+        cushion.rotation.z = -0.11;
+        this.box(
+          lounge,
+          -19.448,
+          0.59,
+          z + offset,
+          0.008,
+          0.015,
+          0.73,
+          "#69706a",
+        );
+      }
+    }
+    // Low table with real thickness, inset metal legs, locally drawn magazines and cups.
+    this.furniture.push({ x: -17.8, z: -4.65, w: 1.65, d: 1.25 });
+    const table = this.roundedBox(
+      lounge,
+      -17.8,
+      0.49,
+      -4.65,
+      1.65,
+      0.09,
+      1.25,
+      "#a59073",
+      0.07,
+    );
+    table.material.roughness = 0.35;
+    for (const dx of [-0.65, 0.65])
+      for (const dz of [-0.45, 0.45])
+        this.cylinder(
+          lounge,
+          -17.8 + dx,
+          0.27,
+          -4.65 + dz,
+          0.025,
+          0.43,
+          "#303b44",
+        );
+    for (let i = 0; i < 3; i++) {
+      const book = this.roundedBox(
+        lounge,
+        -18.09 + i * 0.13,
+        0.555 + i * 0.018,
+        -4.72 + i * 0.03,
+        0.3,
+        0.017,
+        0.4,
+        "#e4e1d5",
+        0.005,
+      );
+      book.rotation.y = i * 0.14 - 0.13;
+      if (i === 2) {
+        const cover = this.loungeScreen(0.295, 0.395, "magazine");
+        cover.rotation.set(-Math.PI / 2, 0, -book.rotation.y);
+        cover.position.set(
+          book.position.x,
+          book.position.y + 0.01,
+          book.position.z,
+        );
+        lounge.add(cover);
+      }
+    }
+    for (const x of [-17.38, -17.63]) {
+      this.cylinder(lounge, x, 0.55, -4.35, 0.09, 0.015, "#c5c0b4");
+      this.cylinder(lounge, x, 0.62, -4.35, 0.058, 0.12, "#e7e2d4");
+      this.cylinder(lounge, x, 0.683, -4.35, 0.05, 0.008, "#493429");
+    }
+    // Coffee station is outside the doorway at the north end of the room.
+    this.furniture.push({ x: -20.1, z: -7.28, w: 2.5, d: 0.85 });
+    this.roundedBox(
+      lounge,
+      -20.1,
+      0.51,
+      -7.28,
+      2.5,
+      0.94,
+      0.85,
+      "#67615a",
+      0.045,
+    );
+    this.box(lounge, -20.1, 1, -7.28, 2.6, 0.06, 0.94, "#c1b9a9");
+    for (const x of [-20.86, -20.1, -19.34]) {
+      this.box(lounge, x, 0.51, -6.849, 0.71, 0.78, 0.013, "#756d62");
+      this.box(lounge, x, 0.79, -6.831, 0.24, 0.023, 0.03, "#b9c1c1");
+    }
+    const coffee = this.roundedBox(
+      lounge,
+      -20.6,
+      1.32,
+      -7.24,
+      0.72,
+      0.58,
+      0.54,
+      "#273239",
+      0.035,
+    );
+    coffee.material.metalness = 0.75;
+    coffee.material.roughness = 0.24;
+    this.box(lounge, -20.6, 1.51, -6.958, 0.58, 0.13, 0.024, "#a2b1b7");
+    this.box(lounge, -20.6, 1.27, -6.946, 0.5, 0.28, 0.028, "#131a1c");
+    this.box(lounge, -20.6, 1.12, -6.891, 0.55, 0.035, 0.15, "#9aabae");
+    for (const dx of [-0.12, 0.12]) {
+      this.cylinder(lounge, -20.6 + dx, 1.36, -6.896, 0.018, 0.09, "#b9c2c4");
+      this.cylinder(lounge, -20.6 + dx, 1.19, -6.886, 0.054, 0.12, "#ede5d4");
+    }
+    for (let i = 0; i < 4; i++)
+      this.cylinder(
+        lounge,
+        -19.56,
+        1.06 + i * 0.065,
+        -7.2,
+        0.065,
+        0.095,
+        "#e5dfd4",
+      );
+    this.roundedBox(
+      lounge,
+      -19.18,
+      1.12,
+      -7.2,
+      0.2,
+      0.18,
+      0.25,
+      "#b6ab94",
+      0.025,
+    );
+    // Two glazed dispensers: bottles and packaged snacks are decorative, not stock records.
+    for (const [index, x] of [-14.3, -12.95].entries()) {
+      this.furniture.push({ x, z: -7.2, w: 1.1, d: 0.95 });
+      const machine = this.roundedBox(
+        lounge,
+        x,
+        1.08,
+        -7.2,
+        1.1,
+        2.08,
+        0.95,
+        "#26323b",
+        0.075,
+      );
+      machine.material.metalness = 0.6;
+      this.box(lounge, x - 0.09, 1.2, -6.714, 0.72, 1.33, 0.035, "#111c24");
+      this.box(lounge, x + 0.43, 1.38, -6.686, 0.12, 0.35, 0.035, "#a7b5b7");
+      const screen = this.box(
+        lounge,
+        x + 0.43,
+        1.62,
+        -6.676,
+        0.12,
+        0.13,
+        0.025,
+        "#52828b",
+      );
+      screen.material.emissive.set("#366f7d");
+      screen.material.emissiveIntensity = 0.6;
+      this.box(lounge, x - 0.06, 0.31, -6.687, 0.76, 0.2, 0.04, "#11191f");
+      for (let row = 0; row < 3; row++) {
+        this.box(
+          lounge,
+          x - 0.09,
+          0.74 + row * 0.4,
+          -6.58,
+          0.69,
+          0.025,
+          0.18,
+          "#859397",
+        );
+        for (let col = 0; col < 3; col++) {
+          const px = x - 0.31 + col * 0.23,
+            y = 0.89 + row * 0.4;
+          if (index === 0) {
+            this.cylinder(
+              lounge,
+              px,
+              y,
+              -6.56,
+              0.06,
+              0.25,
+              col === 1 ? "#aa7054" : "#558284",
+            );
+            this.cylinder(lounge, px, y + 0.15, -6.56, 0.028, 0.045, "#bec5c0");
+          } else
+            this.roundedBox(
+              lounge,
+              px,
+              y,
+              -6.56,
+              0.15,
+              0.24,
+              0.08,
+              ["#b59857", "#796e83", "#7d9a7a"][col],
+              0.02,
+            );
+        }
+      }
+      const glass = this.box(
+        lounge,
+        x - 0.09,
+        1.23,
+        -6.51,
+        0.73,
+        1.33,
+        0.008,
+        "#c2e0e0",
+      );
+      glass.material.transparent = true;
+      glass.material.opacity = 0.13;
+      glass.material.depthWrite = false;
+      glass.material.roughness = 0.12;
+    }
+    // A wall TV faces the sofas; all screen content is a local static welcome graphic.
+    const television = new THREE.Group();
+    television.position.set(-12.2, 2.08, -0.6);
+    television.rotation.y = -Math.PI / 2;
+    lounge.add(television);
+    this.roundedBox(television, 0, 0, 0, 1.8, 1.05, 0.08, "#141b20", 0.035);
+    const screen = this.loungeScreen(1.7, 0.95, "television");
+    screen.position.z = 0.043;
+    television.add(screen);
+    // Small pendant luminaires. Their mounts stay high and do not seal the cutaway roof.
+    for (const z of [-4.7, -0.6]) {
+      this.cylinder(lounge, -17.4, 3.48, z, 0.012, 0.8, "#3b444a");
+      const shade = new THREE.Mesh(
+        new THREE.ConeGeometry(0.34, 0.22, 28, 1, true),
+        this.material("#393d3e", 0.65, 0.25),
+      );
+      shade.position.set(-17.4, 3.03, z);
+      lounge.add(shade);
+      const light = this.cylinder(
+        lounge,
+        -17.4,
+        2.94,
+        z,
+        0.26,
+        0.025,
+        "#fff0d2",
+      );
+      light.material.emissive.set("#ffd7a0");
+      light.material.emissiveIntensity = 1.1;
+    }
+    const ambient = new THREE.PointLight("#ffdfb0", 12, 12, 2);
+    ambient.position.set(-17.5, 2.85, -3);
+    lounge.add(ambient);
+    for (const [x, z] of [
+      [-21.25, 1.05],
+      [-13.15, 1],
+      [-21.2, -6.35],
+    ])
+      this.plant(x, z);
+    // Glazed west wall gives a view of the existing site; no second room is created.
+    const west = this.scene.children.find(
+      (object) =>
+        object instanceof THREE.Mesh &&
+        object.position.x === -22 &&
+        object.userData.occluder,
+    ) as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial> | undefined;
+    if (west) {
+      // Preserve the full exterior wall: insert an interior glazing panel instead of deleting it.
+      const glazing = this.box(
+        lounge,
+        -21.85,
+        1.8,
+        -3.2,
+        0.018,
+        1.75,
+        5.7,
+        "#b7d4d8",
+      );
+      glazing.material.transparent = true;
+      glazing.material.opacity = 0.22;
+      glazing.material.depthWrite = false;
+      for (const z of [-6.05, -3.2, -0.35])
+        this.box(lounge, -21.79, 1.8, z, 0.055, 1.85, 0.055, "#45545c");
+    }
+  }
+  private customerAvatar(v: Vehicle, index: number) {
+    const avatar = new THREE.Group();
+    const seated = index < 6;
+    const seats = [-4.7, -0.7, -5.63, 0.23, -3.77, -1.63];
+    avatar.position.set(
+      seated ? -19.94 : -15.1 + ((index - 6) % 3) * 0.88,
+      0,
+      seated ? seats[index] : -4.5 + Math.floor((index - 6) / 3) * 1.2,
+    );
+    avatar.rotation.y = seated ? -Math.PI / 2 : -0.25;
+    avatar.userData.select = { kind: "customer", id: v.id };
+    avatar.userData.customerAnchor = seated ? 1.83 : 2.12;
+    avatar.userData.seated = seated;
+    // Neutral illustrative avatar variation is deterministic and carries no personal photo data.
+    const variant = [...v.id].reduce((n, c) => n + c.charCodeAt(0), 0) % 4;
+    const clothes = ["#565850", "#445968", "#8b7561", "#596c66"][variant];
+    const skin = ["#ba9278", "#c3a087", "#a47e68", "#d0ac90"][variant];
+    const hairColor = ["#38312d", "#514137", "#736554", "#292a2c"][variant];
+    const hip = seated ? 0.68 : 0.86;
+    const chest = hip + 0.36,
+      headY = chest + 0.47;
+    const body = this.roundedBox(
+      avatar,
+      0,
+      chest,
+      0,
+      0.44,
+      0.61,
+      0.28,
+      clothes,
+      0.12,
+    );
+    body.material.roughness = 0.88;
+    this.roundedBox(avatar, 0, hip, 0, 0.38, 0.22, 0.28, "#353f49", 0.065);
+    this.cylinder(avatar, 0, headY - 0.22, 0, 0.065, 0.15, skin);
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 20, 16),
+      this.material(skin, 0, 0.87),
+    );
+    head.scale.set(0.133, 0.18, 0.137);
+    head.position.set(0, headY, -0.006);
+    head.userData.select = { kind: "customer", id: v.id, detail: true };
+    avatar.add(head);
+    const hair = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.62),
+      this.material(hairColor, 0, 0.97),
+    );
+    hair.scale.set(0.139, 0.184, 0.144);
+    hair.position.set(0, headY + 0.009, 0.003);
+    hair.userData.select = { kind: "customer", id: v.id, detail: true };
+    avatar.add(hair);
+    const limb = (
+      a: [number, number, number],
+      b: [number, number, number],
+      radius: number,
+      color: string,
+    ) => {
+      const start = new THREE.Vector3(...a),
+        end = new THREE.Vector3(...b);
+      const direction = end.clone().sub(start);
+      const mesh = new THREE.Mesh(
+        new THREE.CapsuleGeometry(
+          radius,
+          Math.max(0.01, direction.length() - 2 * radius),
+          4,
+          10,
+        ),
+        this.material(color, 0, 0.9),
+      );
+      mesh.position.copy(start.add(end).multiplyScalar(0.5));
+      mesh.quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        direction.normalize(),
+      );
+      avatar.add(mesh);
+    };
+    for (const side of [-1, 1]) {
+      const knee: [number, number, number] = seated
+        ? [side * 0.115, 0.6, -0.39]
+        : [side * 0.105, 0.47, 0.02];
+      limb([side * 0.11, hip, 0], knee, 0.082, "#353f49");
+      limb(knee, [side * 0.115, 0.16, seated ? -0.43 : 0], 0.068, "#353f49");
+      this.roundedBox(
+        avatar,
+        side * 0.115,
+        0.1,
+        seated ? -0.48 : -0.055,
+        0.16,
+        0.13,
+        0.3,
+        "#262c30",
+        0.05,
+      );
+      const elbow: [number, number, number] = [
+        side * 0.255,
+        chest - 0.16,
+        seated ? -0.12 : 0.035,
+      ];
+      const hand: [number, number, number] = [
+        side * 0.16,
+        seated ? hip + 0.11 : hip - 0.12,
+        seated ? -0.29 : 0.01,
+      ];
+      limb([side * 0.23, chest + 0.22, 0], elbow, 0.064, clothes);
+      limb(elbow, hand, 0.052, clothes);
+      const palm = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 10, 8),
+        this.material(skin, 0, 0.9),
+      );
+      palm.position.set(...hand);
+      palm.scale.set(0.045, 0.07, 0.032);
+      avatar.add(palm);
+      const eye = new THREE.Mesh(
+        new THREE.SphereGeometry(0.008, 8, 6),
+        this.material("#303337"),
+      );
+      eye.position.set(side * 0.05, headY + 0.025, -0.131);
+      avatar.add(eye);
+      const ear = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 10, 8),
+        this.material(skin),
+      );
+      ear.scale.set(0.025, 0.045, 0.03);
+      ear.position.set(side * 0.13, headY, 0);
+      avatar.add(ear);
+      const collar = this.roundedBox(
+        avatar,
+        side * 0.055,
+        chest + 0.27,
+        -0.145,
+        0.09,
+        0.13,
+        0.02,
+        "#d8d9d1",
+        0.006,
+      );
+      collar.rotation.z = side * -0.36;
+    }
+    this.roundedBox(
+      avatar,
+      0,
+      chest - 0.015,
+      -0.149,
+      0.012,
+      0.44,
+      0.009,
+      "#919993",
+      0.003,
+    );
+    const nose = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 10, 8),
+      this.material(skin),
+    );
+    nose.scale.set(0.028, 0.038, 0.035);
+    nose.position.set(0, headY - 0.008, -0.135);
+    avatar.add(nose);
+    if (seated && index % 2 === 0) {
+      const phone = this.roundedBox(
+        avatar,
+        0.05,
+        hip + 0.15,
+        -0.32,
+        0.085,
+        0.015,
+        0.155,
+        "#192a37",
+        0.008,
+      );
+      phone.rotation.x = -0.16;
+    }
+    avatar.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.castShadow = true;
+        object.receiveShadow = true;
+      }
+    });
+    return avatar;
+  }
+  /** Screen anchors share the same CRM vehicle IDs as the customer panels. */
+  projectCustomers(): { id: string; x: number; y: number; visible: boolean }[] {
+    const { width, height } = this.renderer.domElement.getBoundingClientRect();
+    this.camera.updateMatrixWorld();
+    const inLounge =
+      this.controls.target.x < -12 &&
+      this.controls.target.z > -9 &&
+      this.controls.target.z < 3;
+    return this.cars.children
+      .filter((object) => object.userData.select?.kind === "customer")
+      .map((object) => {
+        const point = object
+          .localToWorld(
+            new THREE.Vector3(0, object.userData.customerAnchor || 2.1, 0),
+          )
+          .project(this.camera);
+        return {
+          id: object.userData.select.id,
+          x: (point.x * 0.5 + 0.5) * width,
+          y: (-point.y * 0.5 + 0.5) * height,
+          visible:
+            (this.mode === "overview" || (this.mode === "free" && inLounge)) &&
+            point.z > -1 &&
+            point.z < 1 &&
+            Math.abs(point.x) < 1 &&
+            Math.abs(point.y) < 1,
+        };
+      });
+  }
+  setSelectedCustomer(id: string | null) {
+    this.selectedCustomer = id;
+    this.clear(this.customerHighlight);
+    const customer = this.cars.children.find(
+      (object) =>
+        object.userData.select?.kind === "customer" &&
+        object.userData.select.id === id,
+    );
+    if (!customer) return;
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.39, 0.46, 48),
+      new THREE.MeshBasicMaterial({
+        color: "#64b5ff",
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.85,
+        depthTest: false,
+      }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.copy(customer.position);
+    ring.position.y = 0.09;
+    if (customer.userData.seated) ring.position.x += 0.4;
+    ring.renderOrder = 4;
+    this.customerHighlight.add(ring);
+  }
   private roomDetails() {
     // Metal workbench and pegboard in the parts room.
     this.solid(17, -17, 4, 0.85, 0.85, "#374650", {
@@ -577,38 +1243,6 @@ export class GarageScene {
       tire.castShadow = true;
       this.scene.add(tire);
     }
-    // Waiting room upholstery, tables and office chair.
-    if (this.layout.waitingRoom) {
-      for (const z of [-5.5, -0.5]) {
-        for (const end of [-1, 1])
-          this.box(
-            this.scene,
-            -20,
-            0.85,
-            z + end * 1.43,
-            1.2,
-            0.42,
-            0.17,
-            "#526058",
-          );
-        for (let i = -1; i <= 1; i++)
-          this.box(
-            this.scene,
-            -19.93,
-            0.69,
-            z + i * 0.88,
-            0.9,
-            0.12,
-            0.82,
-            "#657166",
-          );
-      }
-      this.box(this.scene, -16, 0.65, -5, 0.36, 0.03, 0.5, "#e0e0d9");
-      this.cylinder(this.scene, -16.55, 0.66, -4.85, 0.1, 0.2, "#d8d5c8");
-    }
-    this.cylinder(this.scene, -20, 0.3, -15.3, 0.055, 0.5, "#737d82");
-    this.box(this.scene, -20, 0.59, -15.3, 0.58, 0.16, 0.58, "#303d46");
-    this.box(this.scene, -20, 0.95, -15.56, 0.58, 0.65, 0.09, "#303d46");
     // Linear drain channels; repeated floor texture is applied per slab in metres.
     for (const x of [-10.8, 10.8]) {
       this.box(this.scene, x, 0.082, -30, 0.22, 0.01, 39, "#333e46");
@@ -639,6 +1273,338 @@ export class GarageScene {
       material.roughness = 0.48;
       material.needsUpdate = true;
     });
+  }
+  private pendant(x: number, z: number, width: number) {
+    const fixture = new THREE.Group();
+    fixture.name = "suspended-worklight";
+    this.scene.add(fixture);
+    for (const offset of [-width * 0.37, width * 0.37])
+      this.cylinder(fixture, x + offset, 4.8, z, 0.009, 1.1, "#677176");
+    const housing = this.roundedBox(
+      fixture,
+      x,
+      4.22,
+      z,
+      width,
+      0.1,
+      0.24,
+      "#39454d",
+      0.035,
+    );
+    housing.material.metalness = 0.65;
+    const diffuser = this.box(
+      fixture,
+      x,
+      4.16,
+      z,
+      width - 0.12,
+      0.018,
+      0.17,
+      "#f0f4eb",
+    );
+    diffuser.material.emissive.set("#d9e8f3");
+    diffuser.material.emissiveIntensity = 1.5;
+  }
+  private officeWorkstations() {
+    // Three workstations remain within the existing office and its existing doorways.
+    const desks = [
+      { x: -20, z: -14, title: "DIRECTION" },
+      { x: -14.5, z: -15.4, title: "SECRÉTARIAT" },
+      { x: -20, z: -10.2, title: "COMPTABILITÉ" },
+    ];
+    const tag: Selection = { kind: "office", id: "office" };
+    for (const { x, z, title } of desks) {
+      const desk = new THREE.Group();
+      desk.userData.select = tag;
+      this.scene.add(desk);
+      this.furniture.push({ x, z, w: 2.3, d: 1.1 });
+      const top = this.roundedBox(
+        desk,
+        x,
+        0.8,
+        z,
+        2.3,
+        0.08,
+        1.1,
+        "#a4947d",
+        0.025,
+      );
+      top.material.roughness = 0.4;
+      for (const dx of [-0.94, 0.94])
+        this.box(desk, x + dx, 0.4, z, 0.055, 0.76, 0.85, "#455159");
+      this.roundedBox(
+        desk,
+        x + 0.76,
+        0.42,
+        z,
+        0.58,
+        0.66,
+        0.76,
+        "#d1d5d2",
+        0.03,
+      );
+      for (let row = 0; row < 3; row++)
+        this.box(
+          desk,
+          x + 0.76,
+          0.23 + row * 0.2,
+          z + 0.389,
+          0.22,
+          0.018,
+          0.02,
+          "#54616a",
+        );
+      this.roundedBox(
+        desk,
+        x - 0.18,
+        1.2,
+        z - 0.22,
+        0.8,
+        0.5,
+        0.055,
+        "#222e36",
+        0.025,
+      );
+      const screen = this.box(
+        desk,
+        x - 0.18,
+        1.2,
+        z - 0.187,
+        0.73,
+        0.43,
+        0.012,
+        "#567b8d",
+      );
+      screen.material.emissive.set("#27495a");
+      screen.material.emissiveIntensity = 0.25;
+      this.box(desk, x - 0.18, 0.94, z - 0.22, 0.045, 0.24, 0.05, "#62717b");
+      this.roundedBox(
+        desk,
+        x - 0.18,
+        0.858,
+        z + 0.18,
+        0.5,
+        0.025,
+        0.2,
+        "#3a454e",
+        0.012,
+      );
+      this.roundedBox(
+        desk,
+        x + 0.17,
+        0.86,
+        z + 0.18,
+        0.065,
+        0.03,
+        0.1,
+        "#3a454e",
+        0.02,
+      );
+      for (let sheet = 0; sheet < 3; sheet++) {
+        const paper = this.box(
+          desk,
+          x - 0.82,
+          0.85 + sheet * 0.004,
+          z + 0.12,
+          0.25,
+          0.003,
+          0.34,
+          "#e4e6de",
+        );
+        paper.rotation.y = sheet * 0.09;
+      }
+      this.cylinder(desk, x + 0.9, 0.96, z - 0.3, 0.055, 0.22, "#5a6b72");
+      const chairZ = z + 1;
+      this.furniture.push({ x: x - 0.18, z: chairZ, w: 0.6, d: 0.64 });
+      this.cylinder(desk, x - 0.18, 0.3, chairZ, 0.045, 0.43, "#a1acb0");
+      this.roundedBox(
+        desk,
+        x - 0.18,
+        0.56,
+        chairZ,
+        0.58,
+        0.13,
+        0.55,
+        "#35424b",
+        0.065,
+      );
+      this.roundedBox(
+        desk,
+        x - 0.18,
+        0.91,
+        chairZ + 0.24,
+        0.56,
+        0.66,
+        0.1,
+        "#35424b",
+        0.055,
+      );
+      for (let spoke = 0; spoke < 5; spoke++) {
+        const leg = this.box(
+          desk,
+          x - 0.18,
+          0.12,
+          chairZ,
+          0.045,
+          0.04,
+          0.64,
+          "#7a858c",
+        );
+        leg.rotation.y = (spoke * Math.PI) / 5;
+      }
+      // Low glazed privacy panels preserve sightlines through the existing shared room.
+      const partition = this.box(
+        desk,
+        x,
+        1.2,
+        z - 0.65,
+        2.45,
+        2.25,
+        0.035,
+        "#bdd3d7",
+      );
+      partition.material.transparent = true;
+      partition.material.opacity = 0.18;
+      partition.material.depthWrite = false;
+      partition.material.roughness = 0.18;
+      for (const dx of [-1.23, 1.23])
+        this.box(desk, x + dx, 1.2, z - 0.65, 0.045, 2.3, 0.065, "#53616a");
+      this.furniture.push({ x, z: z - 0.65, w: 2.5, d: 0.08 });
+      const sign = this.label(title, x, 2.45, z - 0.65, 2.5);
+      sign.userData.select = tag;
+    }
+  }
+  private wheelStorage() {
+    const rack = new THREE.Group();
+    rack.userData.select = { kind: "stock", id: "tires" };
+    this.scene.add(rack);
+    const x = 17,
+      z = -7.65;
+    this.furniture.push({ x, z, w: 4.05, d: 0.9 });
+    for (const dx of [-1.97, 1.97])
+      for (const dz of [-0.4, 0.4])
+        this.box(rack, x + dx, 1.15, z + dz, 0.065, 2.3, 0.065, "#34434d");
+    for (const y of [0.2, 1.15, 2.2]) {
+      for (const dz of [-0.36, 0.36])
+        this.box(rack, x, y, z + dz, 4, 0.055, 0.055, "#657985");
+    }
+    for (let row = 0; row < 2; row++) {
+      for (let slot = 0; slot < 5; slot++) {
+        const wheel = new THREE.Group();
+        wheel.position.set(x - 1.55 + slot * 0.78, 0.65 + row * 0.95, z);
+        rack.add(wheel);
+        const tire = new THREE.Mesh(
+          new THREE.TorusGeometry(0.295, 0.105, 10, 24),
+          this.material("#20282e", 0, 0.9),
+        );
+        tire.castShadow = true;
+        wheel.add(tire);
+        if (row === 1) {
+          const rim = new THREE.Mesh(
+            new THREE.TorusGeometry(0.245, 0.025, 8, 24),
+            this.material("#b8c3c8", 0.9, 0.24),
+          );
+          rim.position.z = 0.075;
+          wheel.add(rim);
+          for (let spoke = 0; spoke < 5; spoke++) {
+            const metal = this.box(
+              wheel,
+              0,
+              0,
+              0.075,
+              0.04,
+              0.46,
+              0.035,
+              "#b8c3c8",
+            );
+            metal.material.metalness = 0.9;
+            metal.material.roughness = 0.23;
+            metal.rotation.z = (spoke * Math.PI) / 5;
+          }
+          const hub = this.cylinder(wheel, 0, 0, 0.08, 0.055, 0.04, "#71818b");
+          hub.rotation.x = Math.PI / 2;
+        }
+      }
+    }
+    const label = this.label("PNEUS · JANTES", x, 2.5, z, 3);
+    label.userData.select = { kind: "stock", id: "tires" };
+  }
+  private paintBooth() {
+    const tag: Selection = { kind: "zone", id: "carrosserie" };
+    const shell = new THREE.Group();
+    shell.userData.select = tag;
+    this.scene.add(shell);
+    const x = 19.1,
+      z = 0;
+    const back = this.solid(x, z - 3.45, 4.8, 0.16, 3.05, "#e5e7e1", tag);
+    back.material.roughness = 0.44;
+    for (const side of [-1, 1]) {
+      const panel = this.solid(
+        x + side * 2.3,
+        z,
+        0.14,
+        6.9,
+        3.05,
+        "#e5e7e1",
+        tag,
+      );
+      panel.material.roughness = 0.44;
+      for (const zz of [-2.3, -0.7, 0.9, 2.5]) {
+        this.box(
+          shell,
+          x + side * 2.21,
+          1.55,
+          zz,
+          0.018,
+          2.65,
+          0.027,
+          "#a8b4b8",
+        );
+        const strip = this.box(
+          shell,
+          x + side * 2.2,
+          2.55,
+          zz - 0.33,
+          0.028,
+          0.26,
+          1.05,
+          "#eef5ee",
+        );
+        strip.material.emissive.set("#e7f1f4");
+        strip.material.emissiveIntensity = 0.8;
+      }
+    }
+    this.box(shell, x, 0.095, z, 4.3, 0.055, 6.7, "#46545c");
+    for (let n = 0; n < 24; n++)
+      this.box(shell, x, 0.13, -3.18 + n * 0.275, 3.9, 0.018, 0.045, "#8a979c");
+    this.box(shell, x, 2.94, z + 3.4, 4.8, 0.24, 0.22, "#c9d0ce");
+    // A folded door on either side leaves the centre entrance clear and visible.
+    for (const side of [-1, 1]) {
+      const door = new THREE.Group();
+      door.position.set(x + side * 1.8, 0, z + 3.4);
+      door.rotation.y = side * 0.42;
+      shell.add(door);
+      this.box(door, 0, 1.45, 0, 0.78, 2.85, 0.075, "#dfe4df");
+      const glass = this.box(door, 0, 1.7, 0.045, 0.55, 1.15, 0.016, "#7998a0");
+      glass.material.metalness = 0.3;
+      glass.material.roughness = 0.16;
+      this.box(door, -side * 0.24, 1.14, 0.09, 0.025, 0.25, 0.035, "#65777e");
+    }
+    this.box(shell, x, 2.65, -3.35, 2.8, 0.4, 0.04, "#9daaad");
+    for (let n = 0; n < 11; n++)
+      this.box(
+        shell,
+        x - 1.25 + n * 0.25,
+        2.65,
+        -3.32,
+        0.026,
+        0.3,
+        0.025,
+        "#4d6069",
+      );
+    this.pendant(x, z, 3.1);
+    const sign = this.label("CABINE PEINTURE", x, 3.4, z + 3.4, 3.5);
+    sign.userData.select = tag;
   }
   private build() {
     this.box(this.scene, 0, -0.34, -12, 110, 0.4, 140, "#303a42");
@@ -682,7 +1648,7 @@ export class GarageScene {
             { kind: "zone", id: zone.id },
           );
       });
-    this.box(this.scene, 0, 0.057, -30, 23, 0.015, 40, "#71797d", {
+    this.box(this.scene, 0, 0.057, -30, 23, 0.015, 40, "#596269", {
       kind: "zone",
       id: "atelier",
     });
@@ -753,6 +1719,8 @@ export class GarageScene {
       const tag: Selection = { kind: "bay", id: String(i) };
       for (const dx of [-1.65, 1.65]) {
         const post = this.solid(x + dx, z, 0.32, 0.6, 3.1, "#a93035", tag);
+        // Lift machinery must remain complete. Only architectural walls use cutaway occlusion.
+        post.userData.occluder = false;
         post.material.metalness = 0.55;
         post.material.roughness = 0.3;
         this.box(this.scene, x + dx, 0.08, z, 0.65, 0.1, 0.85, "#20262b", tag);
@@ -831,6 +1799,7 @@ export class GarageScene {
         );
       this.scene.add(lift);
       this.liftGroups.set(i, lift);
+      this.pendant(x, z, 3.25);
       this.label(`POSTE ${String(i).padStart(2, "0")}`, x, 3.8, z, 2.3);
       this.toolCabinet(x + (x < 0 ? -3 : 3), z + 1.5);
     }
@@ -847,23 +1816,24 @@ export class GarageScene {
       });
       this.box(this.scene, x, 1.2, 7.6, 0.2, 0.3, 0.2, "#657880");
     }
-    for (const z of this.layout.waitingRoom ? [-5.5, -0.5] : []) {
-      this.solid(-20, z, 1.2, 3, 0.65, "#74877e");
-      this.box(this.scene, -20.5, 1, z, 0.22, 0.75, 3, "#74877e");
+    if (this.layout.waitingRoom) this.waitingLounge();
+    this.officeWorkstations();
+    // Decorative reception staff: no customer presence or CRM record is invented.
+    for (const [index, x] of [-19.2, -16.8].entries()) {
+      const reception = this.person("Accueil", x, 6, "customer", false);
+      reception.rotation.y = Math.PI;
+      reception.userData.select = { kind: "reception", id: "reception" };
+      if (index === 1) {
+        const hair = new THREE.Mesh(
+          new THREE.SphereGeometry(1, 16, 12),
+          this.material("#43342e", 0, 0.94),
+        );
+        hair.position.set(0, 1.53, 0.085);
+        hair.scale.set(0.153, 0.235, 0.12);
+        reception.add(hair);
+      }
+      this.scene.add(reception);
     }
-    if (this.layout.waitingRoom)
-      this.solid(-16, -5, 2, 1.3, 0.42, palette.wood);
-    this.solid(-20, -14, 2.2, 1.1, 0.78, palette.wood, {
-      kind: "office",
-      id: "office",
-    });
-    this.box(this.scene, -20, 1.12, -14, 0.9, 0.62, 0.1, palette.navy, {
-      kind: "office",
-      id: "office",
-    });
-    const reception = this.person("Éric", -18, 6, "customer");
-    reception.userData.select = { kind: "zone", id: "accueil" };
-    this.scene.add(reception);
     this.label("ACCUEIL · RÉCEPTION CLIENTS", -18, 2.4, 7.5, 4);
     this.box(this.scene, -18, 0.5, 8.14, 4.7, 0.7, 0.08, "#315e7b", {
       kind: "reception",
@@ -916,9 +1886,8 @@ export class GarageScene {
             );
         }
       }
-    this.solid(20, 0, 2.5, 6, 2.6, "#d4ded9", { kind: "delivery", id: "body" });
-    this.box(this.scene, 18.7, 1.25, 0, 0.04, 2.2, 5, "#9daba7");
-    this.label("CABINE PEINTURE", 20, 2.8, 0, 3);
+    this.paintBooth();
+    this.wheelStorage();
     this.solid(21, 17, 1.3, 2, 0.9, palette.wood, {
       kind: "delivery",
       id: "delivery",
@@ -956,7 +1925,7 @@ export class GarageScene {
     }
     for (let i = 0; i < 8; i++) {
       const z = -12 - i * (this.layout.workshopSpacing || 5);
-      this.box(this.scene, -7, 0.064, z, 4.5, 0.02, 4.6, "#899795");
+      this.box(this.scene, -7, 0.064, z, 4.5, 0.02, 4.6, "#505b63");
       this.box(this.scene, -9.3, 0.085, z, 0.06, 0.02, 4.6, "#e8ece6");
       this.label(`PARC ${i + 1}`, -7, 0.4, z + 2, 1.5);
     }
@@ -1133,6 +2102,7 @@ export class GarageScene {
       { blocked?: boolean; runningSince?: string | null }
     > = {},
     demo = false,
+    waiting: Vehicle[] = [],
   ) {
     const generation = ++this.generation;
     this.assetDisabled = disabled;
@@ -1231,27 +2201,20 @@ export class GarageScene {
       vehicleLabel.userData.vehicleLabel = v.id;
       vehicleLabel.userData.select = { kind: "vehicle", id: v.id };
     });
-    if (demo) {
-      if (this.layout.waitingRoom)
-        ["v11", "v12", "v13"].forEach((id, i) => {
-          const v = vehicles.find((v) => v.id === id && isPresent(v));
-          if (!v) return;
-          const person = this.person(
-            v.client.split(" ")[0],
-            -19 + i * 1.2,
-            -3,
-            "customer",
-          );
-          person.userData.select = { kind: "customer", id: v.id };
-          const badge = this.cars.children.find(
-            (o) =>
-              o instanceof THREE.Sprite &&
-              o.userData.select?.kind === "customer" &&
-              o.userData.select?.id === v.client.split(" ")[0],
-          );
-          if (badge) badge.userData.select = { kind: "customer", id: v.id };
-          this.cars.add(person);
+    if (this.layout.waitingRoom) {
+      const seen = new Set<string>();
+      waiting
+        .filter(
+          (v) =>
+            vehicles.some((record) => record.id === v.id) &&
+            !seen.has(v.id) &&
+            !!seen.add(v.id),
+        )
+        .forEach((v, index) => {
+          this.cars.add(this.customerAvatar(v, index));
         });
+    }
+    if (demo) {
       demoShowroom.forEach((v, i) => {
         const proxy = {
           ...vehicles[0],
@@ -1293,6 +2256,7 @@ export class GarageScene {
       });
     }
     this.setSelected(this.selected);
+    this.setSelectedCustomer(this.selectedCustomer);
     this.setFocusIds(this.cohortIDs);
   }
   private person(
@@ -1300,6 +2264,7 @@ export class GarageScene {
     x: number,
     z: number,
     kind: "technician" | "customer" = "technician",
+    showBadge = true,
   ) {
     const g = new THREE.Group();
     g.position.set(x, 0, z);
@@ -1410,17 +2375,19 @@ export class GarageScene {
       back.position.set(0, 1.23, 0.205);
       g.add(back);
     }
-    const badge = this.label(
-      name,
-      x,
-      2.05,
-      z,
-      1.6,
-      "#23465b",
-      "#ffffff",
-      this.cars,
-    );
-    badge.userData.select = { kind, id: name };
+    if (showBadge) {
+      const badge = this.label(
+        name,
+        x,
+        2.05,
+        z,
+        1.6,
+        "#23465b",
+        "#ffffff",
+        this.cars,
+      );
+      badge.userData.select = { kind, id: name };
+    }
     return g;
   }
   focusEntity(kind: Selection["kind"], id: string) {
@@ -1436,6 +2403,7 @@ export class GarageScene {
     this.setMode("free");
     this.camera.position.copy(start);
     this.controls.target.copy(target);
+    if (kind === "customer") this.setSelectedCustomer(id);
     const view = vehicleView(
       object.position.x,
       object.position.z,
@@ -1623,6 +2591,7 @@ export class GarageScene {
     this.path = [];
     if (document.pointerLockElement) document.exitPointerLock();
     this.mode = mode;
+    this.setSelectedCustomer(null);
     this.controls.enabled = true;
     this.keys.clear();
     if (mode === "overview") {

@@ -205,7 +205,7 @@ export function Stocks({
                         id: crypto.randomUUID(),
                         part: order.part,
                         vehicle: "stock",
-                        kind: "Réception simulée",
+                        kind: "Réception déclarée manuellement",
                         quantity: order.quantity,
                         at: new Date().toISOString(),
                       },
@@ -213,12 +213,12 @@ export function Stocks({
                     ],
                   },
                   "stock",
-                  "Réception simulée de commande et mouvement de stock",
+                  "Réception de commande déclarée manuellement et mouvement de stock",
                 );
-              }, "Réception simulée enregistrée.")
+              }, "Réception manuelle enregistrée.")
             }
           >
-            Simuler la réception
+            Confirmer la réception manuelle
           </button>
         </div>
       ))}

@@ -1,3 +1,9 @@
+import { HomeGarage } from "./HomeGarage";
+import { CoreDesk } from "./CoreDesk";
+import { receiveClient } from "./reception-domain";
+import { WaitingClient } from "./WaitingClient";
+import { CustomerMarkers } from "./CustomerMarkers";
+import { waitingVehicles } from "./guided-domain";
 import { ZoneMarkers } from "./ZoneMarkers";
 import { quoteTotals } from "./quote-domain";
 import { GuidedContext, ClientContext, VehicleSummary } from "./GuidedContext";
@@ -181,7 +187,7 @@ function App() {
     dbRef.current = db;
   }, [db]);
   const [view, setView] = useState(
-    location.hash.startsWith("#ordre=") ? "atelier" : "garage",
+    location.hash.startsWith("#ordre=") ? "atelier" : "core",
   );
   const [selection, setSelection] = useState<Selection | null>(() =>
     location.hash.startsWith("#ordre=")
@@ -369,6 +375,7 @@ function App() {
         db.assetDisabled,
         db.workshop,
         !!db.demoVersion,
+        waitingVehicles(db),
       );
       scene.current.setMode(mode);
       if (selection?.kind === "zone") scene.current.go(selection.id);
@@ -400,12 +407,16 @@ function App() {
       db.assetDisabled,
       db.workshop,
       !!db.demoVersion,
+      waitingVehicles(db),
     );
   }, [db.vehicles, db.assetDisabled, db.workshop, db.demoVersion]);
   useEffect(() => {
     scene.current?.setFocusIds(cohort === "all" ? [] : cohortIDs(cohort));
   }, [cohort, db, view]);
   useEffect(() => {
+    scene.current?.setSelectedCustomer(
+      selection?.kind === "customer" ? selection.id : null,
+    );
     scene.current?.setSelected(
       selection?.kind === "vehicle" || selection?.kind === "wheel"
         ? car?.id || null
@@ -475,35 +486,41 @@ function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
   const nav = [
-    ["garage", "Accueil", Buildings],
-    ["zone:atelier", "Atelier", Wrench],
-    ["zone:attente", "Attente", Users],
-    ["stocks", "Stocks", Package],
-    ["zone:carrosserie", "Carrosserie", Car],
-    ["zone:bureau", "Bureau", FileText],
-    ["zone:livraison", "Livraison", CheckCircle],
-    ["zone:showroom", "Showroom", Car],
-    ["zone:parking", "Parc", Buildings],
-    ["dossiers", "Clients & véhicules", Car],
-    ["atelier", "Interventions", Wrench],
-    ["devis", "Devis & validations", FileText],
+    ["core", "Accueil", Buildings],
+    ["garage", "Plan 3D", MapTrifold],
+    ["operations", "Atelier", Wrench],
     ["planning", "Planning", CalendarDots],
-    ["equipe", "Équipe", Users],
-
+    ["devis", "Devis", FileText],
+    ["stocks", "Pièces", Package],
     ["intelligence", "Garage intelligent", Brain],
-    ["pilotage", "Rapports", ChartLine],
-    ["bibliotheque", "Bibliothèque 3D", Cube],
   ] as const;
+  const navParent =
+    view === "atelier"
+      ? "operations"
+      : ["waiting", "dossiers"].includes(view)
+        ? "core"
+        : view === "equipe"
+          ? "planning"
+          : view;
+  const pageNames: Record<string, string> = {
+    atelier: "Intervention",
+    waiting: "Salle d’attente",
+    dossiers: "Clients et véhicules",
+    equipe: "Équipe",
+    pilotage: "Rapports",
+    bibliotheque: "Modèles 3D",
+    reglages: "Réglages",
+  };
   return (
     <div className="app-shell motek-shell">
       <aside className="sidebar">
         <a
           className="brand"
-          aria-label="MOTEK, ouvrir le garage"
+          aria-label="MOTEK, ouvrir l’accueil"
           href="#"
           onClick={(e) => {
             e.preventDefault();
-            setView("garage");
+            setView("core");
           }}
         >
           <span className="brand-symbol">
@@ -526,60 +543,43 @@ function App() {
               key={id}
               aria-label={label}
               title={label}
-              className={
-                (
-                  id.startsWith("zone:")
-                    ? view === "garage" &&
-                      mode !== "overview" &&
-                      zone === id.slice(5)
-                    : view === id && (id !== "garage" || mode === "overview")
-                )
-                  ? "nav-item active"
-                  : "nav-item"
-              }
+              className={"nav-item " + (navParent === id ? "active" : "")}
               onClick={() => {
-                if (id.startsWith("zone:")) go(id.slice(5));
-                else {
-                  setView(id);
-                  if (id === "garage") {
-                    setSelection(null);
-                    changeMode("overview");
-                  }
+                setView(id);
+                setCohort("all");
+                if (id === "garage") {
+                  setSelection(null);
+                  changeMode("overview");
                 }
                 setQuery("");
               }}
             >
               <Icon size={21} />
               <span>{label}</span>
-              {id === "dossiers" && (
-                <span className="nav-count">{active.length}</span>
-              )}
               {id === "intelligence" && <span className="new-dot" />}
             </button>
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="local-card">
-            <ShieldCheck size={23} />
-            <strong>Votre atelier, connecté.</strong>
-            <p>
-              Prototype local
-              <br />
-              Données fictives et modifiables.
-            </p>
-            <span>
-              <i /> Base SQLite · serveur local
-            </span>
-          </div>
-          <button
-            aria-label="Paramètres"
-            title="Paramètres"
-            className={"nav-item " + (view === "reglages" ? "active" : "")}
-            onClick={() => setView("reglages")}
-          >
-            <GearSix size={21} />
-            Paramètres
-          </button>
+          <details className="management-menu">
+            <summary title="Gestion et réglages">
+              <GearSix size={20} />
+              <span>Gestion</span>
+            </summary>
+            {[
+              ["pilotage", "Rapports"],
+              ["reglages", "Réglages"],
+              ["bibliotheque", "Modèles 3D"],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                className={view === id ? "active" : ""}
+                onClick={() => setView(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </details>
           <div className="user">
             <span>ÉS</span>
             <div>
@@ -609,7 +609,7 @@ function App() {
               <div className="global-results">
                 {db.vehicles
                   .filter((v) =>
-                    `${v.make} ${v.model} ${v.plate} ${v.client}`
+                    `${v.make} ${v.model} ${v.plate} ${v.client} ${v.phone} ${v.vin || ""}`
                       .toLowerCase()
                       .includes(globalSearch.toLowerCase()),
                   )
@@ -618,8 +618,8 @@ function App() {
                     <button
                       key={v.id}
                       onClick={() => {
-                        setView("garage");
-                        select({ kind: "vehicle", id: v.id });
+                        setSelection({ kind: "vehicle", id: v.id });
+                        setView("core");
                         setGlobalSearch("");
                       }}
                     >
@@ -635,7 +635,7 @@ function App() {
                     </button>
                   ))}
                 {!db.vehicles.some((v) =>
-                  `${v.make} ${v.model} ${v.plate} ${v.client}`
+                  `${v.make} ${v.model} ${v.plate} ${v.client} ${v.phone} ${v.vin || ""}`
                     .toLowerCase()
                     .includes(globalSearch.toLowerCase()),
                 ) && <p>Aucun dossier correspondant.</p>}
@@ -650,7 +650,7 @@ function App() {
           </div>
           <div className="top-actions">
             <span className="demo">
-              <i /> Mode démonstration
+              <i /> Espace de test · données fictives
             </span>
             <button
               className="icon-button"
@@ -672,7 +672,8 @@ function App() {
                 {view === "garage"
                   ? "Une nouvelle perspective sur votre atelier."
                   : nav.find((n) => n[0] === view)?.[1] ||
-                    "Paramètres de l’atelier"}
+                    pageNames[view] ||
+                    "Accueil"}
               </h1>
               <p>
                 {view === "garage"
@@ -706,37 +707,50 @@ function App() {
               </button>
             </div>
           )}
-          <div className="metrics clickable-metrics">
-            <button onClick={() => filterDossiers("present")}>
-              <span>Véhicules présents</span>
-              <strong>
-                {live.present.length}
-                <small>dans votre garage</small>
-              </strong>
+          {["core", "waiting", "dossiers"].includes(view) && (
+            <nav className="workspace-tabs" aria-label="Accueil et clients">
+              {[
+                ["core", "Aujourd’hui"],
+                ["waiting", "Salle d’attente"],
+                ["dossiers", "Clients et véhicules"],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  aria-current={view === id ? "page" : undefined}
+                  onClick={() => {
+                    setView(id);
+                    setCohort("all");
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+          )}
+          {["planning", "equipe"].includes(view) && (
+            <nav className="workspace-tabs" aria-label="Planning et équipe">
+              {[
+                ["planning", "Rendez-vous"],
+                ["equipe", "Équipe"],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  aria-current={view === id ? "page" : undefined}
+                  onClick={() => setView(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+          )}
+          {view === "atelier" && (
+            <button
+              className="secondary back-workspace"
+              onClick={() => setView("operations")}
+            >
+              ← Tous les travaux de l’atelier
             </button>
-            <button onClick={() => setView("planning")}>
-              <span>Postes occupés</span>
-              <strong>
-                {live.occupied.length}
-                <em>/ 8</em>
-                <small>{8 - live.occupied.length} disponibles</small>
-              </strong>
-            </button>
-            <button onClick={() => setView("devis")}>
-              <span>Devis validés</span>
-              <strong>
-                {live.accepted.length}
-                <small>accord enregistré</small>
-              </strong>
-            </button>
-            <button onClick={() => filterDossiers("ready")}>
-              <span>Prêts à livrer</span>
-              <strong>
-                {live.ready.length}
-                <small className="text-green">contrôle validé</small>
-              </strong>
-            </button>
-          </div>
+          )}
           {view === "garage" ? (
             <div
               className={
@@ -793,6 +807,15 @@ function App() {
                 </nav>
                 <div className="scene-viewport">
                   <div ref={host} className="canvas-host" />
+                  <CustomerMarkers
+                    scene={scene}
+                    db={db}
+                    active={
+                      (zone === "attente" && mode !== "overview") ||
+                      selection?.kind === "customer"
+                    }
+                    onSelect={(id) => select({ kind: "customer", id })}
+                  />
                   <ZoneMarkers
                     scene={scene}
                     db={db}
@@ -943,13 +966,35 @@ function App() {
                     onSelect={select}
                     onView={setView}
                     onReception={() => setCreation(true)}
+                    onArrival={(id) =>
+                      transact("core.arrival", id, {}, "Arrivée enregistrée.")
+                    }
                     onClose={() => {
                       setSelection(null);
                       changeMode("overview");
                     }}
                   />
                 ) : selection?.kind === "customer" && car ? (
-                  <ClientContext
+                  <WaitingClient
+                    key={`${car.id}-${selection.detail || false}`}
+                    initialDetailed={!!selection.detail}
+                    onReceptionAction={(state) =>
+                      transact(
+                        state === "received"
+                          ? "core.receive"
+                          : state === "left"
+                            ? "core.departure"
+                            : "core.arrival",
+                        car.id,
+                        {},
+                        "Accueil et ordre de réparation mis à jour.",
+                      )
+                    }
+                    commit={commit}
+                    onWorkshop={() => {
+                      select({ kind: "vehicle", id: car.id });
+                      setWorkbench(true);
+                    }}
                     db={db}
                     vehicle={car}
                     onVehicle={() => select({ kind: "vehicle", id: car.id })}
@@ -1645,6 +1690,40 @@ function App() {
                 )}
               </aside>
             </div>
+          ) : ["core", "operations", "waiting"].includes(view) ? (
+            <>
+              <CoreDesk
+                key={`${view}-${selection?.id || ""}`}
+                db={db}
+                selected={selection?.id}
+                scope={view}
+                onNew={() => setCreation(true)}
+                onAction={(type, id, p) =>
+                  transact(type, id, p, "Action enregistrée.")
+                }
+                onWorkshop={(id) => {
+                  setSelection({ kind: "vehicle", id });
+                  setView("atelier");
+                }}
+                onQuotes={(id) => {
+                  setSelection({ kind: "vehicle", id });
+                  setView("devis");
+                }}
+                on3D={(id) => {
+                  setView("garage");
+                  select({ kind: "vehicle", id });
+                }}
+              />
+              {view === "core" && (
+                <HomeGarage
+                  db={db}
+                  onSelect={(s) => {
+                    setView("garage");
+                    select(s);
+                  }}
+                />
+              )}
+            </>
           ) : view === "atelier" ? (
             <Workshop
               db={db}
@@ -2012,8 +2091,9 @@ function App() {
             );
             if (!saved) return;
             setCreation(false);
-            setView("garage");
-            select({ kind: "vehicle", id: v.id });
+            await transact("core.open", v.id, {}, "Ordre de réparation créé.");
+            setSelection({ kind: "vehicle", id: v.id });
+            setView("core");
           }}
         />
       )}
@@ -2113,6 +2193,14 @@ function Reception({
             quality: false,
             present: true,
             arrivedAt: new Date().toISOString(),
+            ...(data.get("clientWaiting")
+              ? {
+                  reception: {
+                    arrivedAt: new Date().toISOString(),
+                    state: "waiting" as const,
+                  },
+                }
+              : {}),
             estimatedMinutes: 60,
             notes: "",
             parts: [],
@@ -2123,6 +2211,10 @@ function Reception({
           <div>
             <span className="eyebrow">ACCUEIL · NOUVEAU DOSSIER</span>
             <h2 id="reception-title">Réceptionner un véhicule</h2>
+            <label>
+              <input name="clientWaiting" type="checkbox" /> Le client reste en
+              salle d’attente
+            </label>
           </div>
           <button
             type="button"

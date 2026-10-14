@@ -41,15 +41,13 @@ export function showroomCars(db: DB): ShowroomCar[] {
   return db.demoVersion ? demoShowroom : [];
 }
 export function waitingVehicles(db: DB) {
-  // Explicit simulation slots; never infer a real client's physical presence from their repair status.
-  return db.demoVersion
-    ? ["v11", "v12", "v13"]
-        .map((id) => db.vehicles.find((v) => v.id === id))
-        .filter(
-          (v): v is Vehicle =>
-            !!v && v.present !== false && v.status !== "Livré",
-        )
-    : [];
+  return db.vehicles.filter(
+    (v) =>
+      v.present !== false &&
+      v.status !== "Livré" &&
+      v.reception &&
+      v.reception.state !== "left",
+  );
 }
 export function zoneVehicles(db: DB, zone: string) {
   return db.vehicles.filter(

@@ -35,14 +35,17 @@ export function DeliveryDeadline({
               month: "2-digit",
               hour: "2-digit",
               minute: "2-digit",
+              timeZone: "Europe/Lisbon",
             })
           : vehicle.due}
       </strong>
       <small>
         {ready
-          ? "Véhicule prêt"
+          ? vehicle.status === "Livré"
+            ? "Véhicule livré"
+            : "Prêt techniquement · vérifier la restitution"
           : minutes < 0
-            ? "Échéance dépassée"
+            ? `Heure promise dépassée de ${Math.floor(-minutes / 60)} h ${Math.floor(-minutes % 60)} min · prévenir le client`
             : minutes <= 120
               ? "Livraison proche"
               : "Restitution prévue"}

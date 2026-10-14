@@ -42,6 +42,16 @@ export function Pilotage({
   ] as const;
   return (
     <section className="pilotage-v2">
+      <article className="content-card">
+        <h3>Règlements consignés sur les OR</h3>
+        <strong>
+          {d.recordedPayments.toLocaleString("fr-FR", {
+            style: "currency",
+            currency: "EUR",
+          })}
+        </strong>
+        <p>Déclarations manuelles ; aucun encaissement bancaire automatique.</p>
+      </article>
       <ManagerRequests db={db} onAction={onAction} />
       <div className="dashboard-grid">
         {metrics.map(([label, count, filter, Icon]) => (

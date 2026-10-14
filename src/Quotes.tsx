@@ -1,3 +1,5 @@
+import { orderBalance } from "./core-domain";
+import { workshopFor } from "./workshop-domain";
 import { useState } from "react";
 import {
   Plus,
@@ -153,6 +155,38 @@ export function Quotes({
                 Imprimer
               </button>
             </div>
+            <div className="quote-state-grid">
+              <div>
+                <small>Version du devis</small>
+                <strong>
+                  {quote.state === "Validé"
+                    ? "Acceptée · verrouillée"
+                    : quote.state === "À valider"
+                      ? "Accord client attendu"
+                      : "Brouillon modifiable"}
+                </strong>
+              </div>
+              <div>
+                <small>Transmission au client</small>
+                <strong>
+                  {db.messages.some(
+                    (m) => m.vehicle === car.id && m.kind === "quote",
+                  )
+                    ? "Message préparé · à envoyer"
+                    : "Envoi non enregistré"}
+                </strong>
+              </div>
+              <div>
+                <small>Règlement</small>
+                <strong>
+                  {db.workOrders?.[car.id]?.invoice?.quote === quote.id
+                    ? orderBalance(db.workOrders[car.id]) === 0
+                      ? "Réglé · saisie manuelle"
+                      : `${money((orderBalance(db.workOrders[car.id]) || 0) / 100)} restant`
+                    : "Aucun règlement lié à ce devis"}
+                </strong>
+              </div>
+            </div>
             <div className="notice">
               Document de démonstration, sans signature électronique ni valeur
               fiscale. Prix et taux saisis manuellement ; aucune donnée
@@ -272,6 +306,21 @@ export function Quotes({
                 <Plus size={18} />
                 Ajouter une ligne
               </button>
+            )}
+            {workshopFor(db, car.id).reports.length > 0 && (
+              <details className="quote-reports">
+                <summary>
+                  Comptes rendus joints au dossier (
+                  {workshopFor(db, car.id).reports.length})
+                </summary>
+                <p>Ces notes ne modifient ni le prix ni l’accord du client.</p>
+                {workshopFor(db, car.id).reports.map((r) => (
+                  <article key={r.id}>
+                    <small>{new Date(r.at).toLocaleString("fr-FR")}</small>
+                    <p>{r.text}</p>
+                  </article>
+                ))}
+              </details>
             )}
             <div className="quote-totals">
               <label>

@@ -1,3 +1,4 @@
+import { orderProgress } from "./core-domain";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { VoiceAssistant } from "./VoiceAssistant";
@@ -183,6 +184,27 @@ export function Workshop({
         </span>
         <span>{car.technician}</span>
       </div>
+      {db.workOrders?.[car.id] && (
+        <section className="core-section">
+          <h3>Travaux réalisés · {orderProgress(db, car.id).percent} %</h3>
+          {db.workOrders[car.id].tasks.map((task) => (
+            <label className="core-task" key={task.id}>
+              <input
+                type="checkbox"
+                checked={!!task.doneAt}
+                disabled={car.status !== "En intervention"}
+                onChange={(e) =>
+                  onAction("core.task", {
+                    task: task.id,
+                    done: e.target.checked,
+                  })
+                }
+              />
+              {task.label}
+            </label>
+          ))}
+        </section>
+      )}
       <div className="workshop-job">
         <strong>Travail demandé</strong>
         <p>{car.symptoms}</p>

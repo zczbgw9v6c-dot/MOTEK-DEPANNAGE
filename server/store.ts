@@ -1,3 +1,5 @@
+import { quoteTotals } from "../src/quote-domain.ts";
+import { coreAction } from "../src/core-domain.ts";
 import { DatabaseSync } from "node:sqlite";
 import { seed, loadDB, type DB } from "../src/domain.ts";
 import {
@@ -83,6 +85,13 @@ export class Store {
         p = request.payload || {};
       if (request.type === "snapshot") {
         next = loadDB(JSON.stringify(p.db));
+        if (
+          JSON.stringify(next.workOrders || {}) !==
+          JSON.stringify(previous.db.workOrders || {})
+        )
+          throw Error(
+            "Utilisez les actions Core pour modifier un OR ou un règlement.",
+          );
         for (const v of previous.db.vehicles) {
           const old = previous.db.workshop?.[v.id],
             updated = next.workshop?.[v.id];
@@ -107,7 +116,14 @@ export class Store {
           )
             throw Error(a.message);
         }
-      } else if (request.type === "start") {
+      } else if (request.type.startsWith("core."))
+        next = coreAction(next, id, request.type.slice(5), p, now);
+      else if (request.type === "start") {
+        if (
+          next.workOrders?.[id] &&
+          !next.quotes?.some((q) => q.vehicle === id && q.state === "Validé")
+        )
+          throw Error("Un devis accepté est requis avant démarrage de cet OR.");
         if (!next.workshop?.[id]?.runningSince)
           next = toggleWork(next, id, now);
       } else if (request.type === "pause")
@@ -118,8 +134,13 @@ export class Store {
           false,
           now,
         );
-      else if (request.type === "finish") next = finishWork(next, id, now);
-      else if (request.type === "voice")
+      else if (request.type === "finish") {
+        if (next.workOrders?.[id]?.tasks.some((t) => !t.doneAt))
+          throw Error(
+            "Cochez les travaux réellement réalisés avant de terminer.",
+          );
+        next = finishWork(next, id, now);
+      } else if (request.type === "voice")
         next = applyVoice(
           next,
           id,
@@ -174,6 +195,61 @@ export class Store {
       };
       next = loadDB(JSON.stringify(next));
       for (const vehicle of next.vehicles) {
+        const order = next.workOrders?.[vehicle.id];
+        if (order) {
+          if (
+            vehicle.status === "En intervention" &&
+            previous.db.vehicles.find((v) => v.id === vehicle.id)?.status !==
+              "En intervention" &&
+            !next.quotes?.some(
+              (q) => q.vehicle === vehicle.id && q.state === "Validé",
+            )
+          )
+            throw Error("Un devis accepté est requis avant le travail.");
+
+          if (
+            !["reset", "import"].includes(request.type) &&
+            vehicle.status === "Prêt à livrer" &&
+            previous.db.vehicles.find((v) => v.id === vehicle.id)?.status !==
+              "Prêt à livrer" &&
+            request.type !== "core.quality"
+          )
+            throw Error("Validez le contrôle final depuis le parcours OR.");
+          if (order.invoice) {
+            const quote = next.quotes?.find(
+              (q) => q.id === order.invoice!.quote,
+            );
+            if (
+              !quote ||
+              Math.round(quoteTotals(quote).total * 100) !==
+                order.invoice.totalCents
+            )
+              throw Error("Le devis facturé ne peut pas être modifié.");
+          }
+
+          if (
+            ["Contrôle qualité", "Prêt à livrer", "Livré"].includes(
+              vehicle.status,
+            ) &&
+            order.tasks.some((t) => !t.doneAt)
+          )
+            throw Error("Les travaux de l’OR ne sont pas terminés.");
+          if (vehicle.status === "Livré" && !order.deliveredAt)
+            throw Error("Utilisez la remise des clés pour clôturer cet OR.");
+          if (
+            order.invoice &&
+            (!next.quotes?.some(
+              (q) =>
+                q.id === order.invoice!.quote &&
+                q.vehicle === vehicle.id &&
+                q.state === "Validé",
+            ) ||
+              order.payments.reduce((n, p) => n + p.cents, 0) >
+                order.invoice.totalCents)
+          )
+            throw Error("Décompte ou règlement incohérent.");
+        }
+
         if (
           ["Prêt à livrer", "Livré"].includes(vehicle.status) &&
           !vehicle.quality
