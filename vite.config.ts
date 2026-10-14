@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [autohubAPI(process.env.AUTOHUB_DB || undefined)],
   build: {
     rollupOptions: {
+      // Deux entrées : l’application historique (index.html) et MOTEK v3 (motek/).
+      input: { main: "index.html", motek: "motek/index.html" },
       output: {
         manualChunks: {
           three: ["three", "three/addons/controls/OrbitControls.js"],

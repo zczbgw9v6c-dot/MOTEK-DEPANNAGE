@@ -1,0 +1,43 @@
+/* ==========================================================================
+   CARROSSERIE CENTRALE — coque applicative : bascule Atelier live / Back-office,
+   conteneurs de vue, recherche globale, cloche d'alertes, toasts, modales, tiroirs.
+   (les couleurs et la typo viennent de top.css — charte d'origine)
+   ========================================================================== */
+.modes{display:flex;gap:3px;padding:3px;border-radius:12px;background:#f1f3f5;border:1px solid var(--line2);flex:none}
+.modes button{display:flex;align-items:center;gap:7px;height:34px;padding:0 13px;border-radius:9px;font-weight:700;font-size:12.5px;color:var(--ink2);white-space:nowrap;transition:background .15s,color .15s}
+.modes button:hover{color:var(--ink)}
+.modes button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(16,18,24,.1),0 0 0 1px var(--line2)}
+.modes button.on svg.i{color:var(--red)}
+.modes button svg.i{width:15px;height:15px}
+.modes button em{font-style:normal;font-size:10px;font-weight:800;background:var(--red);color:#fff;border-radius:6px;padding:1px 5px}
+.top > *{flex-shrink:0}
+.top .spacer{flex:1 1 0}
+.top .brand{min-width:0}
+.top .brand .nm,.top .user .un,.top .zbtn .zt{white-space:nowrap}
+.top .search{flex:0 1 430px;min-width:220px}
+.top .zbtn{min-width:236px}
+body.mode-bo .top .zone{display:none}
+body.mode-bo .top .search{flex-basis:520px}
+@media (max-width:1500px){.top .user .ur{display:none}.top .zbtn{min-width:200px}.top .zbtn .zt{max-width:120px}}
+@media (max-width:1380px){.top .brand .nm small{display:none}.top .user > div:not(.av),.top .user > svg{display:none}}
+
+/* vues */
+#view-map{display:none}
+#view-map.on{display:block}
+#view-bo{position:fixed;top:64px;left:0;right:0;bottom:0;display:none;z-index:4;background:#eceef1}
+#view-bo.on{display:flex}
+
+/* résultats de recherche enrichis */
+.sres .it .ic.dk{background:#eef0f3;color:var(--ink2)}
+.sres .it .go-tag{margin-left:auto;font-size:10.5px;font-weight:700;color:var(--ink3);white-space:nowrap}
+.sres .it .pl{font-family:'Inter',sans-serif;font-weight:800;font-size:11px;letter-spacing:.02em;border:1.5px solid #16181c;border-radius:4px;padding:0 5px;line-height:16px;margin-right:6px;background:#fff;color:#16181c}
+
+/* menu d'alertes (cloche) */
+.nmenu.al{width:400px;right:150px;max-height:540px}
+.nmenu .gh{font-size:10.5px;font-weight:800;letter-spacing:.08em;color:var(--ink3);text-transform:uppercase;padding:10px 10px 4px;display:flex;justify-content:space-between}
+.nmenu .lv{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:5px;height:17px;display:inline-flex;align-items:center;margin-left:6px;vertical-align:1px}
+.nmenu .lv.high{background:var(--red-soft);color:var(--red-d)}.nmenu .lv.mid{background:var(--amber-soft);color:var(--amber)}.nmenu .lv.low{background:#eef0f3;color:var(--ink2)}
+.nmenu .ft{display:flex;gap:6px;padding:8px 6px 4px;border-top:1px solid var(--line);margin-top:4px}
+.nmenu .ft button{flex:1;height:32px;border-radius:9px;font-weight:700;font-size:12px;background:#f4f5f7}
+.nmenu .ft button:hover{background:#eceef1}
+.nmenu .empty-al{padding:18px 12px;color:var(--ink3);font-size:12.5px;text-align:center}

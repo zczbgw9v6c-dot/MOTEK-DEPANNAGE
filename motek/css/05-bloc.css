@@ -1,0 +1,13 @@
+@page{size:A4;margin:15mm}*{box-sizing:border-box}body{font-family:Inter,Arial,sans-serif;color:#121418;font-size:10pt;margin:0;padding:24px}
+    .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #e3262d;padding-bottom:14px;margin-bottom:22px}
+    .brand{display:flex;gap:10px;align-items:center}.brand b{font-size:15pt;font-weight:800;letter-spacing:-.01em}.brand small{display:block;font-size:7.5pt;letter-spacing:.14em;font-weight:700;color:#868c96;text-transform:uppercase}
+    .co{font-size:8.5pt;text-align:right;color:#454b55;line-height:1.45}.addr{margin:6px 0 22px auto;width:45%;line-height:1.45}
+    h1{font-size:16pt;font-weight:800;margin:0 0 4px;letter-spacing:-.01em}.meta{color:#454b55;font-size:9pt;margin-bottom:14px}
+    table{width:100%;border-collapse:collapse;font-size:9pt}th{background:#f3f4f6;color:#454b55;text-align:left;padding:7px 8px;font-size:7.5pt;text-transform:uppercase;letter-spacing:.06em}
+    td{padding:6px 8px;border-bottom:1px solid #eef0f3}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}tr.grp td{background:#fafbfc;font-weight:700;font-size:8.5pt}
+    .tot{margin:14px 0 0 auto;width:55%}.tot td{border:0;padding:4px 8px}.tot .big td{font-size:12.5pt;font-weight:800;border-top:2px solid #121418;padding-top:8px}
+    .split{margin-top:14px;border:1px solid #e4e7eb;border-radius:8px;padding:10px 12px;font-size:9pt;line-height:1.6}
+    .cond{margin-top:22px;font-size:8.5pt;color:#454b55;line-height:1.5;border-top:1px solid #eef0f3;padding-top:12px}.sig{display:flex;gap:40px;margin-top:34px}.sig div{flex:1;border-top:1px solid #868c96;padding-top:6px;font-size:8.5pt;color:#868c96}
+    .stamp{display:inline-block;font-size:8pt;font-weight:800;color:#b96400;background:#fff1dc;padding:3px 8px;border-radius:6px;letter-spacing:.06em;text-transform:uppercase}
+    .qrbill{display:grid;grid-template-columns:62mm 1fr;border-top:1.5px dashed #555;font-family:Helvetica,Arial,sans-serif;font-size:9pt}.qrbill .rcpt{border-right:1.5px dashed #555;padding:5mm}.qrbill .pay{display:grid;grid-template-columns:51mm 1fr;padding:5mm;gap:5mm}.qrbill h5{font-size:11pt;margin:0 0 4mm}.qrbill .l{font-size:6pt;font-weight:700;margin-top:3mm}.qrbill .pay .l{font-size:8pt}.qrbill .v{font-size:8pt;line-height:1.25}.qrbill .pay .v{font-size:10pt}.qrbill .amt{display:flex;gap:6mm;margin-top:4mm}.qrbill .qr{width:46mm;height:46mm;margin:2mm 0 4mm}.qrbill .acc{font-size:6pt;font-weight:700;text-align:right;margin-top:8mm}
+    @media print{body{padding:0}}
