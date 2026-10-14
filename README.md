@@ -187,3 +187,13 @@ Voir `docs/MOTEK_CRM_FIRST_AUDIT.md` pour l'audit, le parcours, les migrations c
 ### Reprise du 14 octobre 2026 (Claude)
 
 Audit pratique dans le navigateur, corrections prioritaires et parcours client vérifié de bout en bout : voir `docs/MOTEK_REPRISE_CLAUDE.md`. Principales corrections : saisies perdues (checklist atelier, sélecteurs du dossier 3D et du planning), refus d’affectation d’un technicien déjà en intervention, blocages et pièces attendues visibles dans le dossier, état « devis refusé », étapes carrosserie, lisibilité (plaque, filtres actifs). `AUTOHUB_DB=.data/verify-ui.sqlite npm run dev` puis `npm run verify:ui` rejoue le parcours complet dans Chromium sur une base isolée (Playwright à installer séparément). 61 tests, compilation et build vérifiés.
+
+### Vérification navigateur et mise en ligne
+
+```sh
+npm ci && npx playwright install chromium      # une fois
+AUTOHUB_DB=.data/verify-ui.sqlite npm run dev    # serveur sur une base isolée
+npm run verify:ui                                # parcours complet dans Chromium
+```
+
+Mode production local : `npm run build` puis `AUTOHUB_DB=.data/prod.sqlite MOTEK_DEMO_PASSWORD=… npm start` (port 8080). Hébergement de démonstration protégé (Render, Docker) : voir `docs/DEPLOIEMENT.md`. Réceptionniste téléphonique et caméra : contrats préparés, rien de raccordé, voir `docs/INTEGRATIONS_TELEPHONIE_CAMERA.md`.

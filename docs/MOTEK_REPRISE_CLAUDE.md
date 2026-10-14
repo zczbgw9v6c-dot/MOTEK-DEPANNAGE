@@ -59,3 +59,12 @@ Fonctionnent de bout en bout (vérifié dans le navigateur, base isolée) : réc
 - Claude : parcours CRM (`core-domain`, `CoreDesk`, `Quotes`, `workflow-guidance`, tests métier, `verify-ui`).
 - Codex : scène 3D (`scene.ts`, `camera-*.ts`, `marker-layout.ts`, `ZoneMarkers`, `CustomerMarkers`) et bibliothèque de modèles.
 - Fichiers partagés à annoncer avant modification : `main.tsx`, `motek.css`, `domain.ts`, `server/store.ts`.
+
+## 7. Deuxième étape (même journée) — 3D, horaires, intégrations, hébergement
+
+- **3D** : en vue de zone, l’occlusion échantillonne toute la pièce à hauteur d’œil (le mur extérieur ne cache plus les véhicules à restituer) ; petites salles cadrées plus en plongée, quatre coins dans l’image sur tablette (test numérique) ; techniciens placés au fond du poste et masqués s’ils coupent la ligne de visée du véhicule sélectionné. Captures vérifiées : Livraison, Stocks, véhicule rangée droite, « Autre côté ».
+- **Horaires** : obligatoires avant d’enregistrer un créneau de restitution ; le formulaire propose lun–ven 08:00–18:00 à confirmer, rien n’est enregistré automatiquement.
+- **Téléphonie / caméra** : `src/integrations/` (contrats inertes, logique de rapprochement et de réponse testée), `docs/INTEGRATIONS_TELEPHONIE_CAMERA.md` (informations à fournir, options et coûts indicatifs). Aucun fournisseur activé.
+- **Hébergement** : `server/serve.ts`, `Dockerfile`, `render.yaml`, mot de passe de démonstration ; `docs/DEPLOIEMENT.md` compare les options gratuites (Render Free recommandé : mise en veille après ~15 min, base réinitialisée à chaque redéploiement) et durables (≈ 5–8 €/mois).
+- **verify:ui** : Playwright en dépendance de développement (`npx playwright install chromium`), identifiants de démonstration via `MOTEK_DEMO_PASSWORD`, parcours rejoué sur le serveur de production local.
+- Vérification : 66 tests, build, parcours UI complet.
