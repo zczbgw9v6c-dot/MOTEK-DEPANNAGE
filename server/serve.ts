@@ -62,6 +62,9 @@ const server = createServer(async (req, res) => {
   // Fichiers statiques, avec repli sur index.html pour l’application.
   const safe = normalize(decodeURIComponent(path)).replace(/^(\.\.[/\\])+/, "");
   let file = join(distDir, safe);
+  // Un dossier (ex. /motek/) sert son propre index.html ; sinon repli sur l’application.
+  if (file.startsWith(distDir) && existsSync(file) && statSync(file).isDirectory())
+    file = join(file, "index.html");
   if (
     !file.startsWith(distDir) ||
     !existsSync(file) ||

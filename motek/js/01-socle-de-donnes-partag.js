@@ -349,6 +349,28 @@
     },
   ];
 
+  /** Activités du garage : chaque client active ce qui existe chez lui (réglages). Pilote la navigation,
+      les indicateurs et, à terme, les zones de l’atelier live. */
+  const ACTIVITIES = [
+    { k: "carrosserie", l: "Carrosserie", d: "Tôlerie, redressage, débosselage", core: true },
+    { k: "peinture", l: "Peinture", d: "Cabine, préparation, formules de teinte" },
+    { k: "mecanique", l: "Mécanique & entretien", d: "Révisions, freinage, diagnostic" },
+    { k: "pneus", l: "Pneus & entretien rapide", d: "Montage, équilibrage, géométrie, vidange" },
+    { k: "vitrage", l: "Vitrage", d: "Pare-brise, calibrage caméra" },
+    { k: "assurances", l: "Sinistres & assurances", d: "Dossiers assureurs, expertises, cession de créance" },
+    { k: "courtesy", l: "Véhicules de remplacement", d: "Flotte de courtoisie et prêts" },
+    { k: "showroom", l: "Showroom / vente", d: "Véhicules d’occasion et neufs exposés" },
+    { k: "intelligence", l: "Garage intelligent", d: "Cas similaires, assistant vocal, scan de plaque" },
+  ];
+  const ACTIVITY_PROFILES = {
+    carrosserie: { l: "Carrosserie-peinture", on: ["carrosserie", "peinture", "vitrage", "assurances", "courtesy", "intelligence"] },
+    garage: { l: "Garage toutes activités", on: ["carrosserie", "peinture", "mecanique", "pneus", "vitrage", "assurances", "courtesy", "intelligence"] },
+    concession: { l: "Concession", on: ["carrosserie", "peinture", "mecanique", "pneus", "vitrage", "assurances", "courtesy", "showroom", "intelligence"] },
+    centre: { l: "Centre auto / entretien rapide", on: ["mecanique", "pneus", "vitrage", "courtesy", "intelligence"] },
+  };
+  const defaultActivities = (profile = "garage") => Object.fromEntries(ACTIVITIES.map((a) => [a.k, ACTIVITY_PROFILES[profile].on.includes(a.k)]));
+  const activityOn = (k) => { const a = S && S.company && S.company.activities; return !a || a[k] !== false; };
+
   const ROLES = {
     chef: { l: "Chef d’atelier", prod: false },
     carrossier: { l: "Carrossier (CAP)", prod: true },
@@ -385,6 +407,8 @@
       terms: 30,
       warrantyMonths: 24,
       review: "https://g.page/r/motek-demo/review",
+      activities: defaultActivities("garage"),
+      profile: "garage",
     };
     S.meId = "E1";
 
@@ -4120,6 +4144,7 @@
   const cache = () => {
     try {
       localStorage.setItem(KEY, JSON.stringify(S));
+      localStorage.setItem(KEY + ":rev", String(sync.revision));
     } catch (e) {}
   };
   const setOnline = (v) => {
@@ -4149,6 +4174,7 @@
           await pull();
         } else if (r.ok) {
           sync.revision = (await r.json()).revision;
+          cache();
           setOnline(true);
         } else setOnline(false);
       } catch (e) {
@@ -4171,7 +4197,7 @@
       setOnline(true);
       if (snap.state && snap.state.v === 1 && snap.state.day === today()) {
         if (snap.revision !== sync.revision) {
-          S = snap.state;
+          S = migrate(snap.state);
           sync.revision = snap.revision;
           cache();
           emit("remote", S);
@@ -4189,6 +4215,14 @@
     cache();
     push();
   };
+  // Complète un état (local ou serveur) créé avant l’ajout d’un champ.
+  const migrate = (st) => {
+    if (st && st.company && !st.company.activities) {
+      st.company.activities = defaultActivities("garage");
+      st.company.profile = "garage";
+    }
+    return st;
+  };
   const load = () => {
     try {
       S = JSON.parse(localStorage.getItem(KEY) || "null");
@@ -4199,7 +4233,12 @@
       S = seed();
       S.day = today();
       cache();
+    } else {
+      // Révision serveur déjà reçue par cet onglet : évite de croire à un
+      // changement distant (et un rechargement) à chaque ouverture.
+      sync.revision = Number(localStorage.getItem(KEY + ":rev")) || 0;
     }
+    migrate(S);
     pull();
     try {
       const es = new EventSource("/api/v3/events");
@@ -5832,6 +5871,10 @@
     now,
     sync,
     pull,
+    ACTIVITIES,
+    ACTIVITY_PROFILES,
+    defaultActivities,
+    activityOn,
     util: {
       pad,
       iso,

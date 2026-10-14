@@ -66,5 +66,5 @@
     const out = el.querySelector('[data-out]'); if (out) out.addEventListener('click', () => BO.moveStage(out.dataset.out, CX.ST.remont));
   }
 
-  APP.register({ id: 'paint', label: 'Peinture', icon: 'spray', group: 'Atelier', order: 4, render, badge: () => CX.slotRO('BQ') ? 1 : 0 });
+  APP.register({ id: 'paint', label: 'Peinture', icon: 'spray', group: 'Atelier', order: 4, activity: 'peinture', render, badge: () => CX.slotRO('BQ') ? 1 : 0 });
 })();

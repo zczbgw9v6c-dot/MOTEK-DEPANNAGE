@@ -41,9 +41,9 @@
       <div class="kpis">
         ${BO.kpi({ lb: 'CA du mois (HT)', v: chfK(k.caMonth), s: `<span class="delta ${pace >= target ? '' : 'neg'}">${pace >= target ? '▲' : '▼'} proj. ${chfK(pace)}</span> objectif ${chfK(target)}`, icon: 'trend', cls: 'hero click', go: 'invoices' })}
         ${BO.kpi({ lb: 'Marge brute (OR clôturés)', v: BO.num(k.margin * 100, 1) + '<small>%</small>', s: 'MO + pièces + ingrédients', icon: 'coins', cls: 'click', go: 'invoices' })}
-        ${BO.kpi({ lb: 'Occupation des postes', v: Math.round(k.occ * 100) + '<small>%</small>', s: `${k.postes}/7 postes · cabine ${CX.slotFree('BOOTH') ? 'libre' : 'occupée'}`, icon: 'lift', cls: 'click', go: 'planning' })}
+        ${BO.kpi({ lb: 'Occupation des postes', v: Math.round(k.occ * 100) + '<small>%</small>', s: `${k.postes}/7 postes${CX.activityOn('peinture') ? ` · cabine ${CX.slotFree('BOOTH') ? 'libre' : 'occupée'}` : ''}`, icon: 'lift', cls: 'click', go: 'planning' })}
         ${BO.kpi({ lb: 'Immobilisation moyenne', v: BO.num(k.imm, 1) + '<small>jours</small>', s: `${Math.round(k.ontime * 100)} % livrés à l’heure`, icon: 'clock', cls: 'click', go: 'ros' })}
-        ${BO.kpi({ lb: 'Part assurances', v: Math.round(k.insShare * 100) + '<small>%</small>', s: `privés ${100 - Math.round(k.insShare * 100)} % du CA`, icon: 'shield', cls: 'click', go: 'claims' })}
+        ${CX.activityOn('assurances') ? BO.kpi({ lb: 'Part assurances', v: Math.round(k.insShare * 100) + '<small>%</small>', s: `privés ${100 - Math.round(k.insShare * 100)} % du CA`, icon: 'shield', cls: 'click', go: 'claims' }) : BO.kpi({ lb: 'Devis en attente', v: S.quotes.filter(q => q.status === 'Envoyé').length, s: 'accords clients à relancer', icon: 'calc', cls: 'click', go: 'quotes' })}
         ${BO.kpi({ lb: 'Prêts à livrer', v: k.ready, s: notNotified ? `<span class="chip red">${notNotified} non prévenu${notNotified > 1 ? 's' : ''}</span>` : '<span class="chip green">tous prévenus</span>', icon: 'car', cls: 'click', go: 'ros' })}
       </div>
       <div class="card mb"><div class="card-h"><h3>${BO.icon('kanban', 16)}Flux atelier <small>· OR par étape (cliquez pour ouvrir le tableau)</small></h3><span class="muted sm-t">${S.ros.filter(r => r.stage < CX.ST.facture).length} OR ouverts</span></div>

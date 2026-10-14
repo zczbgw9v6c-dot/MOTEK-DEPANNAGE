@@ -58,5 +58,5 @@
     el.querySelectorAll('[data-car]').forEach(c => c.addEventListener('click', () => { const k = CX.car(c.dataset.car); BO.formModal({ title: k.plate + ' · ' + k.model, fields: [{ k: 'km', label: 'Kilométrage', type: 'number', min: 0, req: true }, { k: 'status', label: 'Statut', type: 'select', opts: ['Disponible', 'Prêté', 'Entretien'] }, { k: 'state', label: 'État', full: true }, { k: 'nextService', label: 'Prochain service', type: 'date' }], values: k, onSubmit: x => { if (x.status === 'Prêté' && !S.loans.some(l => l.carId === k.id && l.status === 'En cours')) { UI.toast('Statut incohérent', 'Créez un prêt pour passer ce véhicule en « Prêté ».', 'warn'); return false; } Object.assign(k, x); CX.touch('loan'); BO.now(); } }); }));
   }
 
-  APP.register({ id: 'courtesy', label: 'Véhicules de remplacement', icon: 'car', group: 'Logistique', order: 2, render, badge: () => CX.S.loans.filter(l => l.status === 'En cours' && l.to < today()).length });
+  APP.register({ id: 'courtesy', label: 'Véhicules de remplacement', icon: 'car', group: 'Logistique', order: 2, activity: 'courtesy', render, badge: () => CX.S.loans.filter(l => l.status === 'En cours' && l.to < today()).length });
 })();

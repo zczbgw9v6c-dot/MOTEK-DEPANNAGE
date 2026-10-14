@@ -18,6 +18,8 @@
     "Finances & équipe",
     "Système",
   ];
+  /** Un module lié à une activité désactivée dans les réglages disparaît de la navigation. */
+  const isActive = (m) => !m.activity || CX.activityOn(m.activity);
   const register = (m) => {
     modules.push(m);
     modules.sort(
@@ -74,7 +76,8 @@
 
   /** Ouvre un module du back-office (bascule en back-office si besoin). */
   function open(id, p = {}) {
-    const m = modules.find((x) => x.id === id) || modules[0];
+    let m = modules.find((x) => x.id === id) || modules[0];
+    if (m && !isActive(m)) m = modules.find((x) => x.id === "dashboard") || modules[0];
     if (!m) return;
     current = m.id;
     params = p || {};
@@ -118,14 +121,14 @@
   function renderNav() {
     const nav = $(".bo-nav");
     if (!nav) return;
-    const groups = GROUPS.filter((g) => modules.some((m) => m.group === g));
+    const groups = GROUPS.filter((g) => modules.some((m) => m.group === g && isActive(m)));
     nav.innerHTML =
       groups
         .map(
           (g) =>
             `<div class="bo-grp">${esc(g)}</div>` +
             modules
-              .filter((m) => m.group === g)
+              .filter((m) => m.group === g && isActive(m))
               .map((m) => {
                 let b = 0;
                 try {
