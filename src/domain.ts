@@ -139,7 +139,7 @@ export type Quote = {
   vehicle: string;
   lines: { id: string; label: string; quantity: number; unitPrice: number }[];
   vat: number;
-  state: "Brouillon" | "À valider" | "Validé";
+  state: "Brouillon" | "À valider" | "Validé" | "Refusé";
   at: string;
 };
 export const technicians = ["Non affecté", ...team.map((t) => t.name)];
@@ -511,7 +511,7 @@ export function loadDB(raw: string | null): DB {
         !q ||
         !str(q.id) ||
         !d.vehicles.some((v: Vehicle) => v.id === q.vehicle) ||
-        !["Brouillon", "À valider", "Validé"].includes(q.state) ||
+        !["Brouillon", "À valider", "Validé", "Refusé"].includes(q.state) ||
         !number(q.vat) ||
         q.vat > 100 ||
         !str(q.at) ||

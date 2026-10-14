@@ -11,7 +11,12 @@ import {
   Clock,
 } from "@phosphor-icons/react";
 import { type DB, type Quote, record, updateVehicle } from "./domain";
-import { quoteTotals, saveQuote, approveQuote } from "./quote-domain";
+import {
+  quoteTotals,
+  saveQuote,
+  approveQuote,
+  rejectQuote,
+} from "./quote-domain";
 const money = (n: number) =>
   new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(
     n,
@@ -40,6 +45,7 @@ export function Quotes({
   const quotes = db.quotes || [];
   const quote = draft || quotes.find((q) => q.id === selected) || null;
   const totals = quote ? quoteTotals(quote) : null;
+  const frozen = quote?.state === "Validé" || quote?.state === "Refusé";
   const car = db.vehicles.find((v) => v.id === quote?.vehicle);
   function create() {
     const q: Quote = {
@@ -161,9 +167,11 @@ export function Quotes({
                 <strong>
                   {quote.state === "Validé"
                     ? "Acceptée · verrouillée"
-                    : quote.state === "À valider"
-                      ? "Accord client attendu"
-                      : "Brouillon modifiable"}
+                    : quote.state === "Refusé"
+                      ? "Refusée par le client · nouvelle version possible"
+                      : quote.state === "À valider"
+                        ? "Accord client attendu"
+                        : "Brouillon modifiable"}
                 </strong>
               </div>
               <div>
@@ -209,7 +217,7 @@ export function Quotes({
                       <td>
                         <input
                           aria-label={"Libellé ligne " + (i + 1)}
-                          disabled={quote.state === "Validé"}
+                          disabled={frozen}
                           value={line.label}
                           onChange={(e) =>
                             setDraft({
@@ -229,7 +237,7 @@ export function Quotes({
                           type="number"
                           min=".01"
                           step=".01"
-                          disabled={quote.state === "Validé"}
+                          disabled={frozen}
                           value={line.quantity}
                           onChange={(e) =>
                             setDraft({
@@ -249,7 +257,7 @@ export function Quotes({
                           type="number"
                           min="0"
                           step=".01"
-                          disabled={quote.state === "Validé"}
+                          disabled={frozen}
                           value={line.unitPrice}
                           onChange={(e) =>
                             setDraft({
@@ -267,7 +275,7 @@ export function Quotes({
                       <td>
                         <button
                           aria-label={"Supprimer ligne " + (i + 1)}
-                          disabled={quote.state === "Validé"}
+                          disabled={frozen}
                           onClick={() =>
                             setDraft({
                               ...quote,
@@ -285,7 +293,7 @@ export function Quotes({
                 </tbody>
               </table>
             </div>
-            {quote.state !== "Validé" && (
+            {!frozen && (
               <button
                 className="secondary"
                 onClick={() =>
@@ -331,7 +339,7 @@ export function Quotes({
                   min="0"
                   max="100"
                   step=".1"
-                  disabled={quote.state === "Validé"}
+                  disabled={frozen}
                   value={quote.vat}
                   onChange={(e) =>
                     setDraft({ ...quote, vat: Number(e.target.value) })
@@ -351,7 +359,7 @@ export function Quotes({
               </div>
             </div>
             <div className="quote-actions">
-              {quote.state !== "Validé" && (
+              {!frozen && (
                 <>
                   <button
                     className="secondary"
@@ -403,6 +411,31 @@ export function Quotes({
                   <CheckCircle size={18} />
                   Enregistrer l’accord client
                 </button>
+              )}
+              {quote.state === "À valider" && !draft && (
+                <button
+                  className="secondary"
+                  onClick={() => {
+                    const reason = window.prompt(
+                      "Motif du refus (facultatif) :",
+                      "",
+                    );
+                    if (reason === null) return;
+                    commit(
+                      (d) => rejectQuote(d, quote.id, reason.trim()),
+                      "Refus du client enregistré. Aucun travail facturé.",
+                    );
+                  }}
+                >
+                  <X size={18} />
+                  Enregistrer le refus client
+                </button>
+              )}
+              {quote.state === "Refusé" && (
+                <span className="text-amber">
+                  <X />
+                  Refus client saisi manuellement · journalisé
+                </span>
               )}
               {quote.state === "Validé" && (
                 <span className="text-green">

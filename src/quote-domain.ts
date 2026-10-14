@@ -30,8 +30,10 @@ export function saveQuote(db: DB, quote: Quote): DB {
   )
     throw Error("Vérifiez les libellés, quantités, prix et taux de TVA.");
   const current = db.quotes?.find((q) => q.id === quote.id);
-  if (current?.state === "Validé")
-    throw Error("Un devis validé ne peut plus être modifié.");
+  if (current?.state === "Validé" || current?.state === "Refusé")
+    throw Error(
+      `Un devis ${current.state.toLowerCase()} ne peut plus être modifié : créez une nouvelle version.`,
+    );
   const result = record(
     {
       ...db,
@@ -60,6 +62,32 @@ export function approveQuote(db: DB, id: string) {
   );
   const vehicle = next.vehicles.find((v) => v.id === quote.vehicle)!;
   return vehicle.status === "Devis à valider"
+    ? updateVehicle(next, vehicle.id, { status: "Diagnostic" })
+    : next;
+}
+
+/** Customer refusal recorded by staff: the quote is frozen, nothing is billed. */
+export function rejectQuote(db: DB, id: string, reason = "") {
+  const quote = db.quotes?.find((q) => q.id === id);
+  if (!quote || quote.state !== "À valider")
+    throw Error("Seul un devis soumis au client peut être refusé.");
+  if (db.workOrders?.[quote.vehicle]?.invoice?.quote === id)
+    throw Error("Ce devis a déjà servi au décompte.");
+  const next = record(
+    {
+      ...db,
+      quotes: db.quotes!.map((q) =>
+        q.id === id ? { ...q, state: "Refusé" as const } : q,
+      ),
+    },
+    quote.vehicle,
+    "Refus du devis saisi manuellement" + (reason ? " : " + reason : ""),
+  );
+  const vehicle = next.vehicles.find((v) => v.id === quote.vehicle)!;
+  const stillPending = next.quotes!.some(
+    (q) => q.vehicle === quote.vehicle && q.state === "À valider",
+  );
+  return vehicle.status === "Devis à valider" && !stillPending
     ? updateVehicle(next, vehicle.id, { status: "Diagnostic" })
     : next;
 }

@@ -59,6 +59,32 @@ export function CurrentWork({
       ) : (
         <p>Liste des travaux à définir à la prise en charge.</p>
       )}
+      {(s.blocked || s.pausedSince) && (
+        <p className="core-warning">
+          {s.blocked ? "Intervention bloquée" : "Intervention en pause"}
+          {s.pauseReason ? ` · ${s.pauseReason}` : ""}
+          {s.issues.filter((i) => i.state !== "Résolu").length > 0 &&
+            " · décision du responsable attendue (Rapports)"}
+        </p>
+      )}
+      {s.requests
+        .filter((r) => r.state !== "Annulée")
+        .map((r) => {
+          const part = db.parts.find((p) => p.id === r.part);
+          return (
+            <p key={r.id} className="core-part-line">
+              {r.state.startsWith("Réservée") ? "✓" : "⏳"} {r.quantity || 1} ×{" "}
+              {part?.name || r.part} · {r.state}
+              {part && !r.state.startsWith("Réservée") && (
+                <small>
+                  {" "}
+                  · {Math.max(0, part.stock - part.reserved)} disponible(s) en
+                  magasin
+                </small>
+              )}
+            </p>
+          );
+        })}
       <div className="assigned-technician">
         <UserCircle size={32} />
         <span>
@@ -252,6 +278,14 @@ export function CoreDesk({
                   </span>
                 )}
                 {car.technician === "Non affecté" && <b>À affecter</b>}
+                {workshopFor(db, car.id).blocked && (
+                  <b>
+                    Bloqué
+                    {workshopFor(db, car.id).pauseReason
+                      ? ` · ${workshopFor(db, car.id).pauseReason}`
+                      : ""}
+                  </b>
+                )}
               </button>
             );
           })}

@@ -176,6 +176,7 @@ export function coreAction(
     let next = db;
     if (action === "receive") next = receiveClient(db, id, "received", at);
     if (o) return next;
+    const bodywork = ["Carrosserie", "Peinture"].includes(v.department || "");
     o = {
       id: `OR-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
       vehicle: id,
@@ -185,6 +186,15 @@ export function coreAction(
           id: crypto.randomUUID(),
           label: v.symptoms.trim() || "Diagnostic à préciser à la réception",
         },
+        // Carrosserie : étapes de suivi explicites, à cocher au fil des travaux.
+        ...(bodywork
+          ? [
+              "Préparation · démontage et ponçage",
+              "Réparation · redressage ou remplacement",
+              "Peinture · application et séchage",
+              "Contrôle · remontage et finition",
+            ].map((label) => ({ id: crypto.randomUUID(), label }))
+          : []),
       ],
       payments: [],
     };

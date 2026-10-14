@@ -67,3 +67,51 @@ test("a vehicle already in progress without a work order is guided to open its f
   fresh.status = "Réception";
   assert.equal(nextWorkStep(db, fresh).label, "Prendre en charge");
 });
+
+test("a refused quote is frozen, never billed, and the vehicle leaves the quote-pending status", async () => {
+  const { saveQuote, rejectQuote, approveQuote } =
+    await import("../src/quote-domain.ts");
+  const db = fixture();
+  const v = db.vehicles[1];
+  v.status = "Devis à valider";
+  db.quotes = [];
+  const quote = {
+    id: "q-refus",
+    vehicle: v.id,
+    at: new Date().toISOString(),
+    state: "À valider" as const,
+    vat: 20,
+    lines: [{ id: "l", label: "Disques", quantity: 1, unitPrice: 100 }],
+  };
+  let next = saveQuote(db, quote);
+  next = rejectQuote(next, "q-refus", "trop cher");
+  assert.equal(next.quotes!.find((q) => q.id === "q-refus")!.state, "Refusé");
+  assert.equal(next.vehicles.find((x) => x.id === v.id)!.status, "Diagnostic");
+  assert.throws(() => approveQuote(next, "q-refus"));
+  assert.throws(() => saveQuote(next, { ...quote, state: "Brouillon" }));
+  assert.throws(() => rejectQuote(next, "q-refus"));
+  assert.ok(next.audit.some((a) => /trop cher/.test(a.action)));
+  // A new version can still be composed and accepted.
+  const again = saveQuote(next, { ...quote, id: "q-v2" });
+  assert.equal(
+    approveQuote(again, "q-v2").quotes!.find((q) => q.id === "q-v2")!.state,
+    "Validé",
+  );
+});
+
+test("opening a bodywork work order lists the preparation, repair, paint and control steps", () => {
+  const db = fixture();
+  const v = db.vehicles[2];
+  Object.assign(v, { status: "Réception", department: "Carrosserie" });
+  const opened = coreAction(db, v.id, "open", {});
+  const labels = opened.workOrders![v.id].tasks.map((t) => t.label);
+  assert.equal(labels.length, 5);
+  assert.match(labels[1], /Préparation/);
+  assert.match(labels[3], /Peinture/);
+  const mech = db.vehicles[3];
+  Object.assign(mech, { status: "Réception", department: "Mécanique" });
+  assert.equal(
+    coreAction(db, mech.id, "open", {}).workOrders![mech.id].tasks.length,
+    1,
+  );
+});
