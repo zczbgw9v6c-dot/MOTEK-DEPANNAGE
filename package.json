@@ -16,6 +16,7 @@
     "speech:setup": "node scripts/setup-speech.mjs",
     "verify:api": "node --experimental-strip-types scripts/verify-api.mjs",
     "verify:ui": "node scripts/verify-ui.mjs",
+    "verify:v3": "node scripts/verify-v3.mjs",
     "start": "node --experimental-strip-types server/serve.ts",
     "serve": "npm run build && npm start"
   },

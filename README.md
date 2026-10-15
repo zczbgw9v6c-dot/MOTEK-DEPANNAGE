@@ -1,4 +1,8 @@
-# AutoHub 3D — V2 fonctionnelle · version 0.3
+# MOTEK — CRM de garage avec atelier 3D · v3
+
+**Interface MOTEK v3** : `motek/` (ouvrir http://127.0.0.1:5173/motek/ en développement ; racine du serveur de production). Fusion du gabarit CRM-ERP avec MOTEK : activités configurables, atelier live épuré, showroom, garage intelligent (cas similaires, scan carte grise, assistant vocal) et agent IA en mode simulé. Détails : `docs/MOTEK_V3_FUSION.md`. L’interface historique ci-dessous reste disponible sur `/index.html`.
+
+## Interface historique (AutoHub 3D V2 · version 0.3)
 
 AutoHub est indépendant d’ORIA / Jarvis : dépôt, dépendances, serveur, base et modèles propres à ce dossier. Ouvrir `AutoHub 3D.code-workspace` pour une fenêtre de travail dédiée. Dépôt GitHub privé : https://github.com/zczbgw9v6c-dot/AUTOHUB. Aucun service payant n’est configuré.
 

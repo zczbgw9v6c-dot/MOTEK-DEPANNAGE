@@ -59,6 +59,13 @@ const server = createServer(async (req, res) => {
   }
   const path = (req.url || "/").split("?")[0];
   if (path.startsWith("/api/")) return api(req, res);
+  // L’application MOTEK (motek/) est l’interface par défaut ; l’ancienne
+  // interface reste disponible sur /index.html.
+  if (path === "/") {
+    res.writeHead(302, { Location: "/motek/" });
+    res.end();
+    return;
+  }
   // Fichiers statiques, avec repli sur index.html pour l’application.
   const safe = normalize(decodeURIComponent(path)).replace(/^(\.\.[/\\])+/, "");
   let file = join(distDir, safe);
