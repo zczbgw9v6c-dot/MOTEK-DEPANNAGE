@@ -262,7 +262,7 @@
     const first = c.type === 'entreprise' ? 'Madame, Monsieur' : 'Bonjour ' + c.name.split(' ')[0];
     const amt = t.client > 0 ? (t.insurer > 0 ? `Il reste à votre charge la franchise de ${chf(t.client)} (le solde est réglé directement par votre assurance).` : `Montant à régler à la restitution : ${chf(t.client)}.`) : 'Aucun montant n’est à votre charge.';
     const body = ch === 'SMS'
-      ? `${first}, votre ${CX.vlabel(v)} (${v.plate}) est prêt ! Vous pouvez venir le chercher à la MOTEK, 12 rue des Ateliers, du lundi au vendredi 7h30–17h30. ${amt} Merci de votre confiance.`
+      ? `${first}, votre ${CX.vlabel(v)} (${v.plate}) est prêt ! Vous pouvez venir le chercher chez MOTEK Garage, 12 rue des Ateliers, du lundi au vendredi 7h30–17h30. ${amt} Merci de votre confiance.`
       : `${first},\n\nNous avons le plaisir de vous informer que les travaux sur votre ${v.make} ${v.model} (${v.plate}) — ordre ${r.no} — sont terminés et que le véhicule a passé notre contrôle qualité.\n\nVous pouvez le récupérer à notre atelier, 12 rue des Ateliers à Lyon, du lundi au vendredi de 7h30 à 17h30.\n${amt}\n\nAu plaisir de vous revoir,\nMOTEK Garage\n${co.phone}`;
     BO.compose({ title: 'Prévenir le client — véhicule prêt', to: ch === 'SMS' ? c.phone : c.email, channel: ch, subject: ch === 'SMS' ? '' : 'Votre véhicule est prêt — ' + v.plate, body, note: `Contact préféré : <b>${esc(c.pref)}</b>. Le message est pré-rédigé : relisez puis validez l’envoi.`, okLabel: 'Envoyer', onSend: m => { CX.notifyCustomer(r.id, m.channel, 'Véhicule prêt — ' + v.plate); UI.toast('Client prévenu', c.name + ' · ' + m.channel, 'ok', 'msg'); after && after(); } });
   };
@@ -288,10 +288,10 @@
     const fields = [
       { type: 'html', full: true, html: `<div class="form-note">${BO.icon('user', 16)}<div>Choisissez un client existant ou laissez vide pour en créer un nouveau.</div></div>` },
       { k: 'customerId', label: 'Client existant', type: 'select', opts: BO.optCustomers(), empty: '— Nouveau client —', full: true },
-      { k: 'name', label: 'Nom du nouveau client', ph: 'Prénom Nom ou raison sociale' }, { k: 'phone', label: 'Téléphone', type: 'tel', ph: '+41 79 …' },
-      { k: 'email', label: 'E-mail', type: 'email' }, { k: 'city', label: 'NPA / localité', ph: '69007 Lyon' },
+      { k: 'name', label: 'Nom du nouveau client', ph: 'Prénom Nom ou raison sociale' }, { k: 'phone', label: 'Téléphone', type: 'tel', ph: '+33 6 …' },
+      { k: 'email', label: 'E-mail', type: 'email' }, { k: 'city', label: 'Code postal / ville', ph: '69007 Lyon' },
       { k: 'vehicleId', label: 'Véhicule du client', type: 'select', opts: [], empty: '— Nouveau véhicule —', full: true },
-      { k: 'plate', label: 'Plaque', ph: 'MB-456-NV', validate: (v, a) => !a.vehicleId && !/^[A-Z]{2}\s?\d{1,6}( \d{3})?$/i.test(v.replace(/\s+/g, ' ').trim()) ? 'Format : MB-456-NV' : '' },
+      { k: 'plate', label: 'Plaque', ph: 'AB-123-CD', validate: (v, a) => !a.vehicleId && !/^([A-Z]{2}-\d{3}-[A-Z]{2}|\d{1,4} ?[A-Z]{1,3} ?\d{2,3})$/i.test(v.replace(/\s+/g, ' ').trim()) ? 'Format : AB-123-CD' : '' },
       { k: 'make', label: 'Marque', ph: 'VW' }, { k: 'model', label: 'Modèle', ph: 'Golf 1.5 TSI' }, { k: 'year', label: 'Année', type: 'number', min: 1960, max: 2027 },
       { k: 'insurerId', label: 'Assurance', type: 'select', opts: BO.optInsurers(), empty: 'Privé (sans assurance)' },
       { k: 'claimNo', label: 'N° de sinistre', ph: 'facultatif' },

@@ -361,12 +361,13 @@
     { k: "courtesy", l: "Véhicules de remplacement", d: "Flotte de courtoisie et prêts" },
     { k: "showroom", l: "Showroom / vente", d: "Véhicules d’occasion et neufs exposés" },
     { k: "intelligence", l: "Garage intelligent", d: "Cas similaires, assistant vocal, scan de plaque" },
+    { k: "agent", l: "Agent IA", d: "Relances devis, rappels d’entretien, standard téléphonique (mode simulé)" },
   ];
   const ACTIVITY_PROFILES = {
-    carrosserie: { l: "Carrosserie-peinture", on: ["carrosserie", "peinture", "vitrage", "assurances", "courtesy", "intelligence"] },
-    garage: { l: "Garage toutes activités", on: ["carrosserie", "peinture", "mecanique", "pneus", "vitrage", "assurances", "courtesy", "intelligence"] },
-    concession: { l: "Concession", on: ["carrosserie", "peinture", "mecanique", "pneus", "vitrage", "assurances", "courtesy", "showroom", "intelligence"] },
-    centre: { l: "Centre auto / entretien rapide", on: ["mecanique", "pneus", "vitrage", "courtesy", "intelligence"] },
+    carrosserie: { l: "Carrosserie-peinture", on: ["carrosserie", "peinture", "vitrage", "assurances", "courtesy", "intelligence", "agent"] },
+    garage: { l: "Garage toutes activités", on: ["carrosserie", "peinture", "mecanique", "pneus", "vitrage", "assurances", "courtesy", "intelligence", "agent"] },
+    concession: { l: "Concession", on: ["carrosserie", "peinture", "mecanique", "pneus", "vitrage", "assurances", "courtesy", "showroom", "intelligence", "agent"] },
+    centre: { l: "Centre auto / entretien rapide", on: ["mecanique", "pneus", "vitrage", "courtesy", "intelligence", "agent"] },
   };
   const defaultActivities = (profile = "garage") => Object.fromEntries(ACTIVITIES.map((a) => [a.k, ACTIVITY_PROFILES[profile].on.includes(a.k)]));
   const activityOn = (k) => { const a = S && S.company && S.company.activities; return !a || a[k] !== false; };
@@ -385,6 +386,70 @@
   /* ==========================================================================
      SEED — données de démonstration (cohérentes avec la carte 3D)
      ========================================================================== */
+  // Mémoire de diagnostic : cas fictifs (symptômes, codes, cause, preuve, réparation).
+  function seedCases() {
+    const t = today();
+    const rows = [
+      ["VW", "Golf VIII 1.5 eTSI", "Démarrage difficile à froid", "P0562", "Batterie faible", "Tension de démarrage mesurée à 8,7 V.", "Batterie remplacée après confirmation du défaut.", true, 9],
+      ["Renault", "Clio V 1.0 TCe", "Décharge de batterie à l’arrêt", "B1318", "Consommation parasite", "Consommation de repos 260 mA ; relais isolé lors du test.", "Relais remplacé puis consommation contrôlée (18 mA).", true, 21],
+      ["Peugeot", "308 SW 1.5 BlueHDi", "Voyant batterie, charge insuffisante", "P0620", "Régulateur d’alternateur", "Tension de charge mesurée : 11,9 V.", "Alternateur remplacé après contrôle du circuit.", true, 34],
+      ["Toyota", "Yaris 1.5 Hybride", "Voyant ABS intermittent", "C0035", "Capteur de roue AV G", "Signal absent sur la roue avant gauche au relevé.", "Capteur et connectique contrôlés, capteur remplacé.", true, 47],
+      ["BMW", "Série 3 Touring 320d", "Calage moteur à chaud", "P0335", "Capteur de vilebrequin", "Signal du capteur absent à chaud.", "Capteur remplacé et essai de redémarrage concluant.", true, 55],
+      ["Dacia", "Sandero 1.0 ECO-G", "Température moteur élevée", "P0217", "Thermostat bloqué (hypothèse)", "Test d’ouverture non effectué ; cause à vérifier.", "Aucune réparation confirmée.", false, 6],
+      ["Peugeot", "208 1.2 PureTech", "Fuite de liquide de refroidissement", "", "Durite inférieure fendue", "Fuite visible sous pression à 1,2 bar.", "Durite remplacée, circuit purgé.", true, 70],
+      ["VW", "Golf VIII 1.5 eTSI", "À-coups à l’accélération, voyant moteur", "P0300 P0302", "Bobine d’allumage cylindre 2", "Ratés comptés sur cylindre 2 au diagnostic.", "Bobine remplacée, bougies contrôlées.", true, 88],
+      ["Tesla", "Model 3", "Bruit de roulement AR D à vitesse stabilisée", "", "Roulement de roue AR D", "Jeu mesurable à la roue, bruit localisé au stéthoscope.", "Roulement remplacé.", true, 102],
+      ["Mercedes", "Classe C 220 d", "Vibrations au freinage", "", "Disques AV voilés", "Voile mesuré 0,12 mm au comparateur.", "Disques et plaquettes AV remplacés.", true, 120],
+      ["Renault", "Trafic III 2.0 dCi", "Perte de puissance, mode dégradé", "P0401", "Vanne EGR encrassée", "Vanne bloquée à 40 % d’ouverture.", "Vanne EGR nettoyée puis remplacée.", true, 140],
+      ["Audi", "A3 35 TFSI", "Climatisation inefficace", "", "Charge réfrigérant insuffisante (hypothèse)", "Pression BP basse ; recherche de fuite à programmer.", "Aucune réparation confirmée.", false, 3],
+    ];
+    return rows.map(([make, model, symptoms, codes, cause, proof, repair, resolved, ago], i) => ({
+      id: "CAS-" + String(i + 1).padStart(3, "0"),
+      at: addDays(t, -ago),
+      make,
+      model,
+      vehicleId: null,
+      roId: null,
+      symptoms,
+      codes: codes.split(" ").filter(Boolean),
+      cause,
+      proof,
+      repair,
+      resolved,
+      recurred: false,
+      by: "E3",
+      demo: true,
+    }));
+  }
+  function seedAgent() {
+    return {
+      settings: { quoteDays: 3, serviceMonths: 12, serviceKm: 15000, ctDays: 60, inactiveMonths: 18, reviewDays: 2, autoDraft: true, voiceBrowser: false },
+      log: [],
+      done: {},
+      phone: { provider: null, number: "", greeting: "MOTEK Garage, bonjour. Je suis l’assistant du garage : je peux prendre un rendez-vous, donner l’avancement d’une réparation ou transmettre un message." },
+    };
+  }
+  // Entretiens fictifs (vidange, révision) pour alimenter les rappels d’entretien.
+  function seedMaintenance(S) {
+    const t = today();
+    const add = (vid, ago, label, detail, km) => {
+      const v = S.vehicles.find((x) => x.id === vid);
+      if (!v) return;
+      v.hist = v.hist || [];
+      if (!v.hist.some((h) => /vidange|r[ée]vision|entretien/i.test(h[1]))) v.hist.push([addDays(t, -ago), label, detail]);
+      if (km) v.lastServiceKm = km;
+    };
+    // Véhicules sans dossier ouvert : les rappels d'entretien ont un sens.
+    add("V17", 740, "Vidange + filtres", "Huile 5W30, filtre à huile, filtre habitacle", 81000);
+    add("V19", 430, "Révision 60 000 km", "Vidange, filtres, liquide de frein", 59800);
+    add("V20", 95, "Vidange", "Huile 0W20", 29100);
+    add("V21", 800, "Révision 90 000 km", "Vidange, courroie accessoires, filtres", 90500);
+    add("V24", 380, "Vidange + filtres", "Huile 5W30", 109000);
+    add("V28", 200, "Révision", "Vidange, filtres, plaquettes AV", 116000);
+    add("V30", 150, "Vidange", "Huile 5W40", 123500);
+    const ct = (vid, days) => { const v = S.vehicles.find((x) => x.id === vid); if (v && !v.nextCT) v.nextCT = addDays(t, days); };
+    ct("V18", 25); ct("V22", -12); ct("V25", 48); ct("V27", 160);
+  }
   // Véhicules exposés à la vente : fiches de démonstration (fictives).
   function seedShowroom() {
     const t = today();
@@ -465,7 +530,7 @@
         "#e3001b",
         "09 72 72 15 15",
         "sinistres@maif.fr",
-        ["Christophe Rochat", "Anne Python"],
+        ["Christophe Moreau", "Anne Python"],
         15,
       ],
       [
@@ -615,7 +680,7 @@
         skills: ["Diagnostic", "Haute tension (HV2)", "Géométrie", "ADAS"],
         color: "#3a3f47",
       }),
-      E("E5", "Kevin", "Pittet", "carrossier", 2021, "+33 69 512 67 40", {
+      E("E5", "Kevin", "Petit", "carrossier", 2021, "+33 69 512 67 40", {
         title: "Carrossier (CAP)",
         costH: 54,
         skills: ["Grêle / PDR", "Expertise photo", "Plastiques"],
@@ -723,7 +788,7 @@
       C(
         "C2",
         "prive",
-        "Pierre-Alain Gilliéron",
+        "Pierre-Alain Girardin",
         "69200 Vénissieux",
         "12 chemin des Vignes",
         "+33 69 207 55 14",
@@ -803,7 +868,7 @@
       C(
         "C7",
         "prive",
-        "Claire Jaquet",
+        "Claire Jacquet",
         "69600 Oullins",
         "9 quai Claude-Bernard",
         "+33 68 211 47 62",
@@ -858,7 +923,7 @@
       C(
         "C10",
         "prive",
-        "Stéphane Burnier",
+        "Stéphane Bernier",
         "69800 Saint-Priest",
         "6 rue Pasteur",
         "+33 69 724 81 33",
@@ -952,7 +1017,7 @@
       C(
         "C14",
         "prive",
-        "Julie Rochat",
+        "Julie Moreau",
         "69003 Lyon",
         "33 chemin des Cerisiers",
         "+33 68 902 44 10",
@@ -1424,7 +1489,7 @@
     S.claims = [
       CL("K1", "26-418 552", "mob", "V1", "Collision", "Tous risques", 500, {
         date: wd(-3),
-        expert: "Christophe Rochat",
+        expert: "Christophe Moreau",
         expertiseAt: dt(-2, "10:45"),
         report: "Reçu",
         approval: "Accordé",
@@ -1886,7 +1951,7 @@
         ],
         {
           date: wd(0),
-          sentAt: dt(0, "08:45"),
+          sentAt: dt(-4, "08:45"),
           notes: "Contrat cadre Romandie Services — remise 8 % sur pièces.",
         },
       ),
@@ -2490,21 +2555,21 @@
       ["Subaru", "Outback 2.5", "#40516b"],
     ];
     const HN = [
-      "Michel Pidoux",
-      "Isabelle Chevalley",
-      "Yves Rochat",
+      "Michel Girard",
+      "Isabelle Lefebvre",
+      "Yves Moreau",
       "Sophie Blanc",
-      "Daniel Kohler",
-      "Catherine Mottier",
-      "Nicolas Jaccard",
-      "Valérie Tschopp",
-      "Bruno Cuendet",
-      "Martine Golay",
-      "Alain Bovard",
-      "Céline Vuagnat",
-      "Frédéric Monod",
-      "Nadia Berset",
-      "Grégoire Hofer",
+      "Daniel Garnier",
+      "Catherine Fontaine",
+      "Nicolas Picard",
+      "Valérie Lambert",
+      "Bruno Chevalier",
+      "Martine Mercier",
+      "Alain Roux",
+      "Céline Guérin",
+      "Frédéric Renard",
+      "Nadia Marchand",
+      "Grégoire Collin",
       "Aline Duc",
     ];
     const HC = [
@@ -2566,23 +2631,23 @@
           "prive",
           nm,
           HC[i],
-          [
-            "Ch. des Vignes",
-            "Av. de la Gare",
-            "Rue du Bourg",
-            "Ch. du Levant",
-            "Rte de Berne",
-          ][i % 5] +
+          (3 + ((i * 7) % 40)) +
             " " +
-            (3 + ((i * 7) % 40)),
-          "+41 7" +
-            (6 + (i % 4)) +
-            " " +
-            (200 + i * 37) +
+            [
+              "rue des Vignes",
+              "avenue de la Gare",
+              "rue du Bourg",
+              "chemin du Levant",
+              "route de Vienne",
+            ][i % 5],
+          "+33 6 " +
+            pad(10 + ((i * 7) % 80)) +
             " " +
             pad(10 + ((i * 3) % 89)) +
             " " +
-            pad(20 + ((i * 7) % 79)),
+            pad(20 + ((i * 7) % 79)) +
+            " " +
+            pad(10 + ((i * 11) % 89)),
           nm
             .toLowerCase()
             .normalize("NFD")
@@ -3524,6 +3589,11 @@
       B("R12", "P3", 2, "08:00", 3, "E3"),
     ];
 
+    /* ---------- garage intelligent & agent IA ---------- */
+    S.cases = seedCases();
+    S.agent = seedAgent();
+    seedMaintenance(S);
+
     /* ---------- showroom / véhicules à vendre (activité concession) ---------- */
     S.showroom = seedShowroom();
 
@@ -4259,6 +4329,10 @@
       st.company.profile = "garage";
     }
     if (st && !st.showroom) st.showroom = seedShowroom();
+    if (st && !st.cases) st.cases = seedCases();
+    if (st && !st.agent) st.agent = seedAgent();
+    if (st && st.company && st.company.activities && st.company.activities.agent === undefined) st.company.activities.agent = true;
+    if (st && st.vehicles && !st.vehicles.some((v) => (v.hist || []).some((h) => /vidange|r[ée]vision|entretien/i.test(h[1])))) seedMaintenance(st);
     return st;
   };
   const load = () => {
@@ -5892,6 +5966,8 @@
     adjustStock,
     lendCar,
     seedShowroom,
+    seedCases,
+    seedAgent,
     startLoan,
     returnCar,
     addTime,

@@ -561,3 +561,9 @@
 .bo .fleet.showroom{grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:14px}
 .bo .fleet.showroom .kcar .pic{height:118px}
 .bo .fleet.showroom .kcar .bd{padding:12px 14px 13px}
+
+/* ---- garage intelligent / agent ---- */
+.bo .btn.rec{background:var(--red);color:#fff;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(217,45,32,.35)}50%{box-shadow:0 0 0 8px rgba(217,45,32,0)}}
+.bo .form-note.ok{background:#e9f7ef;color:#166534}
+.bo .tbl .inp.sm{height:30px;font-size:12.5px}

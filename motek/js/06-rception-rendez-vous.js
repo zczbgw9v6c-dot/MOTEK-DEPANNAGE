@@ -154,6 +154,7 @@
   }
 
   /* ---------------- rendu ---------------- */
+  BO.apptForm = apptForm;
   function render(el, params) {
     if (params.tab === 'checkin') { st.tab = 'checkin'; if (params.id) { if (st.ci !== params.id) ck = null; st.ci = params.id; } APP.setParams({ tab: null, id: null }); }
     const S = CX.S, t = today(), todayA = S.appts.filter(a => a.date === t);
