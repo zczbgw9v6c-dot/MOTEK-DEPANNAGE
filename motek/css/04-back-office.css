@@ -567,3 +567,9 @@
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(217,45,32,.35)}50%{box-shadow:0 0 0 8px rgba(217,45,32,0)}}
 .bo .form-note.ok{background:#e9f7ef;color:#166534}
 .bo .tbl .inp.sm{height:30px;font-size:12.5px}
+
+/* ---- photos réelles du dossier ---- */
+.bo .ph.real{background:#1a1c20;cursor:zoom-in}
+.bo .ph.real img{width:100%;height:100%;object-fit:cover;display:block}
+.bo .ph:not(.add){cursor:pointer}
+.bo .ph.add:hover{border-color:var(--red);color:var(--red-d);background:var(--red-soft)}
