@@ -37,7 +37,11 @@ if (!existsSync(join(distDir, "index.html"))) {
   );
   process.exit(1);
 }
+process.env.NODE_ENV = process.env.NODE_ENV || "production";
 const api = createApiHandler();
+// Une erreur inattendue ne doit pas arrêter le serveur de tous les postes.
+process.on("unhandledRejection", (e) => console.error("Erreur non gérée :", e));
+process.on("uncaughtException", (e) => console.error("Exception non gérée :", e));
 const server = createServer(async (req, res) => {
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
   res.setHeader("Referrer-Policy", "same-origin");
@@ -67,7 +71,15 @@ const server = createServer(async (req, res) => {
     return;
   }
   // Fichiers statiques, avec repli sur index.html pour l’application.
-  const safe = normalize(decodeURIComponent(path)).replace(/^(\.\.[/\\])+/, "");
+  let decoded = "";
+  try {
+    decoded = decodeURIComponent(path);
+  } catch (e) {
+    res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end("Adresse mal formée.");
+    return;
+  }
+  const safe = normalize(decoded).replace(/^(\.\.[/\\])+/, "");
   let file = join(distDir, safe);
   // Un dossier (ex. /motek/) sert son propre index.html ; sinon repli sur l’application.
   if (file.startsWith(distDir) && existsSync(file) && statSync(file).isDirectory())
@@ -87,7 +99,7 @@ const server = createServer(async (req, res) => {
         ? "public, max-age=31536000, immutable"
         : "public, max-age=3600",
   });
-  createReadStream(file).pipe(res);
+  createReadStream(file).on("error", () => { if (!res.headersSent) res.writeHead(500); res.end(); }).pipe(res);
 });
 server.listen(port, "0.0.0.0", () => {
   console.log(

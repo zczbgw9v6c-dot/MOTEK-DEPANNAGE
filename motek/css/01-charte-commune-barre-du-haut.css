@@ -104,3 +104,9 @@ header .live i{width:7px;height:7px;border-radius:50%;background:#22a35a;box-sha
 @keyframes sh{from{transform:translateY(16px) scale(.98);opacity:0}}
 @media (max-width:1100px){.brand .nm small{display:none}.user .un{display:none}.user .ur{display:none}.zbtn{min-width:0}.zbtn .zt{max-width:110px}}
 @media (max-width:900px){.search{display:none}}
+
+/* ---- indicateur de sauvegarde ---- */
+.syncpill{display:none;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:9px;font-size:12px;font-weight:700;white-space:nowrap}
+.syncpill.ok{display:flex;background:var(--green-soft);color:var(--green)}
+.syncpill.err{display:flex;background:#fdecea;color:#b42318}
+.syncpill.conflict{display:flex;background:#fff4e5;color:#b54708;cursor:pointer}

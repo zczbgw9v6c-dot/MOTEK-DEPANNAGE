@@ -41,7 +41,7 @@
     const isNew = !v;
     BO.formModal({ title: isNew ? 'Nouveau véhicule en vente' : title(v) + ' · ' + (v.plate || 'neuf'), wide: true, fields: FIELDS,
       values: v || { year: new Date().getFullYear() - 2, hands: 1, warranty: 12, fuel: 'Essence', gearbox: 'Manuelle', status: 'Préparation', color: '#c9ced6', entry: today() },
-      danger: isNew ? null : { label: 'Retirer', title: 'Retirer ce véhicule ?', text: 'La fiche disparaît du showroom. Les ventes enregistrées restent dans l’historique si le statut est « Vendu ».', run: () => { CX.S.showroom = CX.S.showroom.filter(x => x.id !== v.id); CX.touch('showroom'); UI.toast('Véhicule retiré', title(v), 'ok', 'tag'); BO.now(); } },
+      danger: isNew ? null : { label: 'Retirer', title: 'Retirer ce véhicule ?', text: 'La fiche disparaît du showroom. Les ventes enregistrées restent dans l’historique si le statut est « Vendu ».', run: () => { if (v.status === 'Vendu') { v.archived = true; } else CX.S.showroom = CX.S.showroom.filter(x => x.id !== v.id); CX.touch('showroom'); UI.toast(v.status === 'Vendu' ? 'Vente archivée' : 'Véhicule retiré', title(v), 'ok', 'tag'); BO.now(); } },
       onSubmit: x => {
         ['year', 'km', 'hands', 'price', 'buyPrice', 'warranty'].forEach(k => { x[k] = x[k] === '' ? null : +x[k]; });
         x.plate = (x.plate || '').toUpperCase().trim() || null;
@@ -85,7 +85,7 @@
     const stockVal = onSale.concat(all.filter(v => v.status === 'Réservé')).reduce((a, v) => a + v.price, 0);
     const avgAge = onSale.length ? Math.round(onSale.reduce((a, v) => a + age(v), 0) / onSale.length) : 0;
     const q = st.q.toLowerCase();
-    let rows = all.filter(v => st.seg === 'all' ? v.status !== 'Vendu' : st.seg === 'Vendu' ? v.status === 'Vendu' : v.status === st.seg);
+    let rows = all.filter(v => !v.archived).filter(v => st.seg === 'all' ? v.status !== 'Vendu' : st.seg === 'Vendu' ? v.status === 'Vendu' : v.status === st.seg);
     if (q) rows = rows.filter(v => (title(v) + ' ' + v.version + ' ' + (v.plate || '') + ' ' + v.year + ' ' + (v.colorName || '')).toLowerCase().includes(q));
     rows.sort((a, b) => st.sort === 'price' ? a.price - b.price : st.sort === 'km' ? a.km - b.km : st.sort === 'leads' ? (b.leads || 0) - (a.leads || 0) : a.entry < b.entry ? 1 : -1);
     const counts = s => all.filter(v => v.status === s).length;

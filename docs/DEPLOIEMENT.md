@@ -46,3 +46,10 @@ Remise à zéro de la démo : bouton **Réglages → Réinitialiser la démonstr
 ## Passer en durable plus tard
 
 Ajouter un disque Render (ou un volume Railway) monté sur `/app/.data` et passer au plan payant : la même image fonctionne sans modification. Avant tout usage réel : authentification par compte (la protection actuelle est un seul mot de passe partagé), sauvegardes régulières de `.data`, HTTPS déjà fourni par l’hébergeur.
+
+
+## Variables ajoutées (fiabilisation du 15 octobre 2026)
+
+- `MOTEK_ALLOW_RESET=1` : autorise le bouton « Réinitialiser la démo » et la route `POST /api/v3/reset`. Sans cette variable, le serveur de production refuse la réinitialisation (403). Ne pas la définir pour un garage réel.
+- Chaque réinitialisation ou écriture conserve la version précédente dans `v3history` (20 dernières). `GET /api/v3/history` liste les versions, `POST /api/v3/restore {revision}` en remet une en place.
+- Le serveur refuse tout enregistrement sans révision, tout document qui n'a pas la forme attendue (collections, identifiants uniques, photos non issues du navigateur, règlements incohérents).

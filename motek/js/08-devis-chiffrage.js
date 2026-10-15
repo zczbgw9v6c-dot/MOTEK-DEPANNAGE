@@ -40,12 +40,12 @@
   };
 
   /** relance pré-rédigée (assureur ou client) */
-  BO.quoteRemind = qId => {
+  BO.quoteRemind = (qId, after) => {
     const q = CX.quote(qId), k = q.claimId ? CX.claim(q.claimId) : null, c = CX.cust(q.customerId), v = CX.veh(q.vehicleId), t = CX.quoteTotals(q), i = k ? CX.ins(k.insurerId) : null;
     BO.compose({ title: 'Relance accord — ' + q.no, to: i ? i.email : c.email, channel: 'E-mail', subject: (k ? `Sinistre ${k.no} — ` : '') + `Devis ${q.no} en attente d’accord`, body: k
       ? `Madame, Monsieur,\n\nNous vous avons transmis le ${U.fmtD(U.dOf(q.sentAt || q.date))} notre devis ${q.no} (${chf2(t.ttc)} TTC) concernant le véhicule ${v.make} ${v.model} ${v.plate} de votre assuré·e ${c.name} — sinistre ${k.no}.\n\nLe véhicule est immobilisé dans nos locaux. Pourriez-vous nous faire parvenir votre accord de prise en charge (ou les coordonnées de l’expert mandaté) dans les meilleurs délais ?\n\nAvec nos meilleures salutations,\nMarc Dubois — Chef d’atelier\nMOTEK Garage · ${CX.S.company.phone}`
       : `Bonjour ${c.name.split(' ')[0]},\n\nPour rappel, notre devis ${q.no} pour votre ${CX.vlabel(v)} s’élève à ${chf2(t.ttc)} TTC. Nous pouvons planifier les travaux dès réception de votre accord (simple réponse à cet e-mail).\n\nMeilleures salutations,\nMOTEK Garage`,
-      okLabel: 'Envoyer la relance', onSend: () => { if (k) { k.reminders = k.reminders || []; k.reminders.push({ at: CX.now(), to: i.short }); CX.updateClaim(k.id, {}, 'Relance assureur (accord devis ' + q.no + ')'); } else CX.touch('quote', {}); UI.toast('Relance envoyée', q.no, 'ok', 'send'); } });
+      okLabel: 'Envoyer la relance', onSend: m => { if (k) { k.reminders = k.reminders || []; k.reminders.push({ at: CX.now(), to: i.short, status: m.status }); CX.updateClaim(k.id, {}, 'Relance assureur (accord devis ' + q.no + ')' + (m.status === 'manuel' ? ' — déclarée envoyée' : '')); } else { c.comms = c.comms || []; c.comms.unshift({ id: U.uid('cm'), at: CX.now(), ch: m.channel, dir: 'out', status: m.status, to: m.to, subject: m.subject, text: m.body, label: 'Relance devis ' + q.no, by: CX.S.meId }); CX.touch('quote', {}); } UI.toast(m.status === 'envoye' ? 'Relance envoyée' : 'Relance déclarée envoyée', q.no, 'ok', 'send'); after && after(m); } });
   };
   function sendQuote(q) {
     const k = q.claimId ? CX.claim(q.claimId) : null, i = k ? CX.ins(k.insurerId) : null, c = CX.cust(q.customerId), v = CX.veh(q.vehicleId), t = CX.quoteTotals(q);

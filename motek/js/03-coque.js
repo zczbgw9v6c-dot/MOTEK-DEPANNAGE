@@ -584,6 +584,45 @@
     } else setMode("map");
   }
 
+  /* ---------- état de sauvegarde (en-tête) et conflits entre postes ---------- */
+  const syncPill = () => {
+    let p = $("#syncpill");
+    if (!p) {
+      p = document.createElement("div");
+      p.id = "syncpill";
+      p.className = "syncpill";
+      const live = $("header .live");
+      if (live) live.insertAdjacentElement("afterend", p); else document.body.appendChild(p);
+      p.addEventListener("click", () => { if (CX.sync.conflict) conflictDialog(); });
+    }
+    return p;
+  };
+  let savedTimer = null;
+  const conflictDialog = () => {
+    if (!CX.sync.conflict || document.querySelector(".mdl-bg")) return;
+    UI.modal({ title: "Modifications en conflit", body: `<div class="form-note warn">${UI.icon("alert", 16)}<div>Un autre poste a enregistré des données pendant que vous travailliez. Vos dernières modifications ont été <b>mises de côté</b> (${esc(U.tOf(CX.sync.conflict.at))}) et l’écran affiche la version du serveur.</div></div><p class="sm-t mt">Que faire de vos modifications ?</p>`,
+      foot: `<button class="btn" data-exp style="margin-right:auto">${UI.icon("download", 14)}Exporter ma version (JSON)</button><button class="btn" data-srv>Garder la version du serveur</button><button class="btn pri" data-loc>Reprendre mes modifications (écrase le serveur)</button>`,
+      onMount: (el, close) => {
+        el.querySelector("[data-exp]").addEventListener("click", () => BO.download("motek-conflit-" + U.today() + ".json", CX.sync.conflict.local, "application/json"));
+        el.querySelector("[data-srv]").addEventListener("click", () => { CX.resolveConflict("serveur"); close(); refresh(); });
+        el.querySelector("[data-loc]").addEventListener("click", () => { CX.resolveConflict("local"); close(); refresh(); });
+      } });
+  };
+  CX.on("sync", (e) => {
+    const p = syncPill();
+    clearTimeout(savedTimer);
+    if (e.conflict) { p.className = "syncpill conflict"; p.innerHTML = UI.icon("alert", 13) + "Conflit — cliquer"; conflictDialog(); return; }
+    if (e.error) { p.className = "syncpill err"; p.innerHTML = UI.icon("alert", 13) + "Non enregistré · " + esc(e.error); return; }
+    if (e.online === false) { p.className = "syncpill err"; p.innerHTML = UI.icon("alert", 13) + "Hors ligne — modifications non enregistrées"; return; }
+    if (e.saved) { p.className = "syncpill ok"; p.innerHTML = UI.icon("check", 13) + "Enregistré"; savedTimer = setTimeout(() => { p.className = "syncpill"; p.innerHTML = ""; }, 2500); return; }
+    p.className = "syncpill"; p.innerHTML = "";
+  });
+  CX.on("ro:refused", (e) => {
+    const r = CX.ro(e.roId);
+    if (!r) return;
+    UI.toast("Transition refusée · " + r.no, e.reason === "qc" ? "Contrôle qualité à valider avant « prêt »." : e.reason === "unpaid" ? "Solde client dû : " + U.chf2(e.due) + "." : "Le dossier doit d’abord être prêt.", "warn", "alert");
+  });
+
   window.APP = {
     register,
     open,

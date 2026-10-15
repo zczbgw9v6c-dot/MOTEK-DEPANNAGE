@@ -170,20 +170,34 @@
     onMount: (el, close) => el.querySelector('[data-ok]').addEventListener('click', () => { close(); run(); }),
   });
   /** Message pré-rédigé (SMS / e-mail) — l'utilisateur relit puis valide. */
-  BO.compose = ({ title = 'Message', to = '', subject = '', body = '', channel = 'SMS', note = '', okLabel = 'Marquer comme envoyé', onSend }) => UI.modal({
+  /**
+   * Préparation d'un message client / fournisseur. Aucun transport n'est raccordé :
+   * le bouton principal déclare que l'opérateur a envoyé le message avec son propre
+   * outil (statut « manuel »). Un fournisseur raccordé (CX.S.company.messaging)
+   * produirait le statut « envoye ». « Garder en brouillon » n'engage rien.
+   */
+  BO.compose = ({ title = 'Message', to = '', subject = '', body = '', channel = 'SMS', note = '', okLabel = '', onSend, onDraft }) => UI.modal({
     title: esc(title),
     body: `${note ? `<div class="form-note mb">${BO.icon('msg', 16)}<div>${note}</div></div>` : ''}
-      <div class="fgrid"><div class="field"><label>Destinataire</label><input class="inp" name="to" value="${esc(to)}"></div><div class="field"><label>Canal</label><select class="inp" name="ch">${BO.opts(['SMS', 'E-mail', 'WhatsApp', 'Téléphone (script)'], channel)}</select></div>
+      <div class="form-note mb warn">${BO.icon('alert', 16)}<div><b>Aucun envoi automatique.</b> Copiez le texte dans votre SMS / messagerie, envoyez-le, puis cliquez sur « J’ai envoyé ce message » pour le tracer dans le dossier.</div></div>
+      <div class="fgrid"><div class="field"><label>Destinataire<span class="req">*</span></label><input class="inp" name="to" value="${esc(to)}"><div class="em" data-to-err></div></div><div class="field"><label>Canal</label><select class="inp" name="ch">${BO.opts(['SMS', 'E-mail', 'WhatsApp', 'Téléphone (script)'], channel)}</select></div>
       <div class="field full"><label>Objet</label><input class="inp" name="subj" value="${esc(subject)}"></div>
       <div class="field full"><label>Message</label><textarea class="inp" name="body" rows="8">${esc(body)}</textarea><div class="help" data-cnt></div></div></div>`,
-    foot: `<button class="btn" data-copy style="margin-right:auto">${BO.icon('copy', 15)}Copier</button><button class="btn" data-mail>${BO.icon('mail', 15)}Ouvrir dans la messagerie</button><button class="btn pri" data-ok>${BO.icon('send', 15)}${esc(okLabel)}</button>`,
+    foot: `<button class="btn" data-copy style="margin-right:auto">${BO.icon('copy', 15)}Copier</button><button class="btn" data-mail>${BO.icon('mail', 15)}Ouvrir dans la messagerie</button><button class="btn" data-draft>Garder en brouillon</button><button class="btn pri" data-ok>${BO.icon('check', 15)}${esc(okLabel || 'J’ai envoyé ce message')}</button>`,
     onMount: (el, close) => {
       const val = n => el.querySelector(`[name="${n}"]`).value;
+      const read = status => ({ to: val('to').trim(), channel: val('ch'), subject: val('subj').trim(), body: val('body'), status });
       const cnt = () => { const n = val('body').length; el.querySelector('[data-cnt]').textContent = val('ch') === 'SMS' ? n + ' caractères · ' + Math.max(1, Math.ceil(n / 160)) + ' SMS' : n + ' caractères'; };
       el.querySelector('[name="body"]').addEventListener('input', cnt); el.querySelector('[name="ch"]').addEventListener('change', cnt); cnt();
       el.querySelector('[data-copy]').addEventListener('click', () => BO.copy((val('subj') ? val('subj') + '\n\n' : '') + val('body')));
       el.querySelector('[data-mail]').addEventListener('click', () => { const to = val('to'); window.location.href = 'mailto:' + (/@/.test(to) ? encodeURIComponent(to) : '') + '?subject=' + encodeURIComponent(val('subj')) + '&body=' + encodeURIComponent(val('body')); });
-      el.querySelector('[data-ok]').addEventListener('click', () => { if (!val('body').trim()) { UI.toast('Message vide', 'Rédigez un message avant l’envoi.', 'warn'); return; } close(); onSend && onSend({ to: val('to'), channel: val('ch'), subject: val('subj'), body: val('body') }); });
+      el.querySelector('[data-draft]').addEventListener('click', () => { close(); onDraft && onDraft(read('brouillon')); UI.toast('Brouillon conservé', 'Rien n’a été envoyé ni tracé comme envoyé.', 'info'); });
+      el.querySelector('[data-ok]').addEventListener('click', () => {
+        if (!val('body').trim()) { UI.toast('Message vide', 'Rédigez un message avant de le déclarer envoyé.', 'warn'); return; }
+        const to = val('to').trim(), ch = val('ch'), okTo = ch === 'E-mail' ? /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to) : ch === 'Téléphone (script)' ? true : /^\+?[\d\s().-]{6,}$/.test(to);
+        if (!okTo) { const f = el.querySelector('[data-to-err]'); f.textContent = ch === 'E-mail' ? 'Adresse e-mail requise' : 'Numéro de téléphone requis'; f.closest('.field').classList.add('err'); return; }
+        close(); onSend && onSend(read('manuel'));
+      });
     },
   });
 
@@ -253,12 +267,14 @@
       <div class="split-l"><span><i style="background:#16181c"></i>Assurance ${chf(ins)}</span>${dep ? `<span><i style="background:#22a35a"></i>Acompte ${chf(dep)}</span>` : ''}<span><i style="background:var(--red)"></i>Client ${chf(cli)}${t.franchise ? ` <span class="muted">(dont franchise ${chf(t.franchise)})</span>` : ''}</span></div>`;
   };
   /** Photos (placeholders simulés) */
-  BO.photoGrid = (photos, add) => `<div class="ph-grid">${(photos || []).map((p, i) => `<div class="ph ${p.src ? 'real' : ''}" title="${esc(p.l)}" data-ph="${p.id}">${p.src ? `<img src="${p.src}" alt="${esc(p.l)}" loading="lazy">` : UI.carPic(['#dfe2e7', '#e8eaee', '#d6dade'][i % 3], 70, 52)}${!p.src && p.k === 'avant' && /dégât/i.test(p.l) ? '<span class="dmg" style="left:58%;top:32%"></span>' : ''}<span class="kd ${p.k === 'apres' ? 'ap' : ''}">${p.k === 'apres' ? 'Après' : 'Avant'}</span><span class="lb">${esc(p.l)}</span></div>`).join('')}${add ? `<label class="ph add" data-addph>${BO.icon('camera', 18)}Importer<input type="file" accept="image/*" multiple style="display:none" data-ph-file></label><label class="ph add" data-addph>${BO.icon('camera', 18)}Prendre une photo<input type="file" accept="image/*" capture="environment" style="display:none" data-ph-file></label>` : ''}</div>`;
+  BO.photoGrid = (photos, add) => `<div class="ph-grid">${(photos || []).map((p, i) => `<div class="ph ${BO.safeSrc(p.src) ? 'real' : ''}" title="${esc(p.l)}" data-ph="${esc(p.id)}">${BO.safeSrc(p.src) ? `<img src="${esc(BO.safeSrc(p.src))}" alt="${esc(p.l)}" loading="lazy">` : UI.carPic(['#dfe2e7', '#e8eaee', '#d6dade'][i % 3], 70, 52)}${!p.src && p.k === 'avant' && /dégât/i.test(p.l) ? '<span class="dmg" style="left:58%;top:32%"></span>' : ''}<span class="kd ${p.k === 'apres' ? 'ap' : ''}">${p.k === 'apres' ? 'Après' : 'Avant'}</span><span class="lb">${esc(p.l)}</span></div>`).join('')}${add ? `<label class="ph add" data-addph>${BO.icon('camera', 18)}Importer<input type="file" accept="image/*" multiple style="display:none" data-ph-file></label><label class="ph add" data-addph>${BO.icon('camera', 18)}Prendre une photo<input type="file" accept="image/*" capture="environment" style="display:none" data-ph-file></label>` : ''}</div>`;
+  /** Seules les images encodées par le navigateur (data:image/…;base64) sont affichées ; toute autre valeur est ignorée. */
+  BO.safeSrc = src => typeof src === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(src) && src.length < 6 * 1024 * 1024 ? src : null;
   /** Réduit une image côté navigateur (max 1200 px, JPEG) avant stockage dans le dossier. */
   BO.shrinkImage = (file, max = 1200, q = .78) => new Promise((ok, ko) => { const img = new Image(); const url = URL.createObjectURL(file); img.onload = () => { const r = Math.min(1, max / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = Math.round(img.width * r); c.height = Math.round(img.height * r); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); ok(c.toDataURL('image/jpeg', q)); }; img.onerror = () => { URL.revokeObjectURL(url); ko(new Error('Image illisible')); }; img.src = url; });
   /** Visionneuse d'une photo du dossier, avec légende modifiable et suppression. */
   BO.photoView = (r, p, after) => UI.modal({ title: esc(p.l), wide: true,
-    body: `<div style="display:grid;place-items:center;background:#111;border-radius:12px;min-height:320px">${p.src ? `<img src="${p.src}" alt="${esc(p.l)}" style="max-width:100%;max-height:70vh;border-radius:12px">` : UI.carPic('#e8eaee', 260, 200)}</div><div class="fgrid c2 mt"><div class="field"><label>Légende</label><input class="inp" data-cap value="${esc(p.l)}"></div><div class="field"><label>Moment</label><select class="inp" data-kind>${BO.opts([['avant', 'Avant réparation'], ['apres', 'Après réparation']], p.k)}</select></div></div><div class="xs-t muted mt1">${p.at ? 'Prise le ' + esc(BO.dt(p.at)) : 'Photo de démonstration'}${p.by ? ' · ' + esc((CX.emp(p.by) || {}).name || '') : ''}</div>`,
+    body: `<div style="display:grid;place-items:center;background:#111;border-radius:12px;min-height:320px">${BO.safeSrc(p.src) ? `<img src="${esc(BO.safeSrc(p.src))}" alt="${esc(p.l)}" style="max-width:100%;max-height:70vh;border-radius:12px">` : UI.carPic('#e8eaee', 260, 200)}</div><div class="fgrid c2 mt"><div class="field"><label>Légende</label><input class="inp" data-cap value="${esc(p.l)}"></div><div class="field"><label>Moment</label><select class="inp" data-kind>${BO.opts([['avant', 'Avant réparation'], ['apres', 'Après réparation']], p.k)}</select></div></div><div class="xs-t muted mt1">${p.at ? 'Prise le ' + esc(BO.dt(p.at)) : 'Photo de démonstration'}${p.by ? ' · ' + esc((CX.emp(p.by) || {}).name || '') : ''}</div>`,
     foot: `<button class="btn danger" data-del style="margin-right:auto">${BO.icon('trash', 14)}Supprimer</button><button class="btn" data-close>Fermer</button><button class="btn pri" data-ok>${BO.icon('check', 14)}Enregistrer</button>`,
     onMount: (el, close) => {
       el.querySelector('[data-ok]').addEventListener('click', () => { p.l = el.querySelector('[data-cap]').value.trim() || p.l; p.k = el.querySelector('[data-kind]').value; CX.touch('ro', { roId: r.id }); close(); after && after(); });
@@ -274,12 +290,12 @@
     const body = ch === 'SMS'
       ? `${first}, votre ${CX.vlabel(v)} (${v.plate}) est prêt ! Vous pouvez venir le chercher chez MOTEK Garage, 12 rue des Ateliers, du lundi au vendredi 7h30–17h30. ${amt} Merci de votre confiance.`
       : `${first},\n\nNous avons le plaisir de vous informer que les travaux sur votre ${v.make} ${v.model} (${v.plate}) — ordre ${r.no} — sont terminés et que le véhicule a passé notre contrôle qualité.\n\nVous pouvez le récupérer à notre atelier, 12 rue des Ateliers à Lyon, du lundi au vendredi de 7h30 à 17h30.\n${amt}\n\nAu plaisir de vous revoir,\nMOTEK Garage\n${co.phone}`;
-    BO.compose({ title: 'Prévenir le client — véhicule prêt', to: ch === 'SMS' ? c.phone : c.email, channel: ch, subject: ch === 'SMS' ? '' : 'Votre véhicule est prêt — ' + v.plate, body, note: `Contact préféré : <b>${esc(c.pref)}</b>. Le message est pré-rédigé : relisez puis validez l’envoi.`, okLabel: 'Envoyer', onSend: m => { CX.notifyCustomer(r.id, m.channel, 'Véhicule prêt — ' + v.plate); UI.toast('Client prévenu', c.name + ' · ' + m.channel, 'ok', 'msg'); after && after(); } });
+    BO.compose({ title: 'Prévenir le client — véhicule prêt', to: ch === 'SMS' ? c.phone : c.email, channel: ch, subject: ch === 'SMS' ? '' : 'Votre véhicule est prêt — ' + v.plate, body, note: `Contact préféré : <b>${esc(c.pref)}</b>. Le message est pré-rédigé : relisez puis validez l’envoi.`, onSend: m => { CX.notifyCustomer(r.id, m.channel, 'Véhicule prêt — ' + v.plate, m); UI.toast('Contact tracé', c.name + ' · ' + m.channel + ' (déclaré envoyé)', 'ok', 'msg'); after && after(m); }, onDraft: m => { CX.notifyCustomer(r.id, m.channel, 'Véhicule prêt — ' + v.plate, m); } });
   };
   /** Demande d'avis Google pré-rédigée */
-  BO.askReview = roId => {
+  BO.askReview = (roId, after) => {
     const r = CX.ro(roId), c = CX.cust(r.customerId), v = CX.veh(r.vehicleId);
-    BO.compose({ title: 'Demande d’avis Google', to: c.phone, channel: 'SMS', body: `Bonjour ${c.name.split(' ')[0]}, merci d’avoir confié votre ${CX.vlabel(v)} à la MOTEK. Votre avis compte beaucoup pour nous : ${CX.S.company.review} — 30 secondes suffisent. Belle journée !`, note: 'Envoyé 1 à 3 jours après la restitution, ce message génère en moyenne 1 avis pour 3 demandes.', okLabel: 'Envoyer la demande', onSend: () => { CX.requestReview(roId); UI.toast('Demande envoyée', c.name, 'ok', 'star'); } });
+    BO.compose({ title: 'Demande d’avis Google', to: c.phone, channel: 'SMS', body: `Bonjour ${c.name.split(' ')[0]}, merci d’avoir confié votre ${CX.vlabel(v)} à la MOTEK. Votre avis compte beaucoup pour nous : ${CX.S.company.review} — 30 secondes suffisent. Belle journée !`, note: 'Envoyé 1 à 3 jours après la restitution, ce message génère en moyenne 1 avis pour 3 demandes.', onSend: m => { CX.requestReview(roId); UI.toast('Demande d’avis déclarée envoyée', c.name, 'ok', 'star');  after && after(m); } });
   };
   /** Choisir un technicien */
   BO.pickTech = ({ title = 'Affecter un technicien', roId, onPick }) => {

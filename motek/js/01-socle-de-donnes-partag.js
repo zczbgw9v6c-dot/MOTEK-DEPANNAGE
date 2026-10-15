@@ -485,6 +485,11 @@
     ];
   }
   function seed() {
+    const S = seedData();
+    S.pristine = true;
+    return S;
+  }
+  function seedData() {
     const S = { v: 1, created: Date.now(), ext: {} };
     S.company = {
       name: "MOTEK Garage",
@@ -4278,13 +4283,24 @@
           body: JSON.stringify({ state: S, revision: sync.revision }),
         });
         if (r.status === 409) {
-          await pull();
+          await conflict();
         } else if (r.ok) {
           sync.revision = (await r.json()).revision;
           cache();
+          sync.lastError = null;
           setOnline(true);
-        } else setOnline(false);
+          emit("sync", { online: true, revision: sync.revision, saved: true });
+        } else {
+          let msg = "Erreur " + r.status;
+          try { msg = (await r.json()).error || msg; } catch (x) {}
+          sync.lastError = msg;
+          sync.dirty = true; // on réessaiera à la prochaine modification
+          setOnline(false);
+          emit("sync", { online: false, revision: sync.revision, error: msg });
+        }
       } catch (e) {
+        sync.lastError = "Serveur injoignable";
+        sync.dirty = true;
         setOnline(false);
       } finally {
         sync.pushing = false;
@@ -4293,6 +4309,8 @@
     }, 250);
   };
   /** Recharge l’état serveur s’il est plus récent ; un état d’un autre jour est régénéré (dates réalistes). */
+  /** Jeu de démonstration intact et d'un autre jour : on le régénère pour garder des dates réalistes. Jamais sur des données modifiées. */
+  const staleDemo = (st) => !!(st && st.pristine && st.day !== today());
   const pull = async () => {
     try {
       const r = await fetch("/api/v3/state");
@@ -4302,8 +4320,9 @@
       }
       const snap = await r.json();
       setOnline(true);
-      if (snap.state && snap.state.v === 1 && snap.state.day === today()) {
+      if (snap.state && snap.state.v === 1 && !staleDemo(snap.state)) {
         if (snap.revision !== sync.revision) {
+          if (sync.dirty || sync.pushing) return; // des modifications locales partent : le POST tranchera (409 → conflit)
           S = migrate(snap.state);
           sync.revision = snap.revision;
           cache();
@@ -4311,14 +4330,47 @@
           emit("change", { evt: "remote" });
         }
       } else {
+        // Serveur vide ou démonstration périmée : l'état local (ou une nouvelle démo) devient la référence.
+        if (staleDemo(S) || !S) { S = seed(); S.day = today(); migrate(S); }
         sync.revision = snap.revision || 0;
+        cache();
         push();
       }
     } catch (e) {
       setOnline(false);
     }
   };
+  /** Conflit (409) : l'état local est mis de côté, l'état serveur rechargé, et l'utilisateur choisit. */
+  const conflict = async () => {
+    const local = JSON.stringify(S);
+    try { localStorage.setItem(KEY + ":conflict", local); } catch (e) {}
+    sync.conflict = { at: now(), local };
+    await pullForce();
+    emit("sync", { online: true, revision: sync.revision, conflict: true });
+  };
+  const pullForce = async () => {
+    const r = await fetch("/api/v3/state");
+    if (!r.ok) throw new Error("serveur");
+    const snap = await r.json();
+    if (snap.state && snap.state.v === 1) { S = migrate(snap.state); sync.revision = snap.revision; cache(); emit("remote", S); emit("change", { evt: "remote" }); }
+  };
+  /** Résolution d'un conflit : "serveur" (abandonner le local) ou "local" (réappliquer et écraser). */
+  const resolveConflict = (choice) => {
+    const c = sync.conflict;
+    if (!c) return;
+    if (choice === "local") {
+      try { S = migrate(JSON.parse(c.local)); } catch (e) { return; }
+      cache();
+      push();
+      emit("change", { evt: "conflict-local" });
+    }
+    sync.conflict = null;
+    try { localStorage.removeItem(KEY + ":conflict"); } catch (e) {}
+    emit("sync", { online: sync.online, revision: sync.revision, conflict: false });
+  };
   const save = () => {
+    // Première modification réelle : l'état n'est plus un jeu de démonstration intact.
+    if (S && S.pristine) S.pristine = false;
     cache();
     push();
   };
@@ -4341,7 +4393,7 @@
     } catch (e) {
       S = null;
     }
-    if (!S || S.v !== 1 || S.day !== today()) {
+    if (!S || S.v !== 1 || staleDemo(S)) {
       S = seed();
       S.day = today();
       cache();
@@ -4357,28 +4409,30 @@
       es.onmessage = (e) => {
         try {
           const { revision } = JSON.parse(e.data);
-          if (revision !== sync.revision && !sync.pushing) pull();
+          if (revision !== sync.revision && !sync.pushing && !sync.dirty) pull();
         } catch (x) {}
       };
       es.onerror = () => setOnline(false);
     } catch (e) {}
     return S;
   };
-  const reset = () => {
+  /** Réinitialisation de la démonstration : le serveur doit l'accepter (refusée en production sans MOTEK_ALLOW_RESET). */
+  const reset = async () => {
+    let ok = false, msg = "";
+    try {
+      const r = await fetch("/api/v3/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      ok = r.ok;
+      if (!ok) { try { msg = (await r.json()).error || ""; } catch (e) {} }
+    } catch (e) { msg = "Serveur injoignable"; }
+    if (!ok) { emit("sync", { online: sync.online, revision: sync.revision, error: msg || "Réinitialisation refusée" }); return false; }
     S = seed();
     S.day = today();
+    sync.revision = 0;
+    sync.conflict = null;
     cache();
-    fetch("/api/v3/reset", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
-    })
-      .catch(() => {})
-      .finally(() => {
-        sync.revision = 0;
-        push();
-      });
+    push();
     emit("reset", S);
+    return true;
   };
 
   /* ---------- accès ---------- */
@@ -4418,8 +4472,18 @@
         r.slot !== "ROAD",
     ) || null;
   const slotFree = (slot) => !S.ros.some((r) => r.slot === slot);
-  const quoteTotals = (q) =>
-    quoteTotalsRaw(S, typeof q === "string" ? quote(q) : q);
+  // Un devis accepté ou converti garde les tarifs et la TVA du moment de l'accord
+  // (q.frozen) : un changement de paramètres ne modifie plus son montant.
+  const quoteTotals = (qq) => {
+    const q = typeof qq === "string" ? quote(qq) : qq;
+    if (q && q.frozen) return quoteTotalsRaw({ company: Object.assign({}, S.company, q.frozen), claims: S.claims }, q);
+    return quoteTotalsRaw(S, q);
+  };
+  const freezeQuote = (q) => {
+    if (!q || q.frozen) return;
+    const co = S.company;
+    q.frozen = { rates: Object.assign({}, co.rates), paintMat: co.paintMat, smallPct: co.smallPct, smallMax: co.smallMax, tvaRate: co.tvaRate != null ? co.tvaRate : TVA, at: now() };
+  };
   const roQuote = (r) =>
     r
       ? quote(r.quoteId) ||
@@ -4615,16 +4679,21 @@
       target = slotFree("RECV")
         ? "RECV"
         : ["PARK3", "PARK4", "PARK6", "PARK8"].find(slotFree);
+    // Garde-fous : un dossier ne devient « prêt » ou « facturé » qu'après un contrôle
+    // qualité validé, sauf dérogation explicite et motivée (opts.override).
+    if (stage >= ST.pret && prev < ST.pret && !(r.qc && r.qc.ok) && !opts.override) {
+      emit("ro:refused", { roId: r.id, stage, reason: "qc" });
+      return null;
+    }
+    if (opts.override && stage >= ST.pret && prev < ST.pret)
+      log(r, "Dérogation : " + STAGES[stage].l + " sans contrôle qualité validé — " + opts.override, opts.by);
     r.stage = stage;
-    r.stageLog = (r.stageLog || []).filter((s) => s.stage < stage);
-    r.stageLog.push({ stage, at: now() });
-    if (stage === ST.peint && r.prog > 70) r.prog = 50;
-    if (stage >= ST.pret) {
-      r.prog = 100;
-      r.tasks.forEach((t) => (t.p = 1));
-    } else r.prog = Math.max(r.prog || 0, Math.round((stage / ST.pret) * 92));
+    // Journal des étapes conservé intégralement, retours compris.
+    r.stageLog = r.stageLog || [];
+    r.stageLog.push({ stage, at: now(), back: prev > stage || undefined });
+    r.prog = progressOf(r);
     if (stage >= ST.prep) r.waitingParts = false;
-    if (stage === ST.facture && !r.outAt) r.outAt = now();
+    // La sortie du véhicule (outAt) est enregistrée par la remise des clés (deliver), pas par la facturation.
     let warn = null;
     if (
       target === null &&
@@ -4667,13 +4736,13 @@
         target: { type: "ro", id: r.id },
       });
     if (stage === ST.facture && prev < ST.facture) {
-      const made = ensureInvoices(r.id, true);
+      const made = ensureInvoices(r.id);
       if (made.length)
         feed({
           ic: "invoice",
           tone: "green",
-          t: "Facturé & restitué",
-          s: r.no + " · " + chf(made.reduce((a, i) => a + i.amount, 0)),
+          t: "Factures émises",
+          s: r.no + " · " + chf(made.reduce((a, i) => a + i.amount, 0)) + " · règlement et remise des clés à enregistrer",
           target: { type: "ro", id: r.id },
         });
     }
@@ -4731,6 +4800,14 @@
     emit("ro", { roId });
     return true;
   }
+  /** Progression déterministe : étape du dossier + tâches réellement terminées. */
+  function progressOf(r) {
+    if (r.stage >= ST.pret) return 100;
+    const base = Math.round((r.stage / ST.pret) * 70);
+    const tasks = r.tasks || [];
+    const done = tasks.length ? tasks.reduce((a, t) => a + Math.min(1, Math.max(0, +t.p || 0)), 0) / tasks.length : 0;
+    return Math.min(99, Math.round(base + done * 30));
+  }
   function bumpProgress(roId, dp) {
     const r = ro(roId);
     if (!r || r.prog >= 95) return;
@@ -4744,8 +4821,7 @@
     const r = ro(roId);
     if (!r || !r.tasks[i]) return;
     r.tasks[i].p = p;
-    const done = r.tasks.filter((t) => t.p >= 1).length;
-    r.prog = Math.max(r.prog, Math.round((done / r.tasks.length) * 100 * 0.9));
+    r.prog = progressOf(r);
     log(r, (p >= 1 ? "Tâche terminée : " : "Tâche rouverte : ") + r.tasks[i].l);
     save();
     emit("ro", { roId });
@@ -4754,27 +4830,38 @@
     const r = ro(roId);
     if (!r || !l) return;
     r.tasks.push({ l, p: 0 });
+    r.prog = progressOf(r);
     log(r, "Tâche ajoutée : " + l);
     save();
     emit("ro", { roId });
   }
-  function notifyCustomer(roId, channel, text) {
+  /**
+   * Trace d'un contact client. `m.status` : "manuel" (déclaré envoyé par l'opérateur depuis
+   * un autre outil, valeur par défaut), "envoye" (accusé d'un fournisseur raccordé),
+   * "brouillon" (préparé, non envoyé). Seuls « manuel » et « envoye » marquent le dossier prévenu.
+   */
+  function notifyCustomer(roId, channel, text, m = {}) {
     const r = ro(roId);
     if (!r) return;
     const c = cust(r.customerId);
-    if (r.stage >= ST.pret) r.notified = true;
+    if (!c) return;
+    const status = m.status || "manuel";
+    const entry = { id: uid("cm"), at: now(), ch: channel, dir: "out", status, to: m.to || "", subject: m.subject || "", text: m.body || text, label: text, by: S.meId, provider: m.provider || null };
     c.comms = c.comms || [];
-    c.comms.unshift({ at: now(), ch: channel, dir: "out", text, by: S.meId });
-    log(r, channel + " envoyé au client");
+    c.comms.unshift(entry);
+    if (status !== "brouillon" && r.stage >= ST.pret) r.notified = true;
+    log(r, channel + (status === "envoye" ? " envoyé au client" : status === "manuel" ? " déclaré envoyé au client (hors MOTEK)" : " préparé (brouillon)"));
     save();
     emit("comms", { roId, customerId: c.id });
-    feed({
-      ic: "msg",
-      tone: "green",
-      t: channel + " envoyé",
-      s: c.name + " · " + text.slice(0, 60),
-      target: { type: "customer", id: c.id },
-    });
+    if (status !== "brouillon")
+      feed({
+        ic: "msg",
+        tone: "green",
+        t: channel + (status === "envoye" ? " envoyé" : " déclaré envoyé"),
+        s: c.name + " · " + text.slice(0, 60),
+        target: { type: "customer", id: c.id },
+      });
+    return entry;
   }
   function requestReview(roId) {
     const r = ro(roId);
@@ -4947,6 +5034,7 @@
     const r = q.roId ? ro(q.roId) : null,
       k = q.claimId ? claim(q.claimId) : null;
     if (status === "Accordé") {
+      freezeQuote(q);
       if (k && opts.amount != null) {
         k.approval = opts.partial ? "Partiel" : "Accordé";
         k.approvedAmount = opts.amount;
@@ -5139,7 +5227,7 @@
     );
   }
   /** Crée les factures d'un OR (répartition assurance / franchise client), déduit les acomptes. */
-  function ensureInvoices(roId, payClient) {
+  function ensureInvoices(roId) {
     const r = ro(roId);
     if (!r) return [];
     if (S.invoices.some((i) => i.roId === roId && i.kind !== "acompte"))
@@ -5195,13 +5283,38 @@
             : "travaux de carrosserie") +
           (dep ? " (acompte déduit)" : ""),
       );
-      if (payClient && !(c && c.fleet))
-        payInvoice(i.id, i.amount, "Carte sans contact", true);
     }
     log(r, out.length + " facture·s émise·s");
     save();
     emit("invoice", { roId });
     return out;
+  }
+  /** Remise des clés : exige des factures émises et soit un solde client réglé, soit un crédit accordé explicitement. */
+  function deliver(roId, opts = {}) {
+    const r = ro(roId);
+    if (!r) return null;
+    if (r.stage < ST.pret) {
+      emit("ro:refused", { roId, reason: "stage" });
+      return null;
+    }
+    if (r.stage < ST.facture) {
+      const ok = setStage(roId, ST.facture, opts);
+      if (!ok) return null;
+    }
+    const due = S.invoices.filter((i) => i.roId === roId && i.payerType === "customer" && i.kind !== "acompte" && i.status !== "Payée").reduce((a, i) => a + i.amount - i.paid, 0);
+    const c = cust(r.customerId);
+    if (due > 0.04 && !(c && c.fleet) && !opts.credit) {
+      emit("ro:refused", { roId, reason: "unpaid", due });
+      return null;
+    }
+    if (due > 0.04 && opts.credit) log(r, "Remise des clés avec solde dû " + chf2(due) + " — " + opts.credit, opts.by);
+    r.outAt = now();
+    r.deliveredBy = opts.by || S.meId;
+    log(r, "Véhicule remis au client", opts.by);
+    save();
+    emit("ro", { roId });
+    feed({ ic: "key", tone: "green", t: "Véhicule remis", s: r.no + " · " + vlabel(veh(r.vehicleId)), target: { type: "ro", id: r.id } });
+    return r;
   }
   function createDeposit(roId, amount) {
     const r = ro(roId);
@@ -5228,7 +5341,7 @@
     emit("invoice", { roId });
     return inv;
   }
-  function payInvoice(id, amount, method, quiet) {
+  function payInvoice(id, amount, method, quiet, opts = {}) {
     const i = invoice(id);
     if (!i) return;
     amount = Math.min(
@@ -5236,17 +5349,33 @@
       i.amount - i.paid,
     );
     if (!(amount > 0)) return;
+    const valueDate = /^\d{4}-\d{2}-\d{2}$/.test(opts.date || "") ? opts.date : today();
     i.paid = round5(i.paid + amount);
     i.status = i.paid >= i.amount - 0.01 ? "Payée" : "Partiel";
     S.payments.unshift({
       id: uid("pay"),
       invoiceId: id,
-      date: today(),
+      date: valueDate,
+      recordedAt: now(),
       amount,
       method: method || "Virement",
+      by: S.meId,
     });
     const r = ro(i.roId);
-    if (r) log(r, "Paiement reçu " + chf2(amount) + " (" + i.no + ")");
+    if (r) log(r, "Paiement reçu " + chf2(amount) + " (" + i.no + ")" + (valueDate !== today() ? " · valeur " + fmtD(valueDate) : ""));
+    // Acompte payé après l'émission de la facture finale : il vient en déduction de celle-ci.
+    if (i.kind === "acompte" && r) {
+      const fin = S.invoices.find((x) => x.roId === i.roId && x.kind === "client" && x.status !== "Payée");
+      if (fin) {
+        const apply = Math.min(amount, fin.amount - fin.paid);
+        if (apply > 0) {
+          fin.paid = round5(fin.paid + apply);
+          fin.status = fin.paid >= fin.amount - 0.01 ? "Payée" : "Partiel";
+          fin.deposits = (fin.deposits || []).concat([{ invoiceId: i.id, amount: apply, at: now() }]);
+          log(r, "Acompte " + i.no + " imputé sur " + fin.no + " : " + chf2(apply));
+        }
+      }
+    }
     save();
     emit("payment", { invoiceId: id, amount });
     if (!quiet)
@@ -5321,10 +5450,7 @@
         (l.partId && part(l.partId)) || S.parts.find((x) => x.ref === l.ref);
       if (p) {
         p.qty += l.qty;
-        if (o.roId) {
-          p.reserved = (p.reserved || 0) + l.qty;
-          p.roId = o.roId;
-        }
+        if (o.roId) reservePart(p, o.roId, l.qty, "Réception " + o.no);
       }
     });
     const r = o.roId ? ro(o.roId) : null;
@@ -5355,6 +5481,36 @@
     save();
     emit("order", { id, received: true });
     if (r) emit("ro", { roId: r.id });
+  }
+  /** Réservations ventilées par dossier : p.reservations = [{roId, qty}], p.reserved = somme, p.roId = dernier (compatibilité). */
+  function reservePart(p, roId, qty, reason) {
+    if (!p || !roId || !(qty > 0)) return;
+    p.reservations = p.reservations || [];
+    const ex = p.reservations.find((x) => x.roId === roId);
+    if (ex) ex.qty += qty;
+    else p.reservations.push({ roId, qty });
+    p.reserved = p.reservations.reduce((a, x) => a + x.qty, 0);
+    p.roId = roId;
+    p.moves = (p.moves || []).concat([{ at: now(), kind: "reservation", roId, qty, reason: reason || "" }]).slice(-60);
+  }
+  /** Consommation ou libération d'une réservation (qty > 0 consomme le stock, release=true libère sans consommer). */
+  function releasePart(partId, roId, qty, release) {
+    const p = part(partId);
+    if (!p) return;
+    p.reservations = p.reservations || [];
+    const ex = p.reservations.find((x) => x.roId === roId);
+    if (!ex) return;
+    const n = Math.min(ex.qty, qty == null ? ex.qty : qty);
+    ex.qty -= n;
+    if (ex.qty <= 0) p.reservations = p.reservations.filter((x) => x !== ex);
+    p.reserved = p.reservations.reduce((a, x) => a + x.qty, 0);
+    if (!release) p.qty = Math.max(0, p.qty - n);
+    p.roId = p.reservations.length ? p.reservations[p.reservations.length - 1].roId : null;
+    p.moves = (p.moves || []).concat([{ at: now(), kind: release ? "liberation" : "consommation", roId, qty: n }]).slice(-60);
+    const r = ro(roId);
+    if (r) log(r, (release ? "Réservation libérée : " : "Pièce consommée : ") + n + " × " + p.name);
+    save();
+    emit("part", { id: partId });
   }
   function adjustStock(partId, delta, reason) {
     const p = part(partId);
@@ -5510,14 +5666,8 @@
         ? "Contrôle qualité validé"
         : "Contrôle qualité refusé — " + (note || "retouche"),
     );
-    if (ok) {
-      if (!r.photos.some((p) => p.k === "apres"))
-        r.photos.push(
-          { id: uid("ph"), l: "Après — 3/4", k: "apres", at: now() },
-          { id: uid("ph"), l: "Après — détail", k: "apres", at: now() },
-        );
-      setStage(roId, ST.lavage);
-    } else setStage(roId, ST.remont);
+    if (ok) setStage(roId, ST.lavage);
+    else setStage(roId, ST.remont);
   }
 
   /* ---------- générique ---------- */
@@ -5977,6 +6127,12 @@
     upsert,
     remove,
     touch,
+    deliver,
+    progressOf,
+    freezeQuote,
+    reservePart,
+    releasePart,
+    resolveConflict,
     log,
     feed,
     kpis,

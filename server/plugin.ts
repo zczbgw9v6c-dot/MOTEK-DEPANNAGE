@@ -60,6 +60,8 @@ export function createApiHandler(
         return json(200, store.read());
       if (path === "/api/v3/state" && req.method === "GET")
         return json(200, { ...v3.read(), serverNow: Date.now() });
+      if (path === "/api/v3/history" && req.method === "GET")
+        return json(200, { versions: v3.history() });
       if (path === "/api/v3/events" && req.method === "GET") {
         res.writeHead(200, {
           "Content-Type": "text/event-stream",
@@ -130,7 +132,7 @@ export function createApiHandler(
       if (path === "/api/v3/state") {
         const snapshot = v3.write(
           body.state,
-          typeof body.revision === "number" ? body.revision : undefined,
+          Number.isInteger(body.revision) ? body.revision : undefined,
         );
         json(200, {
           revision: snapshot.revision,
@@ -141,9 +143,19 @@ export function createApiHandler(
         return;
       }
       if (path === "/api/v3/reset") {
+        // Réservé à la démonstration : interdit en production sauf MOTEK_ALLOW_RESET=1.
+        if (process.env.NODE_ENV === "production" && process.env.MOTEK_ALLOW_RESET !== "1")
+          return json(403, { error: "Réinitialisation désactivée sur ce serveur (MOTEK_ALLOW_RESET)." });
         v3.reset();
         json(200, { revision: 0 });
         v3broadcast({ revision: 0 });
+        return;
+      }
+      if (path === "/api/v3/restore") {
+        if (!Number.isInteger(body.revision)) return json(400, { error: "Révision requise." });
+        const snapshot = v3.restore(body.revision);
+        json(200, { revision: snapshot.revision });
+        v3broadcast(snapshot);
         return;
       }
       if (path === "/api/voice/propose")

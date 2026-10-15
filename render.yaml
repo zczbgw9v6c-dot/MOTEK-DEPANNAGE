@@ -14,5 +14,8 @@ services:
         value: motek
       - key: MOTEK_DEMO_PASSWORD
         sync: false # à saisir dans le tableau de bord Render, jamais dans le dépôt
+      # Démo : autorise « Réinitialiser la démo ». À retirer sur un serveur de production.
+      - key: MOTEK_ALLOW_RESET
+        value: "1"
       - key: AUTOHUB_DB
         value: /app/.data/autohub.sqlite

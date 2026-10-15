@@ -133,6 +133,41 @@ await step("Agent IA : suggestions (relance devis, entretien, CT) et message pr�
   expect((await ev(() => CX.S.agent.log[0].kind)) === "agent", "journal de l’agent");
 });
 
+await step("Facturation sans encaissement, remise des clés refusée puis acceptée après paiement", async () => {
+  const id = await ev(() => { const r = CX.S.ros.find((x) => x.stage === CX.ST.pret && !x.outAt && !CX.cust(x.customerId).fleet && !x.claimId) || CX.S.ros.find((x) => x.stage === CX.ST.pret && !x.outAt); r.qc = { ok: true, items: {} }; return r.id; });
+  await ev((id) => { APP.setMode("bo"); APP.open("ros", { id }); }, id); await page.waitForTimeout(600);
+  const before = await ev(() => CX.S.payments.length);
+  await ev(() => document.querySelector("[data-deliver]").click()); await page.waitForTimeout(400);
+  const okBtn = await page.$("[data-ok]"); if (okBtn) { await ev(() => document.querySelector("[data-ok]").click()); await page.waitForTimeout(500); }
+  let r = await ev((id) => ({ stage: CX.ro(id).stage, out: CX.ro(id).outAt, inv: CX.S.invoices.filter((i) => i.roId === id && i.kind !== "acompte").length, pay: CX.S.payments.length }), id);
+  expect(r.inv >= 1 && r.pay === before && !r.out, "factures émises sans paiement ni sortie : " + JSON.stringify(r));
+  // après l'émission, la remise demande un paiement ou un crédit motivé
+  await page.waitForTimeout(300);
+  const hasCredit = await page.$('[name="credit"]');
+  if (hasCredit) { await ev(() => document.querySelector("[data-close]").click()); await page.waitForTimeout(200); }
+  await ev((id) => { const inv = CX.S.invoices.find((i) => i.roId === id && i.payerType === "customer" && i.kind !== "acompte"); CX.payInvoice(inv.id, null, "Carte", false, { date: "2026-10-10" }); }, id);
+  await ev(() => APP.refresh()); await page.waitForTimeout(400);
+  await ev(() => document.querySelector("[data-deliver]").click()); await page.waitForTimeout(300);
+  await ev(() => document.querySelector("[data-ok]").click()); await page.waitForTimeout(500);
+  r = await ev((id) => ({ out: CX.ro(id).outAt, date: CX.S.payments[0].date }), id);
+  expect(!!r.out && r.date === "2026-10-10", "remise des clés après paiement, date de valeur conservée : " + JSON.stringify(r));
+  await shot("08-remise-des-cles");
+});
+
+await step("Message client : brouillon sans trace, déclaration manuelle tracée", async () => {
+  const id = await ev(() => { const r = CX.S.ros.find((x) => x.stage === CX.ST.pret && !x.notified); return r ? r.id : null; });
+  expect(id, "un dossier prêt non prévenu");
+  await ev((id) => BO.notifyReady(id), id); await page.waitForTimeout(400);
+  await ev(() => document.querySelector("[data-draft]").click()); await page.waitForTimeout(300);
+  expect((await ev((id) => CX.ro(id).notified, id)) === false, "brouillon : client toujours non prévenu");
+  await ev((id) => BO.notifyReady(id), id); await page.waitForTimeout(400);
+  await ev(() => { document.querySelector('[name="to"]').value = ""; document.querySelector("[data-ok]").click(); }); await page.waitForTimeout(200);
+  expect(!!(await page.$(".mdl-bg")), "destinataire vide refusé");
+  await ev(() => { document.querySelector('[name="to"]').value = "+33 6 12 34 56 78"; document.querySelector("[data-ok]").click(); }); await page.waitForTimeout(400);
+  const c = await ev((id) => { const r = CX.ro(id); const m = CX.cust(r.customerId).comms[0]; return { notified: r.notified, status: m.status, to: m.to }; }, id);
+  expect(c.notified && c.status === "manuel" && /33 6/.test(c.to), "déclaration manuelle tracée : " + JSON.stringify(c));
+});
+
 await step("Persistance serveur : l’état est partagé entre deux pages", async () => {
   const p2 = await browser.newPage({ httpCredentials: process.env.MOTEK_DEMO_PASSWORD ? { username: process.env.MOTEK_DEMO_USER || "motek", password: process.env.MOTEK_DEMO_PASSWORD } : undefined });
   await p2.goto(base + "/motek/"); await p2.waitForTimeout(3000);

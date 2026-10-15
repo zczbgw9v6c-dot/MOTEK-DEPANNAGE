@@ -52,14 +52,19 @@
   /** passage d'étape avec garde-fous métier */
   function moveStage(id, stage, after) {
     const r = CX.ro(id); if (!r || r.stage === stage) return;
-    const go = () => {
-      const before = r.slot; CX.setStage(id, stage);
+    const go = (override) => {
+      const before = r.slot; const ok = CX.setStage(id, stage, override ? { override } : {});
+      if (!ok) {
+        if (stage >= CX.ST.pret && !(r.qc && r.qc.ok)) BO.formModal({ title: 'Contrôle qualité non validé', intro: `<div class="form-note warn">${BO.icon('alert', 16)}<div>${esc(r.no)} ne peut pas passer « ${esc(CX.STAGES[stage].l)} » sans contrôle qualité validé. Faites le contrôle (onglet Qualité & garanties) ou enregistrez une dérogation motivée, tracée dans l’historique.</div></div>`, fields: [{ k: 'why', label: 'Motif de la dérogation', req: true, full: true, ph: 'ex. client pressé, retouche planifiée le 20/10' }], submit: 'Déroger et continuer', onSubmit: x => go(x.why) });
+        else UI.toast('Transition refusée', 'Le dossier ne remplit pas les conditions pour cette étape.', 'warn');
+        return;
+      }
       const moved = CX.ro(id).slot !== before;
       UI.toast(CX.STAGES[stage].l, r.no + (moved ? ' → ' + CX.slotLabel(CX.ro(id).slot) + ' (atelier live)' : ''), 'ok', CX.STAGES[stage].ic);
       after && after(); BO.now();
     };
     const k = r.claimId ? CX.claim(r.claimId) : null;
-    if (stage === CX.ST.facture) { const t = CX.roTotals(r); BO.confirm('Facturer et restituer ' + r.no + ' ?', `Les factures seront émises automatiquement : ${t.insurer > 0 ? `<b>${chf(t.insurer)}</b> à ${esc((CX.ins(k.insurerId) || {}).short)} (cession de créance) et ` : ''}<b>${chf(t.client)}</b> à la charge du client${t.franchise ? ' (franchise)' : ''}, encaissée à la restitution. Le véhicule quitte l’atelier.`, 'Facturer & restituer', go); return; }
+    if (stage === CX.ST.facture) { const t = CX.roTotals(r); BO.confirm('Émettre les factures de ' + r.no + ' ?', `Les factures seront émises : ${t.insurer > 0 ? `<b>${chf(t.insurer)}</b> à ${esc((CX.ins(k.insurerId) || {}).short)} (cession de créance) et ` : ''}<b>${chf(t.client)}</b> à la charge du client${t.franchise ? ' (franchise)' : ''}. <b>Aucun paiement n’est enregistré</b> : le règlement se saisit dans Facturation, puis la remise des clés se confirme depuis le dossier.`, 'Émettre les factures', () => go()); return; }
     if (stage > CX.ST.accord && stage < CX.ST.pret && r.stage <= CX.ST.accord && k && !['Accordé', 'Partiel'].includes(k.approval)) { BO.confirm('Accord assureur manquant', `Le sinistre ${esc(k.no)} (${esc((CX.ins(k.insurerId) || {}).short)}) est au statut « ${esc(k.approval)} ». Démarrer les travaux sans accord reste à vos risques.`, 'Continuer quand même', go); return; }
     if (stage >= CX.ST.pret && r.stage < CX.ST.cq && !(r.qc && r.qc.ok)) { BO.confirm('Contrôle qualité non effectué', 'Ce véhicule n’a pas passé le contrôle qualité. Le marquer prêt quand même ?', 'Marquer prêt', go); return; }
     go();
@@ -97,7 +102,7 @@
         <div class="car">${UI.carPic(v.hex, 78, 60)}</div>
         <div style="min-width:0"><h1>${BO.plate(v.plate, true)} ${esc(v.make)} ${esc(v.model)} ${BO.status(r)}</h1>
           <div class="meta"><span>${BO.icon('wrench', 14)}<b>${esc(r.no)}</b></span><span>${BO.icon('user', 14)}<a class="lnk" data-open="crm:${c.id}">${esc(c.name)}</a></span>${k ? `<span>${BO.icon('shield', 14)}${BO.ins(k.insurerId, false)} · <a class="lnk" data-open="claims:${k.id}">sinistre ${esc(k.no)}</a></span>` : `<span>${BO.icon('shield', 14)}${c.fleet ? 'Flotte · ' + esc(c.fleet.contract) : 'Client privé'}</span>`}<span>${BO.icon('pin', 14)}${esc(CX.slotLabel(r.slot))}</span><span>${BO.icon('clock', 14)}Restitution ${esc(BO.dt(r.dueAt))}${CX.isLate(r) ? ' <span class="chip red">retard</span>' : ''}</span></div></div>
-        <div class="act">${r.stage < CX.ST.facture ? `<button class="btn pri" data-next>${BO.icon(CX.STAGES[next].ic, 15)}${esc(CX.STAGES[next].s)} →</button>` : ''}${CX.ONSITE(r.slot) ? BO.mapBtn('vehicle', v.id, 'Voir dans l’atelier', '') : ''}<button class="btn" data-notify>${BO.icon('msg', 15)}${r.stage >= CX.ST.pret ? 'Prévenir : prêt' : 'Informer le client'}</button>${r.stage >= CX.ST.pret ? `<button class="btn" data-open="invoices:${invs[0] ? invs[0].id : ''}">${BO.icon('invoice', 15)}Facturation</button>` : ''}</div>
+        <div class="act">${r.stage < CX.ST.facture ? `<button class="btn pri" data-next>${BO.icon(CX.STAGES[next].ic, 15)}${esc(CX.STAGES[next].s)} →</button>` : ''}${CX.ONSITE(r.slot) ? BO.mapBtn('vehicle', v.id, 'Voir dans l’atelier', '') : ''}<button class="btn" data-notify>${BO.icon('msg', 15)}${r.stage >= CX.ST.pret ? 'Prévenir : prêt' : 'Informer le client'}</button>${r.stage >= CX.ST.pret && !r.outAt ? `<button class="btn pri" data-deliver>${BO.icon('key', 15)}Remettre les clés</button>` : r.outAt ? `<span class="chip green" style="height:36px">${BO.icon('key', 14)} Remis le ${esc(BO.dt(r.outAt))}</span>` : ''}${r.stage >= CX.ST.pret ? `<button class="btn" data-open="invoices:${invs[0] ? invs[0].id : ''}">${BO.icon('invoice', 15)}Facturation</button>` : ''}</div>
       </div><div style="padding:4px 20px 18px">${BO.wfLine(r, { click: true })}</div></div>
       ${BO.tabs([['apercu', 'Aperçu'], ['temps', 'Temps & postes', BO.h(CX.roSpent(r))], ['pieces', 'Pièces', orders.length || (q ? q.lines.filter(l => +l.price > 0 && l.op !== 'F').length : 0)], ['photos', 'Photos', r.photos.length], ['hist', 'Historique', r.history.length], ['docs', 'Documents']], tab)}
       <div data-tabbody></div></div>`;
@@ -163,6 +168,14 @@
       body.querySelectorAll('[data-doc]').forEach(b => b.addEventListener('click', () => { const a = b.dataset.doc; if (a === 'quote' && BO.printQuote) BO.printQuote(q); else if (a === 'cession' && BO.printCession) BO.printCession(k.id); else if (a.startsWith('inv:') && BO.printInvoice) BO.printInvoice(CX.invoice(a.slice(4))); else if (a === 'loan' && BO.printLoan) BO.printLoan(loan.id); else printOR(r); }));
     }
     BO.bindTabs(el, tb => { st.tab = tb; const sc = el.closest('#bo-content') || el; sc.scrollTop = 0; APP.refresh(); });
+    const dl = el.querySelector('[data-deliver]'); if (dl) dl.addEventListener('click', () => {
+      const due = CX.S.invoices.filter(i => i.roId === r.id && i.payerType === 'customer' && i.kind !== 'acompte' && i.status !== 'Payée').reduce((a, i) => a + i.amount - i.paid, 0);
+      const hasInv = CX.S.invoices.some(i => i.roId === r.id && i.kind !== 'acompte');
+      const run = credit => { const ok = CX.deliver(r.id, credit ? { credit } : {}); if (ok) { UI.toast('Véhicule remis', r.no + ' · ' + CX.custName(r.customerId), 'ok', 'key'); BO.now(); } else UI.toast('Remise impossible', 'Vérifiez le contrôle qualité et les factures.', 'warn'); };
+      if (!hasInv) { BO.confirm('Émettre les factures puis remettre les clés ?', 'Les factures de ' + esc(r.no) + ' n’ont pas encore été émises. Elles le seront maintenant ; le règlement reste à enregistrer.', 'Émettre et continuer', () => { const ok = CX.setStage(r.id, CX.ST.facture); if (!ok) { UI.toast('Contrôle qualité requis', 'Validez le contrôle qualité avant la facturation.', 'warn'); return; } APP.refresh(); setTimeout(() => el.querySelector('[data-deliver]') && el.querySelector('[data-deliver]').click(), 50); }); return; }
+      if (due > 0.04 && !(c.fleet)) BO.formModal({ title: 'Solde client non réglé — ' + chf2(due), intro: `<div class="form-note warn">${BO.icon('coins', 16)}<div>Enregistrez d’abord le paiement dans Facturation, ou accordez un crédit explicite (tracé dans l’historique).</div></div>`, fields: [{ k: 'credit', label: 'Motif du crédit accordé', req: true, full: true, ph: 'ex. paiement en 3 fois accepté par M. Dubois' }], submit: 'Remettre les clés avec crédit', onSubmit: x => run(x.credit) });
+      else BO.confirm('Remettre les clés de ' + r.no + ' ?', 'Le client ' + esc(CX.custName(r.customerId)) + ' récupère son véhicule' + (due > 0.04 ? ' (flotte : facture à ' + (c.fleet ? c.fleet.terms : 30) + ' jours)' : ' ; le solde est réglé') + '.', 'Confirmer la remise', () => run());
+    });
     el.querySelectorAll('.wfl [data-stage]').forEach(b => b.addEventListener('click', () => { const s2 = +b.dataset.stage; if (s2 === r.stage) return; BO.confirm('Passer à « ' + CX.STAGES[s2].l + ' » ?', `${esc(r.no)} · ${esc(CX.vlabel(v))}. ${s2 < r.stage ? 'Retour en arrière dans le workflow.' : 'Le véhicule sera déplacé automatiquement si nécessaire (atelier live).'}`, 'Confirmer', () => moveStage(r.id, s2)); }));
     const nb = el.querySelector('[data-next]'); if (nb) nb.addEventListener('click', () => moveStage(r.id, next));
     el.querySelector('[data-notify]').addEventListener('click', () => { if (r.stage >= CX.ST.pret) BO.notifyReady(r.id, BO.now); else BO.compose({ title: 'Informer le client', to: c.pref === 'E-mail' ? c.email : c.phone, channel: c.pref === 'E-mail' ? 'E-mail' : 'SMS', subject: 'Suivi de votre véhicule ' + v.plate, body: `Bonjour ${c.name.split(' ')[0]}, petit point sur votre ${CX.vlabel(v)} : étape « ${CX.STAGES[r.stage].l} », avancement ${r.prog} %. Restitution prévue ${BO.dt(r.dueAt)}. MOTEK`, okLabel: 'Envoyer', onSend: m => { CX.notifyCustomer(r.id, m.channel, 'Suivi des travaux'); UI.toast('Message envoyé', c.name, 'ok', 'msg'); BO.now(); } }); });
