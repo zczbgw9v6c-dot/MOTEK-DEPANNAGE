@@ -268,6 +268,29 @@
   };
   /** Photos (placeholders simulés) */
   BO.photoGrid = (photos, add) => `<div class="ph-grid">${(photos || []).map((p, i) => `<div class="ph ${BO.photoSrc(p) ? 'real' : ''}" title="${esc(p.l)}" data-ph="${esc(p.id)}">${BO.photoSrc(p) ? `<img src="${esc(BO.photoSrc(p))}" alt="${esc(p.l)}" loading="lazy">` : UI.carPic(['#dfe2e7', '#e8eaee', '#d6dade'][i % 3], 70, 52)}${!p.src && p.k === 'avant' && /dégât/i.test(p.l) ? '<span class="dmg" style="left:58%;top:32%"></span>' : ''}<span class="kd ${p.k === 'apres' ? 'ap' : ''}">${p.k === 'apres' ? 'Après' : 'Avant'}</span><span class="lb">${esc(p.l)}</span></div>`).join('')}${add ? `<label class="ph add" data-addph>${BO.icon('camera', 18)}Importer<input type="file" accept="image/*" multiple style="display:none" data-ph-file></label><label class="ph add" data-addph>${BO.icon('camera', 18)}Prendre une photo<input type="file" accept="image/*" capture="environment" style="display:none" data-ph-file></label>` : ''}</div>`;
+  /**
+   * Dictée dans un champ : reconnaissance vocale du navigateur si elle est activée
+   * (Agent IA › Réglages), sinon message explicite. Le texte reste modifiable avant validation.
+   * Retourne une fonction d'arrêt.
+   */
+  BO.dictate = (field, btn, onEnd) => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!(CX.S.agent && CX.S.agent.settings && CX.S.agent.settings.voiceBrowser)) { UI.toast('Dictée désactivée', 'Activez la reconnaissance vocale du navigateur dans Agent IA › Réglages, ou tapez le texte.', 'warn', 'alert'); return null; }
+    if (!SR) { UI.toast('Dictée indisponible', 'Ce navigateur ne propose pas de reconnaissance vocale : tapez le texte.', 'warn'); return null; }
+    if (btn && btn._rec) { btn._rec.stop(); return null; }
+    const rec = new SR(); rec.lang = 'fr-FR'; rec.interimResults = true; rec.continuous = true;
+    const base = field.value ? field.value.replace(/\s*$/, '') + (field.tagName === 'TEXTAREA' ? '\n' : ' ') : '';
+    if (btn) { btn.classList.add('rec'); btn._rec = rec; }
+    rec.onresult = e => { field.value = base + [...e.results].map(r => r[0].transcript).join(' '); field.dispatchEvent(new Event('input')); };
+    rec.onerror = e => { UI.toast('Micro', 'Erreur de reconnaissance : ' + e.error, 'warn'); };
+    rec.onend = () => { if (btn) { btn.classList.remove('rec'); btn._rec = null; } onEnd && onEnd(field.value); };
+    rec.start();
+    return () => rec.stop();
+  };
+  /** Bouton micro standard à placer à côté d'un champ. */
+  BO.micBtn = (attr = 'data-mic', title = 'Dicter') => `<button type="button" class="btn mic" ${attr} title="${esc(title)}">${BO.icon('phone', 15)}</button>`;
+  /** Découpe une dictée en tâches : une par ligne, par virgule, point-virgule ou « et puis ». */
+  BO.splitTasks = text => String(text || '').split(/\n|;|,|\bet puis\b|\bensuite\b|\bpuis\b/i).map(x => x.replace(/^\s*(et|puis|alors|ok|donc)\s+/i, '').trim()).filter(x => x.length >= 3).map(x => x[0].toUpperCase() + x.slice(1));
   /** Seules les images encodées par le navigateur (data:image/…;base64) sont affichées ; toute autre valeur est ignorée. */
   BO.safeSrc = src => typeof src === 'string' && (/^\/api\/v3\/photos\/[0-9a-f]{32}$/.test(src) || (/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(src) && src.length < 6 * 1024 * 1024)) ? src : null;
   /** Source affichable d'une photo : fichier serveur (p.url) de préférence, sinon image embarquée (p.src). */

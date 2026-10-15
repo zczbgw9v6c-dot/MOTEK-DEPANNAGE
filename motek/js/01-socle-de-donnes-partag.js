@@ -102,7 +102,7 @@
 
   /* ---------------- horloge simulée (partagée carte / back-office) ---------------- */
   const T0 = performance.now(),
-    SIM0 = 9 * 60 + 41;
+    SIM0 = (() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60; })(); // heure réelle de l'appareil
   const nowMin = () => SIM0 + (performance.now() - T0) / 60000;
   const now = () => today() + " " + hm(nowMin()); // 'YYYY-MM-DD HH:MM'
   const dt = (off, t) => wd(off) + " " + t; // jour ouvré relatif + heure
@@ -3594,6 +3594,9 @@
       B("R12", "P3", 2, "08:00", 3, "E3"),
     ];
 
+    /* ---------- demandes de pièces émises depuis l'atelier (comptoir magasin) ---------- */
+    S.partRequests = [];
+
     /* ---------- garage intelligent & agent IA ---------- */
     S.cases = seedCases();
     S.agent = seedAgent();
@@ -4383,6 +4386,7 @@
     if (st && !st.showroom) st.showroom = seedShowroom();
     if (st && !st.cases) st.cases = seedCases();
     if (st && !st.agent) st.agent = seedAgent();
+    if (st && !st.partRequests) st.partRequests = [];
     if (st && st.company && st.company.activities && st.company.activities.agent === undefined) st.company.activities.agent = true;
     if (st && st.vehicles && !st.vehicles.some((v) => (v.hist || []).some((h) => /vidange|r[ée]vision|entretien/i.test(h[1])))) seedMaintenance(st);
     return st;
@@ -5512,6 +5516,54 @@
     save();
     emit("part", { id: partId });
   }
+  /** Demande de pièce depuis l'atelier : le magasin la voit au comptoir, le dossier garde la tâche. */
+  function requestPart(roId, label, qty, note, by) {
+    const r = ro(roId);
+    if (!r || !label) return null;
+    const q = {
+      id: uid("pr"),
+      roId,
+      label: String(label).trim(),
+      qty: Math.max(1, Math.round(+qty || 1)),
+      note: note || "",
+      by: by || S.meId,
+      at: now(),
+      status: "À servir",
+      servedAt: null,
+      orderId: null,
+    };
+    S.partRequests = S.partRequests || [];
+    S.partRequests.unshift(q);
+    r.tasks.push({ l: "Pièce demandée au magasin : " + q.qty + " × " + q.label, p: 0, requestId: q.id });
+    r.waitingParts = true;
+    r.prog = progressOf(r);
+    log(r, "Pièce demandée au magasin : " + q.qty + " × " + q.label + (note ? " — " + note : ""), by);
+    save();
+    emit("ro", { roId });
+    emit("partRequest", { id: q.id });
+    feed({ ic: "box", tone: "amber", t: "Pièce demandée · " + r.no, s: q.qty + " × " + q.label + " · " + ((emp(q.by) || {}).first || ""), target: { type: "ro", id: r.id } });
+    return q;
+  }
+  /** Le magasin sert (au comptoir) ou commande la pièce demandée. */
+  function setPartRequest(id, status, extra = {}) {
+    const q = (S.partRequests || []).find((x) => x.id === id);
+    if (!q) return null;
+    q.status = status;
+    if (status === "Servi") q.servedAt = now();
+    if (extra.orderId) q.orderId = extra.orderId;
+    const r = ro(q.roId);
+    if (r) {
+      const t = r.tasks.find((x) => x.requestId === id);
+      if (t && status === "Servi") { t.l = "Pièce servie au comptoir : " + q.qty + " × " + q.label; t.p = 1; }
+      if (status === "Servi" && !(S.partRequests || []).some((x) => x.roId === r.id && x.status !== "Servi")) r.waitingParts = false;
+      r.prog = progressOf(r);
+      log(r, (status === "Servi" ? "Pièce servie au comptoir : " : status === "Commandé" ? "Pièce commandée : " : "Demande de pièce : ") + q.qty + " × " + q.label);
+    }
+    save();
+    emit("partRequest", { id });
+    if (status === "Servi" && r) feed({ ic: "check", tone: "green", t: "Pièce prête au comptoir · " + r.no, s: q.qty + " × " + q.label, target: { type: "ro", id: r.id } });
+    return q;
+  }
   function adjustStock(partId, delta, reason) {
     const p = part(partId);
     if (!p) return;
@@ -6132,6 +6184,8 @@
     freezeQuote,
     reservePart,
     releasePart,
+    requestPart,
+    setPartRequest,
     resolveConflict,
     log,
     feed,

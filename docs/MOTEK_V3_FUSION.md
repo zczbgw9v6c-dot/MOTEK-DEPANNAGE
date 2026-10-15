@@ -35,3 +35,13 @@ npm run build && npm run serve   # serveur de production, / → /motek/
 ```
 
 `verify:v3` lance Vite sur une base isolée (`.data/verify-v3.sqlite`), rejoue les parcours et écrit des captures dans `.data/verify-v3/`.
+
+## Lots 2 à 4 (15 octobre 2026, après l'audit Codex)
+
+- **Lot 2 — fiabilisation** (PR #2) : plus de régénération quotidienne des données modifiées, conflits entre postes conservés et arbitrés, validation serveur (révision obligatoire, schéma, photos), réinitialisation gardée en historique et restaurable, facturation séparée de l'encaissement et de la remise des clés, contrôle qualité obligatoire avant « prêt », devis figés, acomptes rapprochés, communications honnêtes (brouillon / déclaré envoyé / envoyé par un fournisseur). Tests `tests/v3-core.test.ts`, `tests/v3-store.test.ts`.
+- **Lot 3 — interface** (PR #3) : photos stockées par le serveur (`/api/v3/photos`), tablette (rail d'icônes, barre de lieux en bas, recherche repliée), mode gants, modales accessibles, zones 3D filtrées par activité.
+- **Lot 4 — pilotage et atelier** : tableau de bord gérant réorganisé (journée du garage d'abord : rendez-vous, interventions, postes libres, livrés, devis, paiements ; puis CA, immobilisation, assurances ; analyse du mois repliée), assistant « Demander à MOTEK » intégré, flux atelier par phases, heure réelle, dictée des travaux (une phrase → plusieurs tâches relues), **Poste technicien** (tablette : mes dossiers, cases à cocher, pièce manquante → comptoir magasin, photo, note, travaux terminés), demandes de pièces servies ou commandées depuis Pièces & commandes, prise en main en huit écrans (bouton œil dans l'en-tête), panneau de détail 3D défilable sur iPad, couleur du véhicule renseignée au scan pour l'atelier live, dictée des symptômes dans le garage intelligent.
+
+### Idées notées pour la suite
+- Lecteur de plaque sur pylône à l'entrée : plaque + couleur du véhicule → fiche et couleur 3D automatiques (contrat caméra prêt, matériel et fournisseur à choisir).
+- Agent de lecture des e-mails d'assureurs : accord / blocage → notification et bouton « Accord reçu par téléphone » pour la saisie manuelle.

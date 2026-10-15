@@ -46,7 +46,7 @@
   function casesTab() {
     const S = CX.S, res = searchCases(st.q, st.vid), total = (S.cases || []).length;
     return `<div class="g g2" style="grid-template-columns:minmax(0,1fr) 300px;align-items:start">
-      <div><div class="card"><div class="card-b"><div class="row wrap" style="gap:10px"><div class="box" style="flex:1;min-width:240px"><input class="inp" data-q placeholder="Symptômes ou codes défaut : voyant ABS, P0300, calage à chaud…" value="${esc(st.q)}"></div>
+      <div><div class="card"><div class="card-b"><div class="row wrap" style="gap:10px"><div class="box" style="flex:1;min-width:240px"><input class="inp" data-q placeholder="Décrivez ou dictez les symptômes : voyant ABS, P0300, calage à chaud…" value="${esc(st.q)}"></div>${BO.micBtn('data-qmic', 'Dicter les symptômes')}
         <select class="inp" data-vid style="width:280px">${BO.opts(BO.optVehicles(), st.vid, '— Véhicule à comparer —')}</select><label class="btn">${BO.icon('upload', 15)}Rapport de diagnostic<input type="file" data-report accept=".pdf,.txt,.csv,image/*" style="display:none"></label></div>
         <div class="xs-t muted mt1">${total} cas en mémoire · ${res.length} affiché${res.length > 1 ? 's' : ''} · seuls les termes et modèles réellement partagés comptent, aucune cause n’est supposée.</div></div></div>
         ${res.length ? res.map(({ c, score, sim, diff }) => `<div class="card mt"><div class="card-b"><div class="row" style="gap:8px;flex-wrap:wrap"><b>${esc(c.make)} ${esc(c.model)}</b>${c.codes.map(k => `<span class="chip dark">${esc(k)}</span>`).join('')}${BO.chip(c.resolved ? 'Cause confirmée' : 'À vérifier', c.resolved ? 'green' : 'amber', true)}<span class="sp"></span><span class="xs-t muted">${esc(BO.dateS(c.at))}${score ? ' · pertinence ' + score : ''}</span></div>
@@ -105,14 +105,14 @@
     BO.formModal({ title: 'Créer la fiche à partir de la carte grise', wide: true, cols: 'c3',
       intro: `<div class="form-note">${BO.icon('shield', 16)}<div>Le titulaire (C.1) n’est qu’une proposition : le client du dossier peut être une autre personne (conducteur, société, assurance). Rien n’est enregistré avant validation.</div></div>`,
       fields: [{ k: 'customerId', label: 'Client existant', type: 'select', opts: BO.optCustomers(), empty: '— Nouveau client —', full: true }, { k: 'name', label: 'Nom du nouveau client' }, { k: 'phone', label: 'Téléphone', type: 'tel', ph: '+33 6 …' }, { k: 'city', label: 'Code postal / ville', ph: '69007 Lyon' },
-        { k: 'plate', label: 'Immatriculation (A)', req: true }, { k: 'make', label: 'Marque (D.1)', req: true }, { k: 'model', label: 'Modèle (D.3)', req: true }, { k: 'vin', label: 'VIN (E)', validate: v => v && !validVIN(v) ? '17 caractères sans I, O, Q' : '' }, { k: 'year', label: 'Année (B)', type: 'number', min: 1960, max: 2030 }, { k: 'fuel', label: 'Énergie (P.3)', type: 'select', opts: ['Essence', 'Diesel', 'Hybride', 'Électrique', 'GPL'] },
+        { k: 'plate', label: 'Immatriculation (A)', req: true }, { k: 'make', label: 'Marque (D.1)', req: true }, { k: 'model', label: 'Modèle (D.3)', req: true }, { k: 'vin', label: 'VIN (E)', validate: v => v && !validVIN(v) ? '17 caractères sans I, O, Q' : '' }, { k: 'year', label: 'Année (B)', type: 'number', min: 1960, max: 2030 }, { k: 'fuel', label: 'Énergie (P.3)', type: 'select', opts: ['Essence', 'Diesel', 'Hybride', 'Électrique', 'GPL'] }, { k: 'colorName', label: 'Teinte (vue à l’accueil)', ph: 'ex. Gris anthracite' }, { k: 'hex', label: 'Couleur dans l’atelier live', type: 'color', help: 'La caméra d’entrée fournira cette couleur automatiquement ; en attendant, choisissez-la pour reconnaître le véhicule en 3D.' },
         { k: 'dossier', label: 'Ouvrir aussi un dossier de réception', type: 'checkbox', full: true }],
-      values: { customerId: existing ? existing.id : '', name: existing ? '' : titul, city: (g('C.3').match(/\d{5}\s+\S.*/) || [''])[0], plate: g('A'), make: g('D.1'), model: g('D.3') || g('D.2'), vin: g('E'), year: +(g('B').match(/(19|20)\d{2}/) || [''])[0] || new Date().getFullYear(), fuel: /GO|DIESEL/i.test(g('P.3')) ? 'Diesel' : /EL/i.test(g('P.3')) ? 'Électrique' : /EH|HYB/i.test(g('P.3')) ? 'Hybride' : 'Essence', dossier: true },
+      values: { customerId: existing ? existing.id : '', name: existing ? '' : titul, city: (g('C.3').match(/\d{5}\s+\S.*/) || [''])[0], plate: g('A'), make: g('D.1'), model: g('D.3') || g('D.2'), vin: g('E'), year: +(g('B').match(/(19|20)\d{2}/) || [''])[0] || new Date().getFullYear(), fuel: /GO|DIESEL/i.test(g('P.3')) ? 'Diesel' : /EL/i.test(g('P.3')) ? 'Électrique' : /EH|HYB/i.test(g('P.3')) ? 'Hybride' : 'Essence', colorName: '', hex: '#c9cdd3', dossier: true },
       submit: 'Créer la fiche', onSubmit: (x, close, el) => {
         if (!x.customerId && !x.name) { const f = el.querySelector('[data-f="name"]'); f.classList.add('err'); f.querySelector('.em').textContent = 'Nom requis pour un nouveau client'; return false; }
         let cid = x.customerId;
         if (!cid) { const c = CX.upsert('customers', { id: U.uid('C'), type: 'prive', name: x.name, ini: x.name.split(/[\s-]+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join(''), city: x.city || '', addr: '', phone: x.phone || '', email: '', since: new Date().getFullYear(), insurerId: null, pref: 'SMS', rating: 0, note: 'Fiche créée depuis un scan de carte grise (' + today() + ')', hist: [], comms: [], fleet: null, contact: '', legacy: { spent: 0, visits: 0 } }, 'customer'); cid = c.id; }
-        const v = CX.upsert('vehicles', { id: U.uid('V'), customerId: cid, make: x.make, model: x.model, plate: x.plate.toUpperCase().trim(), year: +x.year || new Date().getFullYear(), km: 0, colorName: 'À relever', colorCode: '—', hex: '#c9cdd3', vin: (x.vin || '').toUpperCase(), fuel: x.fuel, build: {}, hist: [], nextCT: null }, 'vehicle');
+        const v = CX.upsert('vehicles', { id: U.uid('V'), customerId: cid, make: x.make, model: x.model, plate: x.plate.toUpperCase().trim(), year: +x.year || new Date().getFullYear(), km: 0, colorName: x.colorName || 'À relever', colorCode: '—', hex: x.hex || '#c9cdd3', vin: (x.vin || '').toUpperCase(), fuel: x.fuel, build: {}, hist: [], nextCT: null }, 'vehicle');
         UI.toast('Fiche créée', CX.custName(cid) + ' · ' + v.plate, 'ok', 'check');
         if (x.dossier) BO.newDossier({ title: 'Dossier de réception — ' + v.plate, onDone: r => APP.open('ros', { id: r.id }) }); else APP.open('crm', { id: cid });
       } });
@@ -223,6 +223,7 @@
     el.querySelectorAll('[data-newcase]').forEach(b => b.addEventListener('click', () => caseForm()));
     if (st.tab === 'cas') {
       BO.bindSearch(el, v => { st.q = v; });
+      el.querySelector('[data-qmic]').addEventListener('click', () => BO.dictate(el.querySelector('[data-q]'), el.querySelector('[data-qmic]'), v => { st.q = v; const codes = extractDTC(v); if (codes.length) st.q = v + ' ' + codes.join(' '); APP.refresh(); }));
       el.querySelector('[data-vid]').addEventListener('change', e => { st.vid = e.target.value; APP.refresh(); });
       el.querySelector('[data-report]').addEventListener('change', async e => { const f = e.target.files[0]; if (!f) return; try { UI.toast('Lecture du rapport', f.name, 'info', 'file'); const text = await readReport(f); const codes = extractDTC(text); st.q = codes.length ? codes.join(' ') : text.slice(0, 300); if (!codes.length) UI.toast('Aucun code DTC standard', 'Le texte est repris tel quel ; aucun défaut n’est supposé.', 'warn'); APP.refresh(); } catch (err) { UI.toast('Lecture impossible', err.message, 'err'); } });
       el.querySelectorAll('[data-case-ro]').forEach(b => b.addEventListener('click', () => { const r = CX.ro(b.dataset.caseRo), v = CX.veh(r.vehicleId); caseForm({ roId: r.id, make: v.make, model: v.model, symptoms: r.damage }); }));
@@ -253,6 +254,24 @@
       const cc = el.querySelector('[data-cancel]'); if (cc) cc.addEventListener('click', () => { st.voice.proposal = null; APP.refresh(); });
     }
   }
-  window.SMART = { propose, identify, matchSighting, extractRegistration, extractDTC, searchCases };
+  /** Widget compact de l'assistant (tableau de bord, tablette) : question, micro, exemples, confirmation. */
+  function widget(host, opts = {}) {
+    const ex = opts.examples || ['Combien de véhicules sur site ?', 'Où est la Golf MB-118-CC ?', 'Rendez-vous du jour', 'Combien de devis en attente ?'];
+    host.innerHTML = `<div class="vw"><div class="row" style="gap:8px;align-items:stretch"><input class="inp" data-vq placeholder="Demandez à MOTEK : « où est la Yaris ? », « livraisons du jour », « la Clio est prête »…">${BO.micBtn('data-vmic', 'Parler')}<button class="btn pri" data-vgo>${BO.icon('arrowR', 15)}</button></div>
+      <div class="row mt1" style="gap:6px;flex-wrap:wrap">${ex.map(x => `<button class="btn sm" data-vex="${esc(x)}">${esc(x)}</button>`).join('')}</div><div class="mt1" data-vout></div></div>`;
+    const inp = host.querySelector('[data-vq]'), out = host.querySelector('[data-vout]');
+    const run = () => {
+      const p = propose(inp.value); if (!inp.value.trim()) return;
+      out.innerHTML = `<div class="form-note ${p.actions.length ? '' : p.warnings.length && !p.reply ? 'warn' : 'ok'}">${BO.icon(p.actions.length ? 'check' : 'msg', 16)}<div><b>${esc(p.reply || p.warnings[0] || '')}</b>${p.actions.length ? `<div class="row mt1" style="gap:6px;flex-wrap:wrap">${p.actions.map((a, i) => `<button class="btn sm pri" data-vact="${i}">${esc(a.label)}</button>`).join('')}<button class="btn sm" data-vcancel>Annuler</button></div>` : ''}${p.reply && p.warnings.length ? `<div class="xs-t muted mt1">${p.warnings.map(esc).join(' · ')}</div>` : ''}</div></div>`;
+      out.querySelectorAll('[data-vact]').forEach(b => b.addEventListener('click', () => { const a = p.actions[+b.dataset.vact]; a.run(); CX.S.agent.log.unshift({ at: CX.now(), kind: 'voice', text: p.text, done: [a.label] }); CX.touch('agent'); UI.toast('Fait', a.label, 'ok', 'check'); out.innerHTML = ''; inp.value = ''; if (opts.after) opts.after(); }));
+      const c = out.querySelector('[data-vcancel]'); if (c) c.addEventListener('click', () => { out.innerHTML = ''; });
+      speak(p.reply);
+    };
+    host.querySelector('[data-vgo]').addEventListener('click', run);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
+    host.querySelectorAll('[data-vex]').forEach(b => b.addEventListener('click', () => { inp.value = b.dataset.vex; run(); }));
+    host.querySelector('[data-vmic]').addEventListener('click', () => BO.dictate(inp, host.querySelector('[data-vmic]'), () => run()));
+  }
+  window.SMART = { propose, identify, matchSighting, extractRegistration, extractDTC, searchCases, widget };
   APP.register({ id: 'intelligence', label: 'Garage intelligent', icon: 'cube', group: 'Pilotage', order: 2, activity: 'intelligence', render, badge: () => 0 });
 })();

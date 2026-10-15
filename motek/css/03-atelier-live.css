@@ -251,7 +251,9 @@
 #view-map.epure .kpis .kpi:not(:first-child){display:none}
 #view-map .board,#view-map .track{transition:opacity .28s ease,transform .28s ease}
 #view-map .board.hid,#view-map .track.hid{opacity:0;pointer-events:none;transform:translateY(14px)}
-#view-map.epure .detail{max-height:calc(100vh - 100px)}
+#view-map .detail{touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;max-height:calc(100dvh - 80px - 222px)}
+#view-map.epure .detail{max-height:calc(100dvh - 100px)}
+#view-map.epure.panels-on .detail{max-height:calc(100dvh - 80px - 230px)}
 
 
 /* ---- tablette : la barre de lieux reste disponible (en bas, horizontale), panneau de détail en bas ---- */

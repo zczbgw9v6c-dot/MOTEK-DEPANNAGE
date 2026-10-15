@@ -27,7 +27,11 @@
       track = $("#track");
     if (board) board.classList.toggle("hid", !p.board);
     if (track) track.classList.toggle("hid", !p.track);
+    view.classList.toggle("panels-on", !!(p.board || p.track));
   };
+  // Le défilement tactile du panneau ne doit pas atteindre la caméra 3D.
+  const detail = $("#detail");
+  if (detail) ["touchstart", "touchmove", "wheel"].forEach((ev) => detail.addEventListener(ev, (e) => e.stopPropagation(), { passive: true }));
   const tag = $("#ztag");
   if (tag) new MutationObserver(apply).observe(tag, { childList: true, characterData: true, subtree: true });
   CX.on("change", apply);

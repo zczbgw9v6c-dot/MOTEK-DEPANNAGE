@@ -27,10 +27,12 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
 const top = () => ev(() => { const c = document.querySelector("#bo-content"); if (c) c.scrollTop = 0; });
 
 await page.goto(base + "/motek/");
-await page.waitForTimeout(3000);
+// La scène 3D charge beaucoup de modules en développement : on attend la fin du chargeur
+// avant de réinitialiser, sinon la requête de réinitialisation reste en file derrière les téléchargements.
+await page.waitForFunction(() => { const i = document.querySelector("#intro"); return i && getComputedStyle(i).opacity === "0"; }, null, { timeout: 45000 }).catch(() => {});
 await ev(() => { localStorage.clear(); });
-await ev(() => CX.reset());
-await page.waitForTimeout(5000);
+await Promise.all([page.waitForNavigation({ timeout: 45000 }).catch(() => {}), ev(() => { CX.reset(); return true; }).catch(() => {})]);
+await page.waitForTimeout(4000);
 
 await step("Atelier live épuré : un seul indicateur, panneaux selon la zone", async () => {
   const s = await ev(() => ({ kpi: [...document.querySelectorAll("#view-map .kpi")].map((k) => getComputedStyle(k).display), board: document.querySelector("#view-map .board").className, track: document.querySelector("#track").className, ztag: document.querySelector("#ztag").textContent }));
@@ -204,6 +206,53 @@ await step("Modales : focus initial, piège Tab et retour du focus", async () =>
   expect(await ev(() => !!document.activeElement.closest(".mdl")), "le focus reste dans la boîte après 40 Tab");
   await page.keyboard.press("Escape"); await page.waitForTimeout(200);
   expect((await ev(() => document.activeElement && document.activeElement.id)) === "opener-test", "focus rendu au bouton d’origine");
+});
+
+await step("Tableau de bord gérant : journée du garage, assistant intégré, heure réelle", async () => {
+  await ev(() => { APP.setMode("bo"); APP.open("dashboard"); }); await page.waitForTimeout(600);
+  const k = await ev(() => [...document.querySelectorAll(".kpis.today .kpi .lb")].map((x) => x.textContent));
+  for (const l of ["Rendez-vous du jour", "Interventions en cours", "Postes libres", "Livrés aujourd’hui", "Devis en attente", "Paiements à confirmer"]) expect(k.includes(l), "indicateur manquant : " + l);
+  expect(!!(await page.$(".kpis.manager")) && !!(await page.$(".flow2 .phase")) && !!(await page.$("[data-voice] [data-vq]")), "chiffres gérant, flux par phase et assistant intégré");
+  await page.fill("[data-voice] [data-vq]", "Où est la Golf MB-118-CC ?"); await ev(() => document.querySelector("[data-voice] [data-vgo]").click()); await page.waitForTimeout(400);
+  expect(/OR-24817/.test(await ev(() => document.querySelector("[data-vout]").textContent)), "réponse de l’assistant sur le tableau de bord");
+  const clock = await ev(() => ({ app: CX.util.hm(CX.util.nowMin()), real: new Date().getHours() * 60 + new Date().getMinutes() }));
+  const [hh, mm] = clock.app.split(":").map(Number);
+  expect(Math.abs(hh * 60 + mm - clock.real) <= 2, "heure réelle : " + JSON.stringify(clock));
+  await top(); await shot("11-tableau-de-bord");
+});
+
+await step("Poste technicien : tâches, pièce manquante reçue au magasin, envoi au contrôle qualité", async () => {
+  await ev(() => APP.open("tech")); await page.waitForTimeout(500);
+  await ev(() => document.querySelector('[data-tech="E3"]').click()); await page.waitForTimeout(500);
+  const first = await ev(() => { const b = document.querySelector("[data-part]"); return b ? b.dataset.part : null; });
+  expect(first, "un dossier affiché pour le technicien");
+  await ev(() => document.querySelector("[data-part]").click()); await page.waitForTimeout(300);
+  await ev(() => { document.querySelector("[data-pl]").value = "disques et plaquettes AV"; document.querySelector("[data-pq]").value = "2"; document.querySelector("[data-ok]").click(); }); await page.waitForTimeout(500);
+  const q = await ev((id) => ({ n: CX.S.partRequests.filter((x) => x.roId === id && x.status === "À servir").length, task: CX.ro(id).tasks.some((t) => /plaquettes AV/.test(t.l)), badge: document.querySelector('.bo-nav [data-mod="parts"] em') && document.querySelector('.bo-nav [data-mod="parts"] em').textContent }), first);
+  expect(q.n === 1 && q.task, "demande de pièce créée et tâche ajoutée : " + JSON.stringify(q));
+  await top(); await shot("12-poste-technicien");
+  await ev(() => APP.open("parts")); await page.waitForTimeout(500);
+  expect(!!(await page.$(".counter [data-serve]")), "la demande apparaît au comptoir magasin");
+  await ev(() => document.querySelector(".counter [data-serve]").click()); await page.waitForTimeout(400);
+  const served = await ev((id) => ({ s: CX.S.partRequests[0].status, task: CX.ro(id).tasks.find((t) => /plaquettes AV/.test(t.l)) }), first);
+  expect(served.s === "Servi" && served.task.p === 1, "pièce servie et tâche cochée : " + JSON.stringify(served));
+  // dictée de tâches en saisie texte (plusieurs tâches)
+  await ev(() => APP.open("tech")); await page.waitForTimeout(400);
+  await ev(() => document.querySelector("[data-addt]").click()); await page.waitForTimeout(300);
+  const before = await ev((id) => CX.ro(id).tasks.length, first);
+  await page.fill("[data-tt]", "équilibrage et remontage des pneus, remplacement de la lunette arrière, contrôle des niveaux");
+  await ev(() => document.querySelector("[data-ok]").click()); await page.waitForTimeout(400);
+  expect((await ev((id) => CX.ro(id).tasks.length, first)) === before + 3, "trois tâches ajoutées depuis une phrase");
+});
+
+await step("Prise en main : visite ouverte depuis l’en-tête, huit étapes", async () => {
+  await ev(() => document.querySelector("#helpbtn").click()); await page.waitForTimeout(300);
+  expect(/Bienvenue/.test(await ev(() => document.querySelector("[data-tour] h2").textContent)), "première étape");
+  for (let i = 0; i < 7; i++) { await ev(() => document.querySelector("[data-next]").click()); await page.waitForTimeout(80); }
+  await shot("13-prise-en-main");
+  expect(/C’est parti/.test(await ev(() => document.querySelector("[data-next]").textContent)), "dernière étape");
+  await ev(() => document.querySelector("[data-next]").click()); await page.waitForTimeout(200);
+  expect(!(await page.$(".mdl-bg")), "visite fermée");
 });
 
 await step("Persistance serveur : l’état est partagé entre deux pages", async () => {

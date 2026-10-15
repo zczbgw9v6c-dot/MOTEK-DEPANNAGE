@@ -128,7 +128,7 @@
               <dt>Véh. de remplacement</dt><dd>${loan ? `<a class="lnk" data-open="courtesy:${loan.id}">${esc((CX.car(loan.carId) || {}).plate)} · ${esc((CX.car(loan.carId) || {}).model)}</a> <span class="chip ${loan.status === 'En cours' ? 'amber' : ''}">${esc(loan.status)}</span>` : `<button class="btn xs" data-open="courtesy:${r.id}:new">${BO.icon('key', 12)}Prêter un véhicule</button>`}</dd></dl></div></div>
         </div></div>`;
       body.querySelectorAll('[data-task]').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.task; CX.setTask(r.id, i, r.tasks[i].p >= 1 ? 0 : 1); BO.now(); }));
-      body.querySelector('[data-addtask]').addEventListener('click', () => BO.formModal({ title: 'Ajouter une tâche', fields: [{ k: 'l', label: 'Intitulé', req: true, full: true, ph: 'ex. Calibrage radar AV' }], onSubmit: x => { CX.addTask(r.id, x.l); BO.now(); } }));
+      body.querySelector('[data-addtask]').addEventListener('click', () => BO.taskDictation(r));
       body.querySelector('[data-assign]').addEventListener('click', () => BO.pickTech({ roId: r.id, onPick: id => { CX.assignTech(r.id, id); UI.toast('Technicien affecté', CX.emp(id).name + ' → ' + r.no + (CX.ONSITE(r.slot) ? ' (se rend au véhicule)' : ''), 'ok', 'user'); BO.now(); } }));
       body.querySelectorAll('[data-lead]').forEach(b => b.addEventListener('click', () => { CX.assignTech(r.id, b.dataset.lead); BO.now(); }));
       body.querySelectorAll('[data-unteam]').forEach(b => b.addEventListener('click', () => { CX.unassignTech(r.id, b.dataset.unteam); BO.now(); }));
@@ -189,6 +189,19 @@
       <div class="sig"><div>Visa réception</div><div>Visa contrôle qualité</div><div>Signature client</div></div>`), r.no + '.html');
   }
 
+  /** Ajout de tâches : dictée ou saisie, une tâche par ligne ou séparées par des virgules, liste relue avant validation. */
+  BO.taskDictation = r => UI.modal({ title: 'Ajouter des travaux — ' + esc(r.no), wide: true,
+    body: `<div class="form-note mb">${BO.icon('phone', 16)}<div>Dictez ou tapez les travaux : « équilibrage et remontage des pneus, remplacement de la lunette arrière, contrôle des niveaux ». Chaque virgule ou retour à la ligne devient une tâche. Vous relisez la liste avant de valider.</div></div>
+      <div class="row" style="gap:8px;align-items:stretch"><textarea class="inp" data-tt rows="4" placeholder="ex. Démontage pare-chocs AV, remplacement phare, calibrage radar"></textarea>${BO.micBtn('data-mic', 'Dicter les travaux')}</div>
+      <div class="mt" data-preview></div>`,
+    foot: `<button class="btn" data-close>Annuler</button><button class="btn pri" data-ok>${BO.icon('check', 15)}Ajouter les tâches</button>`,
+    onMount: (el, close) => {
+      const ta = el.querySelector('[data-tt]'), pv = el.querySelector('[data-preview]');
+      const draw = () => { const items = BO.splitTasks(ta.value); pv.innerHTML = items.length ? `<div class="xs-t muted mb1">${items.length} tâche${items.length > 1 ? 's' : ''} :</div><ul class="hist">${items.map(t => `<li><b>${esc(t)}</b></li>`).join('')}</ul>` : ''; };
+      ta.addEventListener('input', draw);
+      el.querySelector('[data-mic]').addEventListener('click', () => BO.dictate(ta, el.querySelector('[data-mic]'), draw));
+      el.querySelector('[data-ok]').addEventListener('click', () => { const items = BO.splitTasks(ta.value); if (!items.length) { UI.toast('Aucune tâche', 'Dictez ou tapez au moins un travail.', 'warn'); return; } items.forEach(t => CX.addTask(r.id, t)); close(); UI.toast(items.length + ' tâche' + (items.length > 1 ? 's ajoutées' : ' ajoutée'), r.no, 'ok', 'check'); BO.now(); });
+    } });
   function render(el, params) {
     if (params.id) { const r = CX.ro(params.id); if (r) { if (params.tab && !/^\d+$/.test(params.tab)) st.tab = params.tab; detail(el, r); return; } }
     st.tab = 'apercu';

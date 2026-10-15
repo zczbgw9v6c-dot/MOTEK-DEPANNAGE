@@ -604,3 +604,50 @@ body.gants .bo-nav a,body.gants .bo-nav .ni{min-height:52px;font-size:15px}
 body.gants .bo .todo .ta .btn{min-width:120px}
 body.gants .bo .ph-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 body.gants .bo .table td,body.gants .bo .tbl td{padding-top:12px;padding-bottom:12px}
+
+.bo .btn.mic{width:44px;padding:0;flex:none}
+.bo .btn.mic.rec{background:var(--red);color:#fff;animation:pulse 1s infinite}
+
+/* ---- tableau de bord gérant : journée puis chiffres ---- */
+.bo .kpis.today{grid-template-columns:repeat(6,minmax(0,1fr))}
+.bo .kpis.manager{grid-template-columns:repeat(3,minmax(0,1fr))}
+.bo .kpi.warn{box-shadow:inset 0 0 0 2px var(--amber,#b96400)}
+.bo .flow2{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.bo .flow2 .phase{background:#f6f7f9;border-radius:14px;padding:10px 10px 8px}
+.bo .flow2 .ph-h{display:flex;align-items:center;justify-content:space-between;font-size:12px;margin-bottom:8px}
+.bo .flow2 .ph-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(58px,1fr));gap:6px}
+.bo .flow2 .step{background:#fff;border:1px solid var(--line2);border-radius:10px;padding:8px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;min-height:64px;opacity:.55}
+.bo .flow2 .step.has{opacity:1;box-shadow:var(--shadow)}
+.bo .flow2 .step:hover{border-color:var(--red)}
+.bo .flow2 .step i{width:26px;height:4px;border-radius:2px;display:block}
+.bo .flow2 .step b{font-size:18px;line-height:1}
+.bo .flow2 .step span{font-size:10.5px;color:var(--ink3);font-weight:700;text-align:center}
+.bo details.analyse summary{cursor:pointer;padding:10px 4px;color:var(--ink2);display:flex;align-items:center;gap:6px;list-style:none}
+.bo details.analyse summary::-webkit-details-marker{display:none}
+.bo .vw .form-note{align-items:flex-start}
+@media (max-width:1380px){.bo .kpis.today{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:1100px){.bo .kpis.today,.bo .kpis.manager{grid-template-columns:repeat(2,minmax(0,1fr))}.bo .flow2{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* ---- prise en main ---- */
+.tour{display:flex;gap:22px;align-items:flex-start;min-height:200px}
+.tour .tour-ic{flex:none;width:84px;height:84px;border-radius:22px;background:var(--red-soft);color:var(--red);display:grid;place-items:center}
+.tour .tour-step{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+.tour h2{font-size:24px;letter-spacing:-.02em;margin:4px 0 10px}
+.tour p{font-size:15px;line-height:1.55;color:var(--ink2);margin:0}
+.tour-dots{display:flex;gap:6px;justify-content:center;margin-top:18px}
+.tour-dots i{width:10px;height:10px;border-radius:50%;background:#dfe2e7}
+.tour-dots i.done{background:#9fbdf2}.tour-dots i.on{background:var(--red);width:26px;border-radius:6px}
+@media (max-width:760px){.tour{flex-direction:column}}
+
+/* ---- poste technicien (tablette) ---- */
+.bo .techs{display:flex;gap:10px;flex-wrap:wrap}
+.bo .techbtn{display:flex;align-items:center;gap:10px;padding:8px 14px 8px 8px;border-radius:14px;background:#fff;border:1.5px solid var(--line2);min-height:56px;cursor:pointer;font:inherit}
+.bo .techbtn span{display:flex;flex-direction:column;text-align:left;line-height:1.15}.bo .techbtn small{color:var(--ink3);font-size:11px}
+.bo .techbtn em{font-style:normal;background:#eef0f3;border-radius:8px;padding:2px 8px;font-size:12px;font-weight:800}
+.bo .techbtn.on{border-color:var(--red);background:var(--red-soft)}.bo .techbtn.on em{background:var(--red);color:#fff}
+.bo .rocard.late{box-shadow:inset 0 0 0 2px #e24b4b33}
+.bo .tasks{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.bo .task{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:#f6f7f9;font-size:15px;cursor:pointer;min-height:48px}
+.bo .task input{width:24px;height:24px;flex:none}
+.bo .task.done{opacity:.6;text-decoration:line-through}
+.bo .tech .btn{min-height:44px}
