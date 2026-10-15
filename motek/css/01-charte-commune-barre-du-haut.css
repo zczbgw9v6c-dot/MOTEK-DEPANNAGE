@@ -114,3 +114,4 @@ body.gants header .btn,body.gants header .gbtn,body.gants header .bell,body.gant
 .syncpill.ok{display:flex;background:var(--green-soft);color:var(--green)}
 .syncpill.err{display:flex;background:#fdecea;color:#b42318}
 .syncpill.conflict{display:flex;background:#fff4e5;color:#b54708;cursor:pointer}
+@media (max-width:900px){header .live{display:none}.syncpill.ok{display:none}.syncpill.err,.syncpill.conflict{padding:0 8px;font-size:11px}}
