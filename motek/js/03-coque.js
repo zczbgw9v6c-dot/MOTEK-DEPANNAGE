@@ -139,7 +139,7 @@
               .join(""),
         )
         .join("") +
-      `<div class="nav-foot"><b>MOTEK Garage</b>12 rue des Ateliers · 69007 Lyon<br>Données de démonstration · enregistrées localement</div>`;
+      `<div class="nav-foot"><b>${esc((CX.S.company || {}).name || "MOTEK")}</b>${esc((CX.S.company || {}).address || "")}<br>${CX.S.pristine ? "Données de démonstration" : "Données du garage"} · enregistrées sur le serveur</div>`;
   }
 
   /* ---------- « montre-moi cet objet » ---------- */
@@ -577,6 +577,7 @@
       }
     });
     renderNav();
+    initGloves();
     const h = location.hash.slice(1);
     if (h.startsWith("bo")) {
       current = h.split("/")[1] || "dashboard";
@@ -584,6 +585,22 @@
     } else setMode("map");
   }
 
+  /* ---------- mode gants (par appareil) et recherche compacte sur tablette ---------- */
+  const GK = "motek-gants";
+  const setGloves = (on, silent) => {
+    document.body.classList.toggle("gants", !!on);
+    try { localStorage.setItem(GK, on ? "1" : "0"); } catch (e) {}
+    const b = $("#gbtn"); if (b) { b.classList.toggle("on", !!on); b.title = on ? "Mode gants activé" : "Mode gants (grandes cibles)"; }
+    if (!silent) UI.toast(on ? "Mode gants activé" : "Mode gants désactivé", on ? "Boutons et champs agrandis sur cet appareil." : "", "info", "wrench");
+  };
+  const initGloves = () => {
+    let on = false; try { on = localStorage.getItem(GK) === "1"; } catch (e) {}
+    const bell = $("#bell");
+    if (bell && !$("#gbtn")) { const b = document.createElement("button"); b.id = "gbtn"; b.className = "gbtn"; b.innerHTML = UI.icon("wrench", 17); b.addEventListener("click", () => setGloves(!document.body.classList.contains("gants"))); bell.insertAdjacentElement("beforebegin", b); }
+    setGloves(on, true);
+    const sr = $(".search");
+    if (sr) { sr.addEventListener("click", (e) => { if (innerWidth <= 900 && !sr.classList.contains("open")) { sr.classList.add("open"); const q = $("#q"); q && q.focus(); } }); document.addEventListener("click", (e) => { if (!e.target.closest(".search")) sr.classList.remove("open"); }); }
+  };
   /* ---------- état de sauvegarde (en-tête) et conflits entre postes ---------- */
   const syncPill = () => {
     let p = $("#syncpill");
@@ -637,6 +654,7 @@
     get mode() {
       return mode;
     },
+    setGloves,
     get current() {
       return current;
     },

@@ -168,6 +168,44 @@ await step("Message client : brouillon sans trace, déclaration manuelle tracée
   expect(c.notified && c.status === "manuel" && /33 6/.test(c.to), "déclaration manuelle tracée : " + JSON.stringify(c));
 });
 
+await step("Photos : enregistrées sur le serveur, hors de l’état partagé", async () => {
+  await ev(() => { APP.setMode("bo"); APP.open("ros", { id: "R1", tab: "photos" }); }); await page.waitForTimeout(600);
+  const inputs = await page.$$("[data-ph-file]");
+  await inputs[0].setInputFiles("public/demo/carte-grise-fictive-photo.png"); await page.waitForTimeout(2500);
+  const r = await ev(() => { const p = CX.ro("R1").photos.filter((x) => x.url || x.src); return { n: p.length, url: p[0] && p[0].url, src: !!(p[0] && p[0].src), size: JSON.stringify(CX.S).length }; });
+  expect(r.n >= 1 && /^\/api\/v3\/photos\/[0-9a-f]{32}$/.test(r.url || "") && !r.src, "photo stockée par le serveur : " + JSON.stringify(r));
+  const img = await page.evaluate(async (u) => { const x = await fetch(u); return [x.status, x.headers.get("content-type")]; }, r.url);
+  expect(img[0] === 200 && /image\/jpeg/.test(img[1]), "photo servie : " + img.join(" "));
+});
+
+await step("Tablette : barre de lieux et recherche accessibles, rail de navigation, mode gants", async () => {
+  await page.setViewportSize({ width: 820, height: 1100 });
+  await ev(() => APP.setMode("map")); await page.waitForTimeout(600);
+  const m = await ev(() => ({ ctl: getComputedStyle(document.querySelector("#view-map .ctl")).display, places: [...document.querySelectorAll(".ctl [data-place]")].filter((b) => b.offsetParent !== null).length, search: getComputedStyle(document.querySelector("header .search")).display, h: document.querySelector("#tourBtn").getBoundingClientRect().height }));
+  expect(m.ctl !== "none" && m.places >= 7 && m.search !== "none" && m.h >= 44, "atelier live tablette : " + JSON.stringify(m));
+  await ev(() => { APP.setMode("bo"); APP.open("dashboard"); }); await page.waitForTimeout(500);
+  const nav = await ev(() => ({ w: document.querySelector(".bo-nav").getBoundingClientRect().width, labels: [...document.querySelectorAll(".bo-nav a span")].filter((x) => x.offsetParent !== null).length, items: document.querySelectorAll(".bo-nav a").length }));
+  expect(nav.w < 100 && nav.labels === 0 && nav.items > 5, "rail de navigation : " + JSON.stringify(nav));
+  await shot("09-tablette");
+  await ev(() => APP.setGloves(true)); await page.waitForTimeout(300);
+  const g = await ev(() => ({ on: document.body.classList.contains("gants"), btn: Math.round(document.querySelector("#bo-content .btn").getBoundingClientRect().height), saved: localStorage.getItem("motek-gants") }));
+  expect(g.on && g.btn >= 48 && g.saved === "1", "mode gants : " + JSON.stringify(g));
+  await shot("10-gants");
+  await ev(() => APP.setGloves(false));
+  await page.setViewportSize({ width: 1500, height: 1000 });
+});
+
+await step("Modales : focus initial, piège Tab et retour du focus", async () => {
+  await ev(() => { APP.open("crm"); }); await page.waitForTimeout(500);
+  await ev(() => { const b = document.querySelector('#bo-content [data-new], #bo-content .btn.pri'); b.id = "opener-test"; b.focus(); b.click(); }); await page.waitForTimeout(300);
+  const f1 = await ev(() => ({ inDialog: !!document.activeElement.closest(".mdl"), tag: document.activeElement.tagName, labelled: !!document.querySelector(".mdl[aria-labelledby]") }));
+  expect(f1.inDialog && f1.labelled, "focus initial dans la boîte : " + JSON.stringify(f1));
+  for (let i = 0; i < 40; i++) await page.keyboard.press("Tab");
+  expect(await ev(() => !!document.activeElement.closest(".mdl")), "le focus reste dans la boîte après 40 Tab");
+  await page.keyboard.press("Escape"); await page.waitForTimeout(200);
+  expect((await ev(() => document.activeElement && document.activeElement.id)) === "opener-test", "focus rendu au bouton d’origine");
+});
+
 await step("Persistance serveur : l’état est partagé entre deux pages", async () => {
   const p2 = await browser.newPage({ httpCredentials: process.env.MOTEK_DEMO_PASSWORD ? { username: process.env.MOTEK_DEMO_USER || "motek", password: process.env.MOTEK_DEMO_PASSWORD } : undefined });
   await p2.goto(base + "/motek/"); await p2.waitForTimeout(3000);

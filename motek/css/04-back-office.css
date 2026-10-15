@@ -573,3 +573,34 @@
 .bo .ph.real img{width:100%;height:100%;object-fit:cover;display:block}
 .bo .ph:not(.add){cursor:pointer}
 .bo .ph.add:hover{border-color:var(--red);color:var(--red-d);background:var(--red-soft)}
+
+
+/* ---- tablette (≤ 1100 px) : navigation en rail d'icônes, grilles empilées, cibles tactiles ---- */
+@media (max-width:1100px){
+  .bo-nav{width:72px;padding:10px 6px 20px}
+  .bo-nav .bo-grp,.bo-nav .nav-foot{display:none}
+  .bo-nav a{justify-content:center;padding:10px 0;gap:0;min-height:48px;position:relative}
+  .bo-nav a span{display:none}
+  .bo-nav a svg{width:22px;height:22px}
+  .bo-nav a em{position:absolute;top:4px;right:6px}
+  #bo-content{padding:16px 16px 90px}
+  .bo .g2,.bo .g3,.bo .g4,.bo .g-main,.bo .g-main2,.bo .g-side{grid-template-columns:minmax(0,1fr)}
+  .bo .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bo .fgrid.c3{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bo .pg-h .act{width:100%}
+}
+@media (max-width:760px){
+  .bo .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bo .fgrid,.bo .fgrid.c2,.bo .fgrid.c3{grid-template-columns:minmax(0,1fr)}
+  .bo .tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+}
+/* ---- mode gants : cibles de 48 px, texte plus grand, aucune action au survol ---- */
+body.gants .bo .btn,body.gants .bo .inp,body.gants .bo select.inp{min-height:48px;font-size:14.5px;padding-left:16px;padding-right:16px}
+body.gants .bo textarea.inp{font-size:15px}
+body.gants .bo .icon-btn{width:44px;height:44px}
+body.gants .bo .tabs button,body.gants .bo .seg button{min-height:44px;font-size:14px}
+body.gants .bo .chk input,body.gants .bo input[type=checkbox]{width:22px;height:22px}
+body.gants .bo-nav a,body.gants .bo-nav .ni{min-height:52px;font-size:15px}
+body.gants .bo .todo .ta .btn{min-width:120px}
+body.gants .bo .ph-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+body.gants .bo .table td,body.gants .bo .tbl td{padding-top:12px;padding-bottom:12px}

@@ -62,6 +62,14 @@ export function createApiHandler(
         return json(200, { ...v3.read(), serverNow: Date.now() });
       if (path === "/api/v3/history" && req.method === "GET")
         return json(200, { versions: v3.history() });
+      if (path.startsWith("/api/v3/photos/") && req.method === "GET") {
+        const id = path.slice("/api/v3/photos/".length);
+        const b = /^[0-9a-f]{32}$/.test(id) ? v3.getBlob(id) : null;
+        if (!b) return json(404, { error: "Photo introuvable." });
+        res.writeHead(200, { "Content-Type": b.mime, "Content-Length": b.bytes.length, "Cache-Control": "private, max-age=31536000, immutable", "Content-Security-Policy": "sandbox" });
+        res.end(Buffer.from(b.bytes));
+        return;
+      }
       if (path === "/api/v3/events" && req.method === "GET") {
         res.writeHead(200, {
           "Content-Type": "text/event-stream",
@@ -103,6 +111,11 @@ export function createApiHandler(
         chunks.push(Buffer.from(chunk));
       }
       const bytesBuffer = Buffer.concat(chunks);
+      if (path === "/api/v3/photos") {
+        const mime = String(req.headers["content-type"] || "").split(";")[0].trim();
+        const saved = v3.putBlob(mime, new Uint8Array(bytesBuffer));
+        return json(200, saved);
+      }
       if (path === "/api/speech/transcribe") {
         if (bytesBuffer.length > 8 * 1024 * 1024)
           return json(413, { error: "Audio trop volumineux." });

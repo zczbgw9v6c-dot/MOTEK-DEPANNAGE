@@ -38,3 +38,17 @@ test("serveur : la réinitialisation conserve l'ancienne version et la restaurat
   assert.equal((back.state as any).company.name, "Garage Test");
   st.close();
 });
+
+test("serveur : les photos sont stockées hors de l'état et servies par identifiant", () => {
+  const st = new V3Store(":memory:");
+  const saved = st.putBlob("image/jpeg", new Uint8Array([255, 216, 255, 224, 0, 16]));
+  assert.match(saved.url, /^\/api\/v3\/photos\/[0-9a-f]{32}$/);
+  assert.equal(st.getBlob(saved.id)!.bytes.length, 6);
+  assert.throws(() => st.putBlob("text/html", new Uint8Array([1])), /non accepté/);
+  assert.throws(() => st.putBlob("image/png", new Uint8Array(0)), /vide/);
+  const v = valid(); v.ros[0].photos = [{ id: "p", l: "l", k: "avant", url: saved.url }];
+  assert.equal(validateState(v), null);
+  v.ros[0].photos = [{ id: "p", l: "l", k: "avant", url: "https://evil.example/x.jpg" }];
+  assert.match(validateState(v) || "", /photo/);
+  st.close();
+});

@@ -34,20 +34,28 @@
   CX.on("remote", apply);
   apply();
   // Barre latérale : raccourcis vers les lieux du garage (le mode visite reste).
+  // [identifiant de zone, icône, libellé, activité requise]
   const PLACES = [
-    ["ALL", "cube", "Site"],
-    ["Z-atelier", "wrench", "Atelier"],
-    ["BOOTH", "spray", "Peinture"],
-    ["Z-recv", "key", "Réception"],
-    ["Z-lounge", "coffee", "Accueil"],
-    ["Z-office", "file", "Bureau"],
-    ["Z-mag", "box", "Magasin"],
-    ["Z-park", "car", "Parking"],
+    ["ALL", "cube", "Site", null],
+    ["Z-atelier", "wrench", "Atelier", null],
+    ["BOOTH", "spray", "Peinture", "peinture"],
+    ["Z-recv", "key", "Réception", null],
+    ["Z-lounge", "coffee", "Accueil", null],
+    ["Z-office", "file", "Bureau", null],
+    ["Z-mag", "box", "Magasin", null],
+    ["Z-park", "car", "Parking", null],
   ];
+  const ZONE_ACT = { BOOTH: "peinture" };
+  const zoneOn = (id) => !ZONE_ACT[id] || CX.activityOn(ZONE_ACT[id]);
+  // Le menu des zones (rendu par la carte à l'ouverture) et les panneaux cachent les zones d'une activité désactivée.
+  const filterZones = () => {
+    document.querySelectorAll("#zmenu .zi[data-z]").forEach((z) => { z.style.display = zoneOn(z.dataset.z) ? "" : "none"; });
+    view.querySelectorAll(".ctl [data-place]").forEach((b) => { b.style.display = zoneOn(b.dataset.place) ? "" : "none"; });
+  };
   const ctl = view.querySelector(".ctl");
   if (ctl) {
     const tour = ctl.querySelector("#tourBtn");
-    PLACES.forEach(([id, ic, l]) => {
+    PLACES.forEach(([id, ic, l, act]) => {
       const b = document.createElement("button");
       b.className = "nav";
       b.dataset.place = id;
@@ -60,6 +68,11 @@
     const mark = () => { const id = TAG2ID[(($("#ztag") || {}).textContent || "ALL").trim()]; ctl.querySelectorAll("[data-place]").forEach((b) => b.classList.toggle("on", b.dataset.place === id)); };
     if (tag) new MutationObserver(mark).observe(tag, { childList: true, characterData: true, subtree: true });
     mark();
+    const zm = $("#zmenu");
+    if (zm) new MutationObserver(filterZones).observe(zm, { childList: true });
+    CX.on("change", filterZones);
+    CX.on("remote", filterZones);
+    filterZones();
   }
   window.LIVE_EPURE = { apply, PANELS, PLACES };
 

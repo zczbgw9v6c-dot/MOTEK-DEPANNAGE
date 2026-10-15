@@ -103,7 +103,11 @@ header .live i{width:7px;height:7px;border-radius:50%;background:#22a35a;box-sha
 @keyframes fade{from{opacity:0}}
 @keyframes sh{from{transform:translateY(16px) scale(.98);opacity:0}}
 @media (max-width:1100px){.brand .nm small{display:none}.user .un{display:none}.user .ur{display:none}.zbtn{min-width:0}.zbtn .zt{max-width:110px}}
-@media (max-width:900px){.search{display:none}}
+@media (max-width:900px){.search{flex:0 0 auto;width:44px;min-width:44px}.search .box input{display:none}.search .box .kbd{display:none}.search .box{justify-content:center;padding:0;cursor:pointer}.search.open{position:fixed;left:12px;right:12px;top:64px;width:auto;z-index:60}.search.open .box{justify-content:flex-start;padding:0 12px}.search.open .box input{display:block}}
+.gbtn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;color:var(--ink3);cursor:pointer}
+.gbtn:hover{background:#f2f3f5;color:var(--ink)}
+.gbtn.on{background:var(--red-soft);color:var(--red)}
+body.gants header .btn,body.gants header .gbtn,body.gants header .bell,body.gants header .zbtn{min-height:44px}
 
 /* ---- indicateur de sauvegarde ---- */
 .syncpill{display:none;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:9px;font-size:12px;font-weight:700;white-space:nowrap}
