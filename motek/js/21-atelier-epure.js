@@ -33,7 +33,35 @@
   CX.on("change", apply);
   CX.on("remote", apply);
   apply();
-  window.LIVE_EPURE = { apply, PANELS };
+  // Barre latérale : raccourcis vers les lieux du garage (le mode visite reste).
+  const PLACES = [
+    ["ALL", "cube", "Site"],
+    ["Z-atelier", "wrench", "Atelier"],
+    ["BOOTH", "spray", "Peinture"],
+    ["Z-recv", "key", "Réception"],
+    ["Z-lounge", "coffee", "Accueil"],
+    ["Z-office", "file", "Bureau"],
+    ["Z-mag", "box", "Magasin"],
+    ["Z-park", "car", "Parking"],
+  ];
+  const ctl = view.querySelector(".ctl");
+  if (ctl) {
+    const tour = ctl.querySelector("#tourBtn");
+    PLACES.forEach(([id, ic, l]) => {
+      const b = document.createElement("button");
+      b.className = "nav";
+      b.dataset.place = id;
+      b.title = l;
+      b.innerHTML = UI.icon(ic, 17) + "<span>" + l + "</span>";
+      b.addEventListener("click", () => APP.showInMap("map", id));
+      ctl.insertBefore(b, tour);
+    });
+    const TAG2ID = { ALL: "ALL", AT: "Z-atelier", PE: "BOOTH", RV: "Z-recv", AC: "Z-lounge", BU: "Z-office", MG: "Z-mag", EX: "Z-park" };
+    const mark = () => { const id = TAG2ID[(($("#ztag") || {}).textContent || "ALL").trim()]; ctl.querySelectorAll("[data-place]").forEach((b) => b.classList.toggle("on", b.dataset.place === id)); };
+    if (tag) new MutationObserver(mark).observe(tag, { childList: true, characterData: true, subtree: true });
+    mark();
+  }
+  window.LIVE_EPURE = { apply, PANELS, PLACES };
 
   /* ---- réglettes LED suspendues au-dessus des postes et de la réception ---- */
   const addLights = () => {

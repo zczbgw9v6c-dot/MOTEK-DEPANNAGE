@@ -17,7 +17,13 @@
 #view-map .kpi .d{font-size:11px;font-weight:700;color:var(--green);display:flex;align-items:center;gap:2px}
 #view-map .kpi .s{font-size:10.5px;color:var(--ink3);font-weight:500}
 #view-map .kpi b.flash{animation:flash 1s ease}
-#view-map .ctl{position:fixed;top:80px;right:370px;width:44px;padding:4px;display:flex;flex-direction:column;gap:2px;z-index:10}
+#view-map .ctl{position:fixed;top:50%;left:20px;transform:translateY(-50%);width:52px;padding:6px 4px;display:flex;flex-direction:column;gap:3px;z-index:10}
+#view-map .ctl button.nav{width:44px;height:40px;flex-direction:column;gap:1px;font-size:8.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--ink3)}
+#view-map .ctl button.nav svg{width:17px;height:17px}
+#view-map .ctl button.nav.on{background:var(--red-soft);color:var(--red)}
+#view-map .ctl button.nav:hover{color:var(--ink)}
+#view-map .ctl #zin,#view-map .ctl #zout,#view-map .ctl #rl,#view-map .ctl #rr,#view-map .ctl #home,#view-map .ctl .sep{display:none}
+#view-map .ctl button.tour{width:44px;height:40px;margin:2px auto 0}
 #view-map .ctl button{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--ink2)}
 #view-map .ctl button:hover{background:#f2f3f5;color:var(--ink)}
 #view-map .ctl .sep{height:1px;background:var(--line2);margin:3px 6px}
