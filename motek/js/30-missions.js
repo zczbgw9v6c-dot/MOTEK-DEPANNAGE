@@ -36,7 +36,7 @@
   DEP.assign = (id, truckId, driverId) => { const m = mission(id), t = truck(truckId); if (!m || !t) return; m.truckId = truckId; m.driverId = driverId || t.driverId; t.status = 'En mission'; if (m.status === 'Demandée') m.status = 'Affectée'; log(m, 'Affectée à ' + t.name + ' · ' + ((driver(m.driverId) || {}).name || '—')); CX.touch('mission', { id }); };
   DEP.depositToParc = (id, level, slot) => {
     const m = mission(id); if (!m) return null;
-    const g = { id: U.uid('G'), no: 'GA-' + (5200 + CX.S.gardes.length), since: today(), mandant: m.mandant, ref: m.ref, vehicle: Object.assign({}, m.vehicle), reason: m.kind + ' — mission ' + m.no, level, slot, status: 'En garde', owner: Object.assign({}, m.customer), dailyFee: CX.S.parc.dailyFee, outAt: null, paid: 0, missionId: m.id, history: [{ at: CX.now(), text: 'Entrée au parc depuis ' + m.no }] };
+    const g = { id: U.uid('G'), no: 'GA-' + (5200 + CX.S.gardes.length), since: today(), mandant: m.mandant, ref: m.ref, vehicle: Object.assign({}, m.vehicle), reason: m.kind + ' — mission ' + m.no, level, slot, status: 'En garde', step: 'Non traité', owner: Object.assign({}, m.customer), dailyFee: CX.S.parc.dailyFee, outAt: null, paid: 0, missionId: m.id, history: [{ at: CX.now(), text: 'Entrée au parc depuis ' + m.no }] };
     CX.S.gardes.unshift(g);
     DEP.setMissionStatus(id, 'Déposée au parc', { destination: 'Parc Dan Dépanne · ' + slot, gardeId: g.id });
     return g;

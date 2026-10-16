@@ -651,6 +651,7 @@
 
   window.APP = {
     register,
+    modules: () => modules.slice(),
     open,
     refresh,
     setParams,

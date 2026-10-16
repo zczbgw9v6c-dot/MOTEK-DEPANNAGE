@@ -1,46 +1,46 @@
 /* ==========================================================================
-   Prise en main : visite guidée courte (8 écrans), ouverte à la première visite
-   sur cet appareil et depuis le bouton « ? » de l'en-tête.
+   Prise en main : visite guidée page par page. À chaque étape MOTEK ouvre
+   l'écran concerné (parc 3D, dépôt, bureau, tableau de bord, missions, parc,
+   assureurs, agent, commandes, facturation) et affiche une carte
+   d'explication flottante. Ouverte une seule fois, à la première visite sur
+   cet appareil ; rejouable depuis le bouton « œil » de l'en-tête.
    ========================================================================== */
 (function () {
   const KEY = "motek-tour-done";
+  const map = (place) => () => { if (APP.mode !== "map") APP.setMode("map"); if (window.PARC3D && PARC3D.setPlace) setTimeout(() => PARC3D.setPlace(place), 60); const d = document.querySelector("#detail"); if (d) d.classList.add("off"); };
+  const bo = (id, p) => () => APP.open(id, p || {});
   const STEPS = [
-    { ic: "truck", t: "Bienvenue dans MOTEK Dépann", d: "Une seule base pour tout le monde : le <b>tableau de bord</b> au bureau, les <b>missions</b> sur la tablette du camion, le <b>parc</b> chez le gardien. Ce qu’un chauffeur touche sur la route est visible au bureau dans la seconde." },
-    { ic: "alert", t: "Une demande arrive", d: "AXA, la MAIF, un particulier ou la police appellent : « Nouvelle mission ». Motif, adresse, véhicule, conducteur, tarif prévu. La mission apparaît en rouge tant qu’aucun camion n’est affecté." },
-    { ic: "lift", t: "Affecter un camion", d: "« Affecter un camion » propose les camions disponibles et leur chauffeur habituel. Le camion passe « en mission », la mission passe « en route ». Les camions en entretien ne sont pas proposés." },
-    { ic: "pin", t: "Sur la route", d: "Le chauffeur touche « Sur place », puis « Réparé sur place » ou « Remorquage ». Les heures sont horodatées pour le mandant. « Appeler » compose directement le numéro du conducteur." },
-    { ic: "layers", t: "Déposer au parc", d: "Pour un remorquage vers le parc : choisir une place libre sur un des trois niveaux. Le véhicule apparaît sur le plan avec sa couleur, sa plaque et son nombre de jours de garde ; les frais courent automatiquement." },
-    { ic: "send", t: "Relances et abandons", d: "Au-delà de 30 jours, le parc signale « relance à faire » ; au-delà de 60, « abandon présumé ». Le bouton « Relancer » prépare le courrier au mandant avec le montant des frais ; vous le validez." },
-    { ic: "msg", t: "Demandez à MOTEK", d: "Sur le tableau de bord : « où est la AB-123-CD ? », « camions disponibles », « missions en attente », « à facturer ». La réponse arrive avec le bouton pour agir." },
-    { ic: "invoice", t: "Facturer et sortir", d: "Une mission terminée ou déposée se facture au mandant en un clic. La sortie du parc calcule les jours et les frais, note à qui le véhicule est remis, et laisse le règlement à la Facturation." },
+    { go: map("ALL"), ic: "cube", t: "Bienvenue, Joseph", d: "Voici votre site vu du ciel : à gauche le <b>parc de gardiennage</b> sur trois niveaux, à droite le <b>dépôt des camions</b>, devant le <b>bureau</b>. Tout ce que vous voyez est relié aux dossiers : un clic sur un véhicule ou un camion ouvre sa fiche." },
+    { go: map("PARC"), ic: "layers", t: "Le parc, niveau par niveau", d: "Niveau -1 devant, -2, -3 derrière. Chaque véhicule garde sa couleur, sa plaque et son nombre de jours. Étiquette <b>violette</b> : arrivé et pas encore traité. <b>Orange</b> : plus de 30 jours, à relancer. <b>Rouge</b> : plus de 60 jours, abandon présumé." },
+    { go: map("DEPOT"), ic: "truck", t: "Vos camions", d: "Les cinq <b>paniers Toyota Hilux 2025</b>, les plateaux et les porte-voitures sont garés par emplacement. Un camion en mission laisse sa place vide avec son nom ; un camion en entretien a un cône. Le point de couleur sur la cabine donne le statut." },
+    { go: map("OFFICE"), ic: "users", t: "Le bureau", d: "Nadia (sinistres & assureurs), Karim (standard & planning) et Sabrina (facturation) ont chacun un accès MOTEK limité à leurs modules. Vous gérez ces accès dans <b>Flotte & chauffeurs → Bureau</b>." },
+    { go: bo("dashboard"), ic: "dashboard", t: "Votre journée", d: "Six chiffres qui comptent : missions en attente, camions sur la route, camions disponibles, véhicules au parc, terminées aujourd’hui, gardes à relancer. Juste dessous, <b>Demander à MOTEK</b> : « où est la AB-123-CD ? », « camions disponibles »…" },
+    { go: bo("missions"), ic: "truck", t: "Une demande arrive", d: "AXA, la MAIF, un particulier ou la police appellent : <b>Nouvelle mission</b>. Vous affectez un camion, le chauffeur touche « Sur place », « Remorquage », « Déposée au parc » depuis sa tablette. Les heures sont horodatées pour le mandant." },
+    { go: bo("parc"), ic: "layers", t: "Le dossier du véhicule", d: "Chaque véhicule gardé suit des étapes : <b>non traité → expertise en attente → expertisé → décision assureur → prêt à sortir</b>. Les frais (18 € / jour + 45 € de dossier) courent automatiquement ; la sortie du parc les calcule." },
+    { go: bo("mandats"), ic: "shield", t: "Assureurs", d: "Chaque mission ou garde d’un assureur devient un <b>mandat</b> : à déclarer, prise en charge demandée, accordée, facturée, payée. Vous pouvez noter un accord reçu par téléphone d’un clic." },
+    { go: bo("agent", { tab: "mail" }), ic: "cube", t: "L’agent lit les courriels", d: "L’agent reconnaît la référence sinistre ou la plaque dans les courriels des assureurs, les classe (<b>payé, accordé, pièces demandées, refus</b>) et propose l’action. Rien n’est appliqué sans votre clic. Il prépare aussi les <b>relances</b> et les messages <b>WhatsApp</b> aux propriétaires." },
+    { go: bo("supply"), ic: "box", t: "Batteries et commandes", d: "Une mission « panne batterie » crée un besoin ; vous le transformez en commande et le <b>bon de commande part par e-mail</b> au fournisseur. Suivi : commandée, reçue, posée. Le stock embarqué dans les paniers se réassort ici." },
+    { go: bo("invoices"), ic: "invoice", t: "Facturer", d: "Missions terminées et gardes restituées se facturent au mandant en un clic, avec les libellés du dépannage (remorquage, dépannage sur place, gardiennage, frais de dossier). Retards et relances de paiement sont suivis ici." },
+    { go: map("ALL"), ic: "check", t: "C’est parti", d: "Vous pouvez rejouer cette visite avec le bouton <b>œil</b> en haut à droite. Bonne journée, Joseph." },
   ];
-  let i = 0, modal = null;
-  const open = (from = 0) => {
-    i = from;
-    const draw = (el) => {
-      const s = STEPS[i];
-      el.querySelector("[data-tour]").innerHTML = `<div class="tour-ic">${BO.icon(s.ic, 34)}</div><div><div class="tour-step">Étape ${i + 1} / ${STEPS.length}</div><h2>${s.t}</h2><p>${s.d}</p></div>`;
-      el.querySelector("[data-dots]").innerHTML = STEPS.map((_, k) => `<i class="${k === i ? "on" : k < i ? "done" : ""}"></i>`).join("");
-      el.querySelector("[data-prev]").disabled = i === 0;
-      el.querySelector("[data-next]").innerHTML = i === STEPS.length - 1 ? BO.icon("check", 15) + "C’est parti" : "Suivant " + BO.icon("arrowR", 15);
-    };
-    modal = UI.modal({ title: "Prise en main de MOTEK Dépann", wide: true,
-      body: `<div class="tour" data-tour></div><div class="tour-dots" data-dots></div>`,
-      foot: `<label class="chk" style="margin-right:auto"><input type="checkbox" data-skip> Ne plus afficher au démarrage</label><button class="btn" data-prev>${BO.icon("arrowL", 15)}Précédent</button><button class="btn pri" data-next></button>`,
-      onMount: (el, close) => {
-        draw(el);
-        el.querySelector("[data-prev]").addEventListener("click", () => { if (i > 0) { i--; draw(el); } });
-        el.querySelector("[data-next]").addEventListener("click", () => { if (i < STEPS.length - 1) { i++; draw(el); } else { try { localStorage.setItem(KEY, "1"); } catch (e) {} close(); } });
-        el.querySelector("[data-skip]").addEventListener("change", (e) => { try { localStorage.setItem(KEY, e.target.checked ? "1" : "0"); } catch (e2) {} });
-      },
-      onClose: () => { modal = null; } });
-  };
+  let i = 0, card = null;
+  function close(done) { if (card) { card.remove(); card = null; } if (done) { try { localStorage.setItem(KEY, "1"); } catch (e) {} } }
+  function draw() {
+    const s = STEPS[i];
+    if (!card) { card = document.createElement("div"); card.className = "coach"; document.body.appendChild(card); }
+    card.innerHTML = `<div class="coach-h"><span class="coach-ic">${UI.icon(s.ic, 18)}</span><span class="coach-step">Étape ${i + 1} / ${STEPS.length}</span><button class="coach-x" data-x title="Quitter">${UI.icon("x", 15)}</button></div><h3>${s.t}</h3><p>${s.d}</p><div class="coach-dots">${STEPS.map((_, k) => `<i class="${k === i ? "on" : k < i ? "done" : ""}"></i>`).join("")}</div><div class="coach-f"><button class="btn sm" data-prev ${i === 0 ? "disabled" : ""}>Précédent</button><span class="sp"></span><button class="btn sm pri" data-next>${i === STEPS.length - 1 ? "Terminer" : "Suivant"}</button></div>`;
+    card.querySelector("[data-x]").addEventListener("click", () => close(true));
+    card.querySelector("[data-prev]").addEventListener("click", () => { if (i > 0) { i--; STEPS[i].go(); draw(); } });
+    card.querySelector("[data-next]").addEventListener("click", () => { if (i < STEPS.length - 1) { i++; STEPS[i].go(); draw(); } else close(true); });
+    try { s.go(); } catch (e) { console.warn("tour", e); }
+  }
+  const open = (from = 0) => { i = from; draw(); };
   const btn = document.createElement("button");
   btn.id = "helpbtn"; btn.className = "gbtn"; btn.title = "Prise en main"; btn.innerHTML = UI.icon("eye", 17);
-  btn.addEventListener("click", () => open(0));
+  btn.addEventListener("click", () => (card ? close(false) : open(0)));
   const anchor = document.querySelector("#gbtn") || document.querySelector("#bell");
   if (anchor) anchor.insertAdjacentElement("beforebegin", btn);
   let done = false; try { done = localStorage.getItem(KEY) === "1"; } catch (e) {}
   if (!done && !navigator.webdriver) setTimeout(() => { if (!document.querySelector(".mdl-bg")) open(0); }, 2500);
-  window.TOUR = { open, STEPS };
+  window.TOUR = { open, close, STEPS };
 })();

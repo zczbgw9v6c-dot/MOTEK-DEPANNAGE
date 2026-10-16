@@ -27,7 +27,9 @@ await step("Parc live 3D : carte par défaut, véhicules gardés et dépôt des 
   await page.waitForFunction(() => window.PARC3D && PARC3D.counts && PARC3D.counts().cars > 0, null, { timeout: 15000 });
   const s = await ev(() => ({ mode: APP.mode, nomap: document.body.classList.contains("no-map"), map: !!document.querySelector("#view-map canvas"), ...PARC3D.counts(), park: DEP.inPark().length, trucks: CX.S.trucks.length }));
   expect(s.mode === "map" && !s.nomap && s.map, "carte 3D affichée par défaut : " + JSON.stringify(s));
-  expect(s.cars === Math.min(s.park, 96) && s.trucks === 12, "véhicules du parc et camions dessinés : " + JSON.stringify(s));
+  expect(s.cars === Math.min(s.park, 120) && s.trucks === 12, "véhicules du parc et camions dessinés : " + JSON.stringify(s));
+  const canvas = await ev(() => { const c = document.querySelector("#scene canvas"); return { w: c.width, cw: c.clientWidth, sw: c.style.width }; });
+  expect(canvas.sw && canvas.cw === 1500, "canvas dimensionné à la fenêtre : " + JSON.stringify(canvas));
   await shot("00-parc-live");
   const g = await ev(() => DEP.inPark()[0]);
   await ev((id) => PARC3D.select({ kind: "garde", id }), g.id); await page.waitForTimeout(400);
@@ -35,14 +37,27 @@ await step("Parc live 3D : carte par défaut, véhicules gardés et dépôt des 
   const t = await ev(() => CX.S.trucks[0]);
   await ev((id) => PARC3D.select({ kind: "truck", id }), t.id); await page.waitForTimeout(400);
   expect((await ev(() => document.querySelector("#detail").innerText)).includes(t.name || t.plate), "fiche du camion sélectionné");
+  await ev(() => PARC3D.select({ kind: "office" })); await page.waitForTimeout(400);
+  expect(/Nadia|Karim|Sabrina/.test(await ev(() => document.querySelector("#detail").innerText)), "fiche du bureau avec les collaborateurs");
+  const steps = await ev(() => { const g = DEP.inPark().find((x) => x.step === "Non traité"); PARC3D.select({ kind: "garde", id: g.id }); document.querySelector('#detail [data-step="Expertise en attente"]').click(); return DEP.garde(g.id).step; });
+  expect(steps === "Expertise en attente", "étape du dossier changée depuis la fiche 3D");
+  for (const z of ["N2", "DEPOT", "ALL"]) await ev((z) => PARC3D.setPlace(z), z);
+  const tabs = await ev(() => [...document.querySelectorAll("#tabs [data-tab]")].map((b) => b.dataset.tab));
+  expect(tabs.join() === "relance,new,missions,mails,fleet", "onglets du panneau : " + tabs.join());
+  await ev(() => document.querySelector('#tabs [data-tab="fleet"]').click());
+  expect((await ev(() => document.querySelectorAll("#blist .ft").length)) === 12, "flotte visuelle dans le panneau");
+  expect(/\d+\/\d+/.test(await ev(() => document.querySelector("#track .trk-nav b").textContent)), "défilement des missions en cours");
+  const kinds = await ev(() => CX.S.trucks.filter((t) => t.kind === "Panier" && /Hilux/.test(t.brand) && t.year === 2025).length);
+  expect(kinds === 5, "cinq paniers Toyota Hilux 2025 : " + kinds);
   await ev(() => APP.setMode("bo")); await page.waitForTimeout(600);
 });
 
 await step("Profil dépanneur : navigation sans modules atelier", async () => {
   const s = await ev(() => ({ nav: document.querySelector(".bo-nav").innerText.replace(/\n+/g, " | "), profile: CX.S.company.profile, name: CX.S.company.name }));
-  for (const l of ["Missions", "Flotte & chauffeurs", "Parc de gardiennage", "Mandats & assurances", "Facturation", "Agent IA"]) expect(s.nav.includes(l), "module manquant : " + l);
+  for (const l of ["Missions", "Flotte & chauffeurs", "Parc de gardiennage", "Mandats & assurances", "Commandes fournisseurs", "Facturation", "Agent IA"]) expect(s.nav.includes(l), "module manquant : " + l);
+  expect(/Joseph/.test(await ev(() => document.querySelector("header .user .un").textContent)), "utilisateur Joseph");
   for (const l of ["Ordres de réparation", "Peinture", "Showroom", "Poste technicien", "Planning atelier"]) expect(!s.nav.includes(l), "module atelier visible : " + l);
-  expect(s.profile === "depannage" && /Dan Dépanne/.test(s.name), "profil et société");
+  expect(s.profile === "depannage" && /Dan Dépann/.test(s.name), "profil et société");
   await top(); await shot("01-tableau-de-bord");
 });
 
@@ -95,8 +110,12 @@ await step("Parc : plan des niveaux, statuts selon la durée, sortie avec frais"
 
 await step("Flotte et agent IA : camions, chauffeurs, suggestions dépannage", async () => {
   await ev(() => APP.open("fleet")); await page.waitForTimeout(400);
-  const f = await ev(() => ({ cards: document.querySelectorAll(".fleet .kcar").length, drivers: document.querySelectorAll(".techs .techbtn").length }));
-  expect(f.cards === 12 && f.drivers === 12, "flotte : " + JSON.stringify(f));
+  const f = await ev(() => ({ cards: document.querySelectorAll(".fleet .kcar").length, icons: document.querySelectorAll(".fleet .kcar svg.tic").length }));
+  expect(f.cards === 12 && f.icons === 12, "flotte avec pictogrammes par type : " + JSON.stringify(f));
+  await ev(() => APP.open("fleet", { tab: "chauffeurs" })); await page.waitForTimeout(300);
+  expect((await ev(() => document.querySelectorAll(".techs .techbtn").length)) === 12, "chauffeurs");
+  await ev(() => APP.open("fleet", { tab: "bureau" })); await page.waitForTimeout(300);
+  expect((await ev(() => document.querySelectorAll(".staff").length)) === 4, "bureau : Joseph + 3 collaborateurs avec accès");
   await shot("04-flotte");
   await ev(() => APP.open("agent")); await page.waitForTimeout(500);
   const kinds = await ev(() => AGENT.suggest().map((x) => x.title));
@@ -119,6 +138,58 @@ await step("Mandats & assurances : statuts, demande de prise en charge, boîte m
   expect(after.handled && after.status === "Accordée", "courriel appliqué : " + JSON.stringify(after));
   await ev(() => APP.open("mandats", { tab: "mail" })); await page.waitForTimeout(400);
   await top(); await shot("05-mandats");
+});
+
+await step("Facturation dépanneur : libellés métier, facture de mission, encaissement", async () => {
+  await ev(() => APP.open("invoices")); await page.waitForTimeout(500);
+  const t = await ev(() => document.querySelector("#bo-content").innerText);
+  expect(/Gardiennage|Remorquage|Dépannage/.test(t) && !/bas de caisse|grêle|Peinture/.test(t), "libellés de dépannage, pas de carrosserie");
+  const m = await ev(() => CX.S.missions.find((x) => x.status === "Terminée" || x.status === "Déposée au parc"));
+  const inv = await ev((id) => { const i = DEP.billMission(DEP.mission(id)); return { no: i.no, ttc: i.ttc, lines: i.lines.map((l) => l.label), st: DEP.mission(id).status }; }, m.id);
+  expect(inv.ttc > 0 && inv.st === "Facturée" && /Remorquage|Dépannage|intervention/.test(inv.lines[0]), "facture de mission : " + JSON.stringify(inv));
+  await ev((no) => { const i = DEP.invoices().find((x) => x.no === no); DEP.payInvoice(i, i.ttc, null, "VIR-TEST"); }, inv.no);
+  expect((await ev((no) => DEP.invoices().find((x) => x.no === no).status, inv.no)) === "Payée", "encaissement");
+  await ev(() => APP.refresh()); await page.waitForTimeout(400); await top(); await shot("06-facturation");
+});
+
+await step("Commandes fournisseurs : besoin batterie → commande → e-mail au fournisseur → posée", async () => {
+  await ev(() => APP.open("supply")); await page.waitForTimeout(500);
+  const n0 = await ev(() => DEP.orders().length);
+  await ev(() => { const m = CX.S.missions.find((x) => /batterie/i.test(x.kind)); DEP.orderForm(null, { item: "Batterie 12 V 70 Ah L3 (Golf, 308)", plate: m.vehicle.plate, missionId: m.id, price: 119 }); }); await page.waitForTimeout(300);
+  await ev(() => document.querySelector("[data-ok]").click()); await page.waitForTimeout(300);
+  const o = await ev(() => DEP.orders()[0]);
+  expect((await ev(() => DEP.orders().length)) === n0 + 1 && o.status === "À commander", "commande créée");
+  await ev((id) => DEP.sendOrder("DS1", [id]), o.id); await page.waitForTimeout(300);
+  const body = await ev(() => document.querySelector('.mdl textarea, .mdl [name="body"]') ? (document.querySelector('.mdl textarea, .mdl [name="body"]').value) : "");
+  expect(/Batterie 12 V 70 Ah/.test(body) && /Claude Vellefaux/.test(body), "bon de commande préparé");
+  await ev(() => document.querySelector(".mdl [data-send], .mdl [data-ok]").click()); await page.waitForTimeout(300);
+  expect((await ev((id) => DEP.orders().find((x) => x.id === id).status, o.id)) === "Commandée", "commande envoyée");
+  await ev((id) => { DEP.setOrderStatus(id, "Reçue"); DEP.setOrderStatus(id, "Posée"); }, o.id);
+  expect((await ev((id) => DEP.orders().find((x) => x.id === id).status, o.id)) === "Posée", "batterie posée");
+  await ev(() => APP.refresh()); await page.waitForTimeout(300); await top(); await shot("07-commandes");
+});
+
+await step("Agent IA : courriels classés, relances, WhatsApp tracé", async () => {
+  await ev(() => APP.open("agent", { tab: "mail" })); await page.waitForTimeout(500);
+  const t = await ev(() => document.querySelector("#bo-content").innerText);
+  expect(/Payés|Accordés|Pièces demandées|Refus/.test(t) && /Relances à faire/.test(t), "classement des courriels et relances");
+  await ev(() => APP.open("agent", { tab: "wa" })); await page.waitForTimeout(400);
+  const n0 = await ev(() => CX.S.waMsgs.length);
+  await ev(() => { const g = DEP.inPark().find((x) => x.owner.phone); DEP.whatsapp({ phone: g.owner.phone, name: g.owner.name, plate: g.vehicle.plate, kind: "recuperer", gardeId: g.id }); }); await page.waitForTimeout(300);
+  const txt = await ev(() => document.querySelector(".mdl [data-txt]").value);
+  expect(/Claude Vellefaux/.test(txt) && /récupérer/.test(txt), "message WhatsApp préparé");
+  await ev(() => document.querySelector(".mdl [data-sent]").click()); await page.waitForTimeout(300);
+  expect((await ev(() => CX.S.waMsgs.length)) === n0 + 1, "message tracé");
+  await top(); await shot("08-agent");
+});
+
+await step("Prise en main : visite page par page", async () => {
+  await ev(() => TOUR.open(0)); await page.waitForTimeout(800);
+  expect((await ev(() => APP.mode)) === "map" && !!(await ev(() => document.querySelector(".coach"))), "première étape sur la carte");
+  for (let k = 0; k < 4; k++) { await ev(() => document.querySelector(".coach [data-next]").click()); await page.waitForTimeout(500); }
+  expect((await ev(() => APP.mode)) === "bo" && (await ev(() => APP.current)) === "dashboard", "cinquième étape sur le tableau de bord");
+  await ev(() => TOUR.close(true));
+  expect(!(await ev(() => document.querySelector(".coach"))), "carte fermée");
 });
 
 await step("Persistance : l’état est partagé entre deux pages", async () => {

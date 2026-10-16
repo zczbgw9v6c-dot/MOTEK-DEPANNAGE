@@ -395,18 +395,18 @@
     const t = today();
     const mkT = (i, v) => Object.assign({ id: "T" + (i + 1), status: "Disponible", driverId: null, km: 0, ct: addDays(t, 200), notes: "" }, v);
     const trucks = [
-      mkT(0, { plate: "GA-101-DP", name: "Camion 01", kind: "Plateau", brand: "Iveco Daily", km: 142300, driverId: "D1", status: "En mission" }),
-      mkT(1, { plate: "GA-102-DP", name: "Camion 02", kind: "Plateau", brand: "Renault Master", km: 98500, driverId: "D2", status: "En mission" }),
-      mkT(2, { plate: "GB-203-DP", name: "Camion 03", kind: "Panier", brand: "Iveco Daily", km: 211800, driverId: "D3" }),
-      mkT(3, { plate: "GB-204-DP", name: "Camion 04", kind: "Plateau", brand: "Mercedes Sprinter", km: 76200, driverId: "D4" }),
-      mkT(4, { plate: "GC-305-DP", name: "Camion 05", kind: "Porte-voitures", brand: "Iveco Eurocargo", km: 302100, driverId: "D5", status: "En mission" }),
-      mkT(5, { plate: "GC-306-DP", name: "Camion 06", kind: "Plateau", brand: "Renault Master", km: 54000, driverId: "D6" }),
-      mkT(6, { plate: "GD-407-DP", name: "Camion 07", kind: "Panier", brand: "Fiat Ducato", km: 187400, driverId: "D7" }),
-      mkT(7, { plate: "GD-408-DP", name: "Camion 08", kind: "Plateau", brand: "Iveco Daily", km: 129900, driverId: "D8", status: "En mission" }),
-      mkT(8, { plate: "GE-509-DP", name: "Camion 09", kind: "Dépanneuse légère", brand: "Peugeot Boxer", km: 93100, driverId: "D9" }),
-      mkT(9, { plate: "GE-510-DP", name: "Camion 10", kind: "Plateau", brand: "Mercedes Sprinter", km: 168700, driverId: null, status: "Entretien", notes: "Révision + freins, retour prévu " + fmtD(addDays(t, 1)) }),
-      mkT(10, { plate: "GF-611-DP", name: "Camion 11", kind: "Plateau", brand: "Renault Master", km: 41200, driverId: "D10" }),
-      mkT(11, { plate: "GF-612-DP", name: "Camion 12", kind: "Porte-voitures", brand: "Iveco Eurocargo", km: 255600, driverId: "D11", status: "En mission" }),
+      mkT(0, { plate: "GA-101-DP", name: "Camion 01", kind: "Plateau", brand: "Iveco Daily 35C16", year: 2021, km: 142300, driverId: "D1", status: "En mission" }),
+      mkT(1, { plate: "GA-102-DP", name: "Camion 02", kind: "Plateau", brand: "Renault Master", year: 2022, km: 98500, driverId: "D2", status: "En mission" }),
+      mkT(2, { plate: "GB-203-DP", name: "Panier 03", kind: "Panier", brand: "Toyota Hilux", year: 2025, km: 11800, driverId: "D3" }),
+      mkT(3, { plate: "GB-204-DP", name: "Camion 04", kind: "Plateau", brand: "Mercedes Sprinter", year: 2020, km: 176200, driverId: "D4" }),
+      mkT(4, { plate: "GC-305-DP", name: "Camion 05", kind: "Porte-voitures", brand: "Iveco Eurocargo", year: 2019, km: 302100, driverId: "D5", status: "En mission" }),
+      mkT(5, { plate: "GC-306-DP", name: "Panier 06", kind: "Panier", brand: "Toyota Hilux", year: 2025, km: 9400, driverId: "D6" }),
+      mkT(6, { plate: "GD-407-DP", name: "Panier 07", kind: "Panier", brand: "Toyota Hilux", year: 2025, km: 14200, driverId: "D7", status: "En mission" }),
+      mkT(7, { plate: "GD-408-DP", name: "Camion 08", kind: "Plateau", brand: "Iveco Daily 35C16", year: 2023, km: 69900, driverId: "D8", status: "En mission" }),
+      mkT(8, { plate: "GE-509-DP", name: "Panier 09", kind: "Panier", brand: "Toyota Hilux", year: 2025, km: 7600, driverId: "D9" }),
+      mkT(9, { plate: "GE-510-DP", name: "Camion 10", kind: "Plateau", brand: "Mercedes Sprinter", year: 2018, km: 268700, driverId: null, status: "Entretien", notes: "Révision + freins, retour prévu " + fmtD(addDays(t, 1)) }),
+      mkT(10, { plate: "GF-611-DP", name: "Panier 11", kind: "Panier", brand: "Toyota Hilux", year: 2025, km: 12900, driverId: "D10" }),
+      mkT(11, { plate: "GF-612-DP", name: "Camion 12", kind: "Porte-voitures", brand: "Iveco Eurocargo", year: 2020, km: 255600, driverId: "D11", status: "En mission" }),
     ];
     const drivers = [["D1", "Karim", "Haddad"], ["D2", "Sofiane", "Benali"], ["D3", "Thomas", "Leroy"], ["D4", "Ibrahim", "Diallo"], ["D5", "Mehdi", "Ouali"], ["D6", "Lucas", "Martin"], ["D7", "Yanis", "Ferhat"], ["D8", "Pierre", "Gauthier"], ["D9", "Samir", "Cherif"], ["D10", "Antoine", "Dupuis"], ["D11", "Moussa", "Traoré"], ["D12", "Rayan", "Belkacem"]].map(([id, first, last], i) => ({ id, first, last, name: first + " " + last, ini: first[0] + last[0], role: "chauffeur", title: "Chauffeur-dépanneur", since: 2012 + (i % 10), phone: "+33 6 " + pad(10 + i * 7) + " " + pad(20 + i * 3) + " " + pad(30 + i * 5) + " " + pad(11 + i), email: first.toLowerCase() + "." + last.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "") + "@dandepanne-demo.fr", costH: 32, skills: ["Permis C", "Remorquage", i % 3 ? "Plateau" : "Panier"], color: ["#1768ee", "#2a2e35", "#b96400", "#1b7f4c", "#7c3aed", "#0e7490"][i % 6], astreinte: i < 4 }));
     const parc = { levels: [{ id: "N1", name: "Niveau -1", slots: 40 }, { id: "N2", name: "Niveau -2", slots: 40 }, { id: "N3", name: "Niveau -3", slots: 36 }], dailyFee: 18, adminFee: 45 };
@@ -421,14 +421,16 @@
     const STATUSES = ["Demandée", "Affectée", "En route", "Sur place", "Remorquage", "Déposée au parc", "Terminée", "Facturée"];
     for (let i = 0; i < 14; i++) {
       const c = CARS[i % CARS.length], k = KINDS[i % KINDS.length], st = i < 2 ? "Demandée" : i < 4 ? "Affectée" : i < 7 ? "En route" : i < 9 ? "Sur place" : i < 11 ? "Remorquage" : i < 13 ? "Déposée au parc" : "Terminée";
-      const truck = st === "Demandée" ? null : trucks[i % trucks.length];
+      const pool = trucks.filter((x) => x.status !== "Entretien"); const truck = st === "Demandée" ? null : pool[i % pool.length];
       missions.push({ id: "M" + (i + 1), no: "MI-" + (mno + i), at: t + " " + hm(7 * 60 + i * 38), mandant: MANDANTS[i % MANDANTS.length], ref: MANDANTS[i % MANDANTS.length] === "Particulier" ? "" : "SIN-" + (48100 + i * 17), kind: k, status: st, address: (3 + (i * 7) % 90) + " " + STREETS[i % STREETS.length] + ", 750" + (10 + (i % 5)) + " Paris", vehicle: { plate: plate(i), make: c[0], model: c[1], hex: c[2], color: "" }, customer: { name: ["Nadia Benhamou", "Marc Lefèvre", "Sophie Girard", "Julien Moreau", "Aïcha Diop", "Thomas Petit", "Clara Fontaine", "Hugo Lambert", "Inès Roux", "Léo Garnier", "Camille Picard", "Nour Chevalier", "Paul Renard", "Emma Marchand"][i], phone: "+33 6 " + pad(20 + i) + " 11 22 " + pad(10 + i) }, truckId: truck ? truck.id : null, driverId: truck ? truck.driverId : null, eta: t + " " + hm(7 * 60 + i * 38 + 35), arrivedAt: ["Sur place", "Remorquage", "Déposée au parc", "Terminée"].includes(st) ? t + " " + hm(7 * 60 + i * 38 + 31) : null, doneAt: ["Déposée au parc", "Terminée"].includes(st) ? t + " " + hm(7 * 60 + i * 38 + 95) : null, destination: ["Remorquage", "Déposée au parc"].includes(st) ? "Parc Dan Dépanne" : k === "Panne batterie" || k === "Crevaison" ? "Sur place" : "Garage du client", price: [120, 95, 180, 260, 150, 90, 110, 140][i % 8], notes: "", photos: [], history: [{ at: t + " " + hm(7 * 60 + i * 38), text: "Mission créée (" + MANDANTS[i % MANDANTS.length] + ")" }] });
     }
+    // statut des camions déduit des missions (sur la route = en mission ; sinon disponible, sauf entretien)
+    trucks.forEach((tr) => { if (tr.status === "Entretien") return; tr.status = missions.some((m) => m.truckId === tr.id && ["En route", "Sur place", "Remorquage"].includes(m.status)) ? "En mission" : "Disponible"; });
     // gardes : véhicules au parc, certains depuis longtemps (frais, relances)
     const slotOf = (lvl, n) => lvl + "-" + pad(n);
     for (let i = 0; i < 46; i++) {
       const c = CARS[(i * 5) % CARS.length], days = [1, 2, 3, 4, 6, 8, 11, 15, 19, 24, 33, 41, 58, 77, 95][i % 15], lvl = parc.levels[i % 3].id;
-      gardes.push({ id: "G" + (i + 1), no: "GA-" + (5100 + i), since: addDays(t, -days), mandant: MANDANTS[(i * 3) % MANDANTS.length], ref: "SIN-" + (47000 + i * 29), vehicle: { plate: plate(100 + i), make: c[0], model: c[1], hex: c[2] }, reason: ["Accident – expertise en attente", "Vandalisme – dépôt de plainte", "Fourrière assureur", "Bris de glace – pièces en commande", "Épave en attente de décision"][i % 5], level: lvl, slot: slotOf(lvl, 1 + Math.floor(i / 3) * 2 + (i % 2)), status: days > 60 && i % 2 ? "Abandon présumé" : days > 30 ? "Relance à faire" : "En garde", owner: { name: "Propriétaire " + (i + 1), phone: "+33 6 " + pad(30 + i) + " 00 11 " + pad(22 + i) }, dailyFee: parc.dailyFee, outAt: null, paid: 0, history: [], insurance: MANDANTS[(i * 3) % MANDANTS.length] === "Particulier" ? undefined : { status: days > 45 ? (i % 3 === 0 ? "Payée" : "Facturée") : days > 10 ? (i % 4 === 0 ? "Prise en charge demandée" : "Accordée") : "À déclarer", history: days > 10 ? [{ at: addDays(t, -days + 2) + " 10:00", text: "Prise en charge demandée par e-mail", by: "U1" }] : [] } });
+      gardes.push({ id: "G" + (i + 1), no: "GA-" + (5100 + i), since: addDays(t, -days), mandant: MANDANTS[(i * 3) % MANDANTS.length], ref: "SIN-" + (47000 + i * 29), vehicle: { plate: plate(100 + i), make: c[0], model: c[1], hex: c[2] }, reason: ["Accident – expertise en attente", "Vandalisme – dépôt de plainte", "Fourrière assureur", "Bris de glace – pièces en commande", "Épave en attente de décision"][i % 5], level: lvl, slot: slotOf(lvl, 1 + Math.floor(i / 3) * 2 + (i % 2)), status: days > 60 && i % 2 ? "Abandon présumé" : days > 30 ? "Relance à faire" : "En garde", owner: { name: "Propriétaire " + (i + 1), phone: "+33 6 " + pad(30 + i) + " 00 11 " + pad(22 + i) }, dailyFee: parc.dailyFee, outAt: null, paid: 0, history: [], step: days <= 2 ? "Non traité" : days <= 12 ? "Expertise en attente" : days <= 30 ? (i % 3 ? "Expertisé" : "Décision assureur") : i % 4 === 0 ? "Épave — enlèvement" : "Décision assureur", insurance: MANDANTS[(i * 3) % MANDANTS.length] === "Particulier" ? undefined : { status: days > 45 ? (i % 3 === 0 ? "Payée" : "Facturée") : days > 10 ? (i % 4 === 0 ? "Prise en charge demandée" : "Accordée") : "À déclarer", history: days > 10 ? [{ at: addDays(t, -days + 2) + " 10:00", text: "Prise en charge demandée par e-mail", by: "U1" }] : [] } });
     }
     // boîte mail assureurs (simulée) : courriels liés aux mandats ci-dessus
     const insMail = [
@@ -437,7 +439,36 @@
       { id: "ml3", at: addDays(t, -1) + " 16:05", from: "comptabilite@macif-demo.fr", subject: "Avis de virement — frais de gardiennage SIN-47377", ref: "SIN-47377", plate: gardes.filter((g) => g.ref === "SIN-47377").map((g) => g.vehicle.plate)[0] || "", intent: "paiement", amount: 1449, body: "Bonjour,\nUn virement de 1 449,00 € a été émis ce jour en règlement des frais de gardiennage du dossier SIN-47377.\nMacif Comptabilité", summary: "Virement de 1 449 € annoncé pour la garde SIN-47377 → passer le mandat en « Payée »." },
       { id: "ml4", at: addDays(t, -1) + " 11:20", from: "expertise@allianz-demo.fr", subject: "Refus — SIN-48134 (vandalisme non couvert)", ref: "SIN-48134", plate: missions[2].vehicle.plate, intent: "refus", reason: "garantie vandalisme non souscrite", body: "Bonjour,\nLe contrat de l'assuré ne comporte pas la garantie vandalisme : nous ne pouvons prendre en charge l'intervention SIN-48134. Merci de facturer directement le propriétaire.\nAllianz Expertise", summary: "Refus de prise en charge sur MI-2612 → mandat « Refusée », facturer le propriétaire." },
     ];
-    return { trucks, drivers, parc, missions, gardes, missionSeq: mno + 14, insMail };
+    // bureau : trois collaborateurs avec un accès à MOTEK
+    const office = [
+      { id: "B1", first: "Nadia", last: "Amrani", name: "Nadia Amrani", ini: "NA", role: "bureau", title: "Gestion sinistres & assureurs", access: ["mandats", "parc", "agent"], color: "#7c3aed", phone: "+33 6 00 00 00 11", email: "nadia@dandepann-demo.fr", since: 2016 },
+      { id: "B2", first: "Karim", last: "Saïdi", name: "Karim Saïdi", ini: "KS", role: "bureau", title: "Standard & planning des missions", access: ["missions", "fleet", "parc"], color: "#0e7490", phone: "+33 6 00 00 00 12", email: "karim@dandepann-demo.fr", since: 2019 },
+      { id: "B3", first: "Sabrina", last: "Lopes", name: "Sabrina Lopes", ini: "SL", role: "bureau", title: "Facturation & relances", access: ["invoices", "mandats", "supply"], color: "#b45309", phone: "+33 6 00 00 00 13", email: "sabrina@dandepann-demo.fr", since: 2021 },
+    ];
+    // fournisseurs du dépanneur (batteries, pneus, carburant) — fictifs
+    const depSuppliers = [
+      { id: "DS1", name: "Batteries Distribution Paris (démo)", kind: "Batteries", email: "commandes@bdp-demo.fr", phone: "+33 1 00 00 00 21", delay: "J+1 avant 10 h", terms: "30 j fin de mois" },
+      { id: "DS2", name: "Pneus Express Île-de-France (démo)", kind: "Pneumatiques", email: "pro@pneus-express-demo.fr", phone: "+33 1 00 00 00 22", delay: "24–48 h", terms: "comptant" },
+      { id: "DS3", name: "Carburants & lubrifiants Nord (démo)", kind: "Carburant / AdBlue", email: "livraison@cln-demo.fr", phone: "+33 1 00 00 00 23", delay: "48 h", terms: "30 j" },
+    ];
+    const BATT = ["Batterie 12 V 60 Ah L2 (Clio, 208, C3)", "Batterie 12 V 70 Ah L3 (Golf, 308)", "Batterie AGM 12 V 80 Ah L4 (start-stop)", "Batterie EFB 12 V 70 Ah L3", "Batterie 12 V 95 Ah L5 (utilitaires)"];
+    const supplyOrders = [];
+    missions.filter((m) => m.kind === "Panne batterie").forEach((m, i) => {
+      supplyOrders.push({ id: "SO" + (i + 1), no: "CB-" + (1040 + i), at: m.at, supplierId: "DS1", item: BATT[i % BATT.length], qty: 1, price: [89, 119, 169, 139, 149][i % 5], missionId: m.id, plate: m.vehicle.plate, status: ["À commander", "Commandée", "Reçue", "Posée"][i % 4], history: [{ at: m.at, text: "Besoin relevé sur la mission " + m.no }] });
+    });
+    supplyOrders.push({ id: "SO9", no: "CB-1050", at: addDays(t, -2) + " 09:10", supplierId: "DS1", item: "Stock camion : 4 × batterie 60 Ah L2 + 2 × 70 Ah L3", qty: 6, price: 98, missionId: null, plate: "", status: "Commandée", history: [{ at: addDays(t, -2) + " 09:10", text: "Réassort du stock des paniers" }] });
+    // WhatsApp clients : journal simulé (aucun envoi réel sans WhatsApp Business raccordé)
+    const waMsgs = [
+      { id: "wa1", at: addDays(t, -1) + " 17:42", to: gardes[6].owner.phone, plate: gardes[6].vehicle.plate, dir: "out", text: "Bonjour, votre véhicule " + gardes[6].vehicle.plate + " est disponible au parc Dan Dépann (25 av. Claude Vellefaux). Merci de venir le récupérer avec une pièce d’identité et la carte grise. Frais de garde à ce jour : " + (DEP_fees(gardes[6])) + " €.", status: "envoyé", kind: "recuperer" },
+      { id: "wa2", at: t + " 08:05", to: gardes[6].owner.phone, plate: gardes[6].vehicle.plate, dir: "in", text: "Bonjour, je passe demain matin vers 9 h. Merci.", status: "reçu", kind: "reponse" },
+      { id: "wa3", at: t + " 09:30", to: missions[3].customer.phone, plate: missions[3].vehicle.plate, dir: "out", text: "Bonjour " + missions[3].customer.name.split(" ")[0] + ", votre " + missions[3].vehicle.make + " " + missions[3].vehicle.model + " a été déposée au garage agréé. Vous serez contacté par le garage sous 48 h. Dan Dépann.", status: "envoyé", kind: "depose" },
+    ];
+    function DEP_fees(g) { const d = Math.max(1, diffDays(g.since, t) + 1); return d * parc.dailyFee + parc.adminFee; }
+    // factures du dépanneur : missions facturées et gardes restituées
+    const dinvoices = [];
+    missions.filter((m) => m.status === "Facturée").forEach((m, i) => { const ht = m.price; dinvoices.push({ id: "DI" + (i + 1), no: "FD-" + (2026 * 1000 + 410 + i), at: dOf(m.at), due: addDays(dOf(m.at), 30), payer: m.mandant, ref: m.ref, kind: "mission", srcId: m.id, plate: m.vehicle.plate, label: m.kind + " · " + m.address, ht, tva: Math.round(ht * TVA * 100) / 100, ttc: Math.round(ht * (1 + TVA) * 100) / 100, paid: i % 3 === 0 ? Math.round(ht * (1 + TVA) * 100) / 100 : 0, status: i % 3 === 0 ? "Payée" : "Émise", lines: [{ label: m.kind === "Remorquage simple" ? "Remorquage — " + m.address + " → " + m.destination : m.kind === "Panne batterie" ? "Dépannage sur place — démarrage / remplacement batterie" : m.kind + " — intervention et remorquage", qty: 1, price: ht }] }); });
+    [[12, "AXA"], [25, "MAIF"], [41, "Macif"]].forEach(([days, payer], i) => { const ht = days * parc.dailyFee + parc.adminFee, pl = plate(300 + i); dinvoices.push({ id: "DG" + (i + 1), no: "FD-" + (2026 * 1000 + 380 + i), at: addDays(t, -(20 + i * 9)), due: addDays(t, 10 - i * 9), payer, ref: "SIN-" + (46500 + i * 31), kind: "garde", srcId: null, plate: pl, label: "Gardiennage " + days + " j · " + pl, ht, tva: Math.round(ht * TVA * 100) / 100, ttc: Math.round(ht * (1 + TVA) * 100) / 100, paid: i === 1 ? Math.round(ht * (1 + TVA) * 100) / 100 : 0, status: i === 1 ? "Payée" : "Émise", lines: [{ label: "Gardiennage " + days + " jours × " + parc.dailyFee + " €", qty: days, price: parc.dailyFee }, { label: "Frais de dossier", qty: 1, price: parc.adminFee }] }); });
+    return { trucks, drivers, parc, missions, gardes, missionSeq: mno + 14, insMail, office, depSuppliers, supplyOrders, waMsgs, dinvoices };
   }
   // Mémoire de diagnostic : cas fictifs (symptômes, codes, cause, preuve, réparation).
   function seedCases() {
@@ -545,10 +576,11 @@
   function seedData() {
     const S = { v: 1, created: Date.now(), ext: {} };
     S.company = {
-      name: "Dan Dépanne",
-      address: "Rue Claude Vellefaux, 75010 Paris",
+      name: "Dan Dépann",
+      address: "25 avenue Claude Vellefaux, 75010 Paris",
+      hours: "24h/24 · 7j/7 · Paris intra-muros et petite couronne",
       phone: "+33 4 72 634 12 00",
-      email: "contact@dandepanne-demo.fr",
+      email: "contact@dandepann-demo.fr",
       siret: "123 456 789 00012",
       tvaIntra: "FR12 123456789",
       iban: "FR76 3000 6000 0112 3456 7890 189",
@@ -709,8 +741,8 @@
         extra,
       );
     S.staff = [
-      E("E1", "Marc", "Dubois", "chef", 2009, "+33 69 301 44 18", {
-        title: "Chef d’atelier",
+      E("E1", "Joseph", "Dan Dépann", "chef", 2004, "+33 6 00 00 00 01", {
+        title: "Gérant",
         costH: 74,
         skills: [
           "BTS après-vente automobile",
@@ -4440,6 +4472,7 @@
       st.company.profile = "depannage";
     }
     if (st && !st.missions) Object.assign(st, seedDepannage(st));
+    if (st && st.missions && !st.office) { const d = seedDepannage(st); st.office = d.office; st.depSuppliers = d.depSuppliers; st.supplyOrders = st.supplyOrders || d.supplyOrders; st.waMsgs = st.waMsgs || d.waMsgs; st.dinvoices = st.dinvoices || d.dinvoices; (st.trucks || []).forEach((tr) => { const n = d.trucks.find((x) => x.id === tr.id); if (n && !tr.year) { tr.year = n.year; tr.brand = n.brand; tr.kind = n.kind; tr.name = n.name; } }); (st.gardes || []).forEach((g) => { if (!g.step) g.step = "Expertisé"; }); }
     if (st && !st.showroom) st.showroom = seedShowroom();
     if (st && !st.cases) st.cases = seedCases();
     if (st && !st.agent) st.agent = seedAgent();

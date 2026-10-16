@@ -662,3 +662,30 @@ body.no-map #view-bo{display:flex!important}
 .bo .slot.busy{border-color:#1b7f4c;background:#eaf4ee}.bo .slot.busy.rel{border-color:#b96400;background:#fff4e5}.bo .slot.busy.ab{border-color:#b42318;background:#fdecea}
 .bo .slot i{position:absolute;top:6px;right:6px;width:12px;height:12px;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
 .bo .mcard{cursor:pointer}.bo .mcard:hover{box-shadow:var(--shadow-lg)}
+
+/* ---- MOTEK Dépann : flotte, bureau, prise en main ---- */
+.bo .chip.purple{background:#efe7fd;color:#6d28d9}.bo .chip.blue{background:var(--red-soft);color:var(--red)}
+.bo .kcar.tk .pic{height:110px}.bo .kcar.tk .pic svg.tic{width:150px;height:auto}
+.bo .kcar.tk.busy .pic{background:linear-gradient(180deg,#fff7e6,#ffe9c2)}.bo .kcar.tk.ko .pic{background:linear-gradient(180deg,#fdecea,#f9d4d0)}.bo .kcar.tk.ok .pic{background:linear-gradient(180deg,#eaf1fe,#d6e4fb)}
+.bo h2.sec svg.tic{vertical-align:-4px;margin-right:6px;stroke:var(--red)}
+.bo .techbtn small svg.tic{vertical-align:-3px;stroke:var(--ink3)}
+.bo .staff .bav{flex:none}
+.bo .mail.done{opacity:.72}
+.bo .pd-steps{margin:8px 0 0}
+.coach{position:fixed;right:20px;top:80px;width:min(380px,calc(100vw - 40px));z-index:60;background:#fff;border-radius:16px;box-shadow:var(--shadow-lg);border:1px solid var(--line2);padding:14px 16px 12px;animation:pop .2s ease}
+.coach .coach-h{display:flex;align-items:center;gap:8px}
+.coach .coach-ic{width:30px;height:30px;border-radius:9px;background:var(--red-soft);color:var(--red);display:grid;place-items:center}
+.coach .coach-step{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.coach .coach-x{margin-left:auto;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--ink3)}
+.coach .coach-x:hover{background:#f2f3f5;color:var(--ink)}
+.coach h3{font-size:17px;letter-spacing:-.01em;margin:10px 0 6px}
+.coach p{font-size:13.5px;line-height:1.5;color:var(--ink2);margin:0}
+.coach .coach-dots{display:flex;gap:4px;margin:12px 0 10px}
+.coach .coach-dots i{flex:1;height:4px;border-radius:2px;background:#e6e8ec}
+.coach .coach-dots i.done{background:var(--red-soft2)}.coach .coach-dots i.on{background:var(--red)}
+.coach .coach-f{display:flex;align-items:center;gap:8px}
+body.no-map .coach{top:72px}
+@media (max-width:900px){.coach{top:auto;bottom:16px;right:16px;left:16px;width:auto}}
+.coach .btn{height:32px;padding:0 12px;border-radius:9px;font-weight:700;font-size:12.5px;border:1px solid var(--line2);background:#fff;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.coach .btn.pri{background:var(--red);border-color:var(--red);color:#fff}
+.coach .btn:disabled{opacity:.45;cursor:default}

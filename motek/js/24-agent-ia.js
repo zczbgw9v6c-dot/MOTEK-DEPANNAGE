@@ -97,5 +97,5 @@
     const ss = el.querySelector('[data-save-set]'); if (ss) ss.addEventListener('click', () => { el.querySelectorAll('[data-set]').forEach(i => { const v = +i.value; if (!isNaN(v) && v >= +i.min && v <= +i.max) s[i.dataset.set] = v; }); el.querySelectorAll('[data-set-b]').forEach(i => { s[i.dataset.setB] = i.checked; }); CX.touch('agent'); UI.toast('Réglages enregistrés', '', 'ok', 'settings'); BO.now(); });
   }
   window.AGENT = { suggest };
-  APP.register({ id: 'agent', label: 'Agent IA', icon: 'bell', group: 'Pilotage', order: 3, activity: 'agent', render, badge: () => { try { return suggest().filter(x => x.prio >= 2).length; } catch (e) { return 0; } } });
+  // Module atelier non enregistré dans MOTEK Dépann : l'agent du dépanneur (37) réutilise suggest().
 })();

@@ -121,5 +121,16 @@
     return { el: bg.querySelector('.mdl'), close };
   }
 
-  window.UI = { icon, logo, carPic, plate, insChip, av, cav, toast, modal, P };
+  /** Pictogramme de camion selon le type (panier Hilux, plateau, porte-voitures, légère). */
+  const truckIcon = (kind, s = 48, stroke = '#121418') => {
+    const k = kind === 'Panier' ? 'panier' : kind === 'Porte-voitures' ? 'porte' : kind === 'Dépanneuse légère' ? 'legere' : 'plateau';
+    const body = {
+      panier: '<path d="M4 38h10v-8h12l6 8h14v10H4z"/><path d="M14 30V22h8l4 8"/><path d="M30 38 44 26h4"/><path d="M44 26l-4 10"/><circle cx="14" cy="48" r="5"/><circle cx="40" cy="48" r="5"/><path d="M48 44h6v-5" />',
+      plateau: '<path d="M4 40V24h12l6 10h4"/><path d="M26 34h34l-4 6H4"/><path d="M60 34v6"/><circle cx="14" cy="48" r="5"/><circle cx="46" cy="48" r="5"/><path d="M20 24v-6h6"/>',
+      porte: '<path d="M4 42V24h12l6 10h40v8H4z"/><path d="M24 24h36"/><path d="M28 24v10M44 24v10M58 24v10"/><circle cx="14" cy="50" r="5"/><circle cx="40" cy="50" r="5"/><circle cx="52" cy="50" r="5"/>',
+      legere: '<path d="M6 40V22h14l6 10h16v8H6z"/><path d="M42 40l8-12h6"/><circle cx="16" cy="48" r="5"/><circle cx="40" cy="48" r="5"/>',
+    }[k];
+    return `<svg class="tic" viewBox="0 0 64 60" style="width:${s}px;height:${Math.round(s * 60 / 64)}px" fill="none" stroke="${stroke}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+  };
+  window.UI = { icon, logo, carPic, plate, insChip, av, cav, toast, modal, P, truckIcon };
 })();

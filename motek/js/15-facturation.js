@@ -102,5 +102,5 @@
     el.querySelector('[data-exp]').addEventListener('click', () => BO.download('factures-' + today() + '.csv', BO.csv([['N°', 'Date', 'Type', 'Payeur', 'OR', 'HT', 'TVA', 'TTC', 'Payé', 'Solde', 'Échéance', 'Statut']].concat(S.invoices.map(i => [i.no, i.date, i.kind, payerName(i), (CX.ro(i.roId) || {}).no || '', i.ht.toFixed(2), (i.amount - i.ht).toFixed(2), i.amount.toFixed(2), (i.paid || 0).toFixed(2), rest(i).toFixed(2), i.due, stat(i)]))), 'text/csv;charset=utf-8'));
   }
 
-  APP.register({ id: 'invoices', label: 'Facturation', icon: 'invoice', group: 'Finances & équipe', order: 1, render, badge: () => CX.S.invoices.filter(late).length });
+  // Module atelier non enregistré dans MOTEK Dépann : la facturation du dépanneur est le module 35.
 })();

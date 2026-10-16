@@ -221,3 +221,15 @@ npm run verify:ui                                # parcours complet dans Chromiu
 ```
 
 Mode production local : `npm run build` puis `AUTOHUB_DB=.data/prod.sqlite MOTEK_DEMO_PASSWORD=… npm start` (port 8080). Hébergement de démonstration protégé (Render, Docker) : voir `docs/DEPLOIEMENT.md`. Réceptionniste téléphonique et caméra : contrats préparés, rien de raccordé, voir `docs/INTEGRATIONS_TELEPHONIE_CAMERA.md`.
+
+## Mise à jour : parc live 3D, bureau, dossiers véhicules, agents
+
+- **Parc live 3D** : trois niveaux dans l'ordre (N-1 devant, N-2, N-3), deux rangées par niveau, véhicules par ordre chronologique d'entrée avec couleur, plaque et jours de garde. Dépôt des camions à droite : cinq paniers **Toyota Hilux 2025**, plateaux (Iveco Daily, Renault Master, Mercedes Sprinter), porte-voitures (Iveco Eurocargo), modélisés par type. Bureau à l'entrée avec les trois collaborateurs. Rendu net (canvas à la taille de la fenêtre, étiquettes haute définition), cadrage automatique Site / Parc / Niveau / Dépôt / Bureau, menu de zone fonctionnel dans l'en-tête.
+- **Panneaux du parc live** : missions en cours qui défilent toutes les 30 s (pause au survol, flèches), listes À relancer / Non traités / Missions / Assureurs / Flotte (pictogrammes par type de camion, chauffeur).
+- **Dossier véhicule** : étapes *non traité → expertise en attente → expertisé → décision assureur → épave / prêt à sortir*, modifiables depuis la fiche 3D ou le parc.
+- **Bureau & accès** : Nadia (sinistres), Karim (standard & planning), Sabrina (facturation), chacun avec ses modules (Flotte & chauffeurs → Bureau). L'identification individuelle sera activée au déploiement.
+- **Commandes fournisseurs** : besoins batterie relevés sur les missions, commande, bon de commande par e-mail au fournisseur (texte préparé, envoi tracé), suivi commandée / reçue / posée, stock des paniers.
+- **Facturation du dépanneur** : factures aux mandants avec libellés métier (remorquage, dépannage sur place, gardiennage, frais de dossier), encaissements, retards, relances, export CSV. Les écrans carrosserie ne sont plus affichés.
+- **Agent IA** : suggestions du jour, courriels assureurs classés (payé / accordé / pièces / refus) appliqués sur clic, relances à faire, messages **WhatsApp** aux propriétaires (ouverture de WhatsApp sur l'appareil avec le texte prêt, envoi tracé). Mode simulé tant qu'aucune boîte mail ni WhatsApp Business n'est raccordé.
+- **Prise en main** page par page (12 étapes), ouverte une seule fois puis depuis le bouton « œil ».
+- Société : Dan Dépann, 25 avenue Claude Vellefaux, 75010 Paris (informations publiques) ; téléphone et adresses e-mail fictifs ; utilisateur Joseph.

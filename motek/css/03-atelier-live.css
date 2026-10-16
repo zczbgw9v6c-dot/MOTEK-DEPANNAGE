@@ -290,3 +290,47 @@ body.gants #view-map .detail .vcard,body.gants #view-map .detail .br{min-height:
 #view-map .detail .pd .form-note{display:flex;gap:8px;background:#f5f6f8;border-radius:11px;padding:10px 12px}
 #view-map .detail .pd .mt{margin-top:12px}
 #view-map .kpis .kpi:nth-child(2){display:flex}
+
+/* ---- MOTEK Dépann : panneaux du parc live ---- */
+#view-map .b-blue{background:var(--red-soft);color:var(--red)}
+#view-map .b-purple{background:#efe7fd;color:#6d28d9}
+#view-map .track{width:min(820px,calc(100vw - 40px - clamp(380px,34vw,560px) - 16px));height:138px}
+#view-map .track .hd{cursor:pointer}
+#view-map .track .hd small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46%}
+#view-map .trk-nav{display:flex;align-items:center;gap:4px;margin-left:8px;font-size:11px;color:var(--ink3)}
+#view-map .trk-nav button{width:22px;height:22px;border-radius:6px;font-size:15px;line-height:1;color:var(--ink2)}
+#view-map .trk-nav button:hover{background:#f2f3f5;color:var(--ink)}
+#view-map .trk-bar{height:3px;background:#eef0f3;border-radius:2px;margin-top:6px;overflow:hidden}
+#view-map .trk-bar i{display:block;height:100%;width:0;background:var(--red);animation:trk linear forwards}
+@keyframes trk{from{width:0}to{width:100%}}
+#view-map .board{width:clamp(380px,34vw,560px);height:min(236px,calc(100vh - 420px));min-height:170px}
+#view-map .fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;padding:2px}
+#view-map .ft{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;border:1px solid var(--line2);cursor:pointer;background:#fff}
+#view-map .ft:hover{background:#f5f6f8}
+#view-map .ft .fi{flex:none;color:var(--red)}
+#view-map .ft.busy .fi{color:var(--amber)}
+#view-map .ft.ko .fi{color:var(--red-d)}
+#view-map .ft .fx{min-width:0;flex:1;display:flex;flex-direction:column;line-height:1.15}
+#view-map .ft .fx b{font-size:12px}
+#view-map .ft .fx small{font-size:10.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#view-map .ft .fx small.st{color:var(--ink2);font-weight:600}
+#view-map .ft .bav{width:22px;height:22px;font-size:9px;flex:none}
+#view-map .detail{max-height:calc(100vh - 80px - 270px)}
+.pd-steps{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0 2px}
+.pd-steps .pst{height:24px;padding:0 9px;border-radius:7px;font-size:11px;font-weight:700;background:#f2f3f5;color:var(--ink3);cursor:pointer}
+.pd-steps .pst.done{background:var(--green-soft);color:var(--green)}
+.pd-steps .pst.cur{background:var(--red);color:#fff}
+.pd-steps .pst:hover{outline:2px solid var(--red-soft2)}
+.pd-staff{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.pd-staff .ps{display:flex;gap:10px;align-items:flex-start}
+.pd-staff .ps .bav{width:34px;height:34px;font-size:12px;flex:none}
+.pd-staff .ps b{display:block;font-size:13px}
+.pd-staff .ps small{display:block;font-size:11px;color:var(--ink3);line-height:1.3}
+.pd-staff .ps small.acc{color:var(--red);font-weight:600}
+@media (max-width:1280px){#view-map .track{height:126px}}
+@media (max-width:1100px){#view-map .track{width:calc(100vw - 40px);bottom:auto;top:calc(100vh - 136px - 20px);height:118px}#view-map .board{display:none}}
+#view-map .tabs .tab{white-space:nowrap;padding:0 8px;font-size:11.5px}
+#view-map .tabs .tab small{margin-left:2px}
+#view-map .fgrid{grid-template-columns:repeat(auto-fill,minmax(172px,1fr))}
+#view-map .ft .fx b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#view-map .ft .fi svg.tic{width:36px;height:auto}
