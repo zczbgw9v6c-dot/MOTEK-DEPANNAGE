@@ -181,5 +181,5 @@
     el.querySelector('[data-newdos]').addEventListener('click', () => BO.newDossier({ onDone: r => { st.tab = 'checkin'; st.ci = r.id; ck = null; APP.refresh(); } }));
   }
 
-  APP.register({ id: 'reception', label: 'Réception & RDV', icon: 'key', group: 'Atelier', order: 1, render, badge: () => CX.S.ros.filter(r => !r.checkin && r.stage <= CX.ST.accord && U.dOf(r.apptAt) === today()).length });
+  APP.register({ id: 'reception', label: 'Réception & RDV', icon: 'key', group: 'Atelier', order: 1, activity: 'atelier', render, badge: () => CX.S.ros.filter(r => !r.checkin && r.stage <= CX.ST.accord && U.dOf(r.apptAt) === today()).length });
 })();

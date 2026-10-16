@@ -70,5 +70,5 @@
     el.querySelector('[data-nc]').addEventListener('click', () => cplForm(null));
   }
 
-  APP.register({ id: 'quality', label: 'Qualité & garanties', icon: 'shieldok', group: 'Atelier', order: 5, render, badge: () => CX.S.ros.filter(r => r.stage === CX.ST.cq).length });
+  APP.register({ id: 'quality', label: 'Qualité & garanties', icon: 'shieldok', group: 'Atelier', order: 5, activity: 'atelier', render, badge: () => CX.S.ros.filter(r => r.stage === CX.ST.cq).length });
 })();

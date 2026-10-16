@@ -4,7 +4,7 @@
 # Pour des données durables : plan payant + disque persistant monté sur /app/.data.
 services:
   - type: web
-    name: motek-demo
+    name: motek-depannage-demo
     runtime: docker
     plan: free
     region: frankfurt

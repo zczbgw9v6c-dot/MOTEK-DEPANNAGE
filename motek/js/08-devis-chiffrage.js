@@ -200,5 +200,5 @@
     el.querySelectorAll('.kpi[data-f]').forEach(k2 => k2.addEventListener('click', () => { st.f = st.f === k2.dataset.f ? 'open' : k2.dataset.f; APP.refresh(); }));
   }
 
-  APP.register({ id: 'quotes', label: 'Devis / chiffrage', icon: 'calc', group: 'Commercial & assurances', order: 1, render, badge: () => CX.S.quotes.filter(q => q.status === 'Envoyé').length });
+  APP.register({ id: 'quotes', label: 'Devis / chiffrage', icon: 'calc', group: 'Commercial & assurances', order: 1, activity: 'atelier', render, badge: () => CX.S.quotes.filter(q => q.status === 'Envoyé').length });
 })();

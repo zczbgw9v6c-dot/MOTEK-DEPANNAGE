@@ -99,5 +99,5 @@
     });
   }
 
-  APP.register({ id: 'parts', label: 'Pièces & commandes', icon: 'box', group: 'Logistique', order: 1, render, badge: () => CX.S.orders.filter(isLate).length + (CX.S.partRequests || []).filter(q => q.status === 'À servir').length });
+  APP.register({ id: 'parts', label: 'Pièces & commandes', icon: 'box', group: 'Logistique', order: 1, activity: 'atelier', render, badge: () => CX.S.orders.filter(isLate).length + (CX.S.partRequests || []).filter(q => q.status === 'À servir').length });
 })();

@@ -651,3 +651,14 @@ body.gants .bo .table td,body.gants .bo .tbl td{padding-top:12px;padding-bottom:
 .bo .task input{width:24px;height:24px;flex:none}
 .bo .task.done{opacity:.6;text-decoration:line-through}
 .bo .tech .btn{min-height:44px}
+
+/* ---- dépannage : plan du parc, missions ---- */
+body.no-map .modes,body.no-map #view-map{display:none!important}
+body.no-map #view-bo{display:flex!important}
+.bo .parc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.bo .slot{position:relative;border:1.5px solid var(--line2);border-radius:12px;background:#fff;min-height:68px;padding:8px 6px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;font:inherit}
+.bo .slot b{font-size:11px;color:var(--ink3)}.bo .slot span{font-size:11.5px;font-weight:800;letter-spacing:.02em}.bo .slot small{font-size:10px;color:var(--ink3)}
+.bo .slot.free{background:#fafbfc;border-style:dashed}.bo .slot.free span{color:var(--ink4);font-weight:600}
+.bo .slot.busy{border-color:#1b7f4c;background:#eaf4ee}.bo .slot.busy.rel{border-color:#b96400;background:#fff4e5}.bo .slot.busy.ab{border-color:#b42318;background:#fdecea}
+.bo .slot i{position:absolute;top:6px;right:6px;width:12px;height:12px;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+.bo .mcard{cursor:pointer}.bo .mcard:hover{box-shadow:var(--shadow-lg)}

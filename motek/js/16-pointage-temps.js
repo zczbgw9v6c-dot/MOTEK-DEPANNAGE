@@ -51,5 +51,5 @@
     el.querySelector('[data-exp]').addEventListener('click', () => BO.download('pointages-' + st.week + '.csv', BO.csv([['Date', 'Technicien', 'OR', 'Poste', 'Heures', 'Validé']].concat(inWeek.map(t => [t.date, (CX.emp(t.emp) || {}).name, (CX.ro(t.roId) || {}).no, PL[t.poste] || t.poste, t.h, t.validated ? 'oui' : 'non']))), 'text/csv;charset=utf-8'));
   }
 
-  APP.register({ id: 'time', label: 'Pointage & temps', icon: 'clock', group: 'Finances & équipe', order: 2, render, badge: () => CX.S.time.filter(t => !t.validated).length });
+  APP.register({ id: 'time', label: 'Pointage & temps', icon: 'clock', group: 'Finances & équipe', order: 2, activity: 'atelier', render, badge: () => CX.S.time.filter(t => !t.validated).length });
 })();

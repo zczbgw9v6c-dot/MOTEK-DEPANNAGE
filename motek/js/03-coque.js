@@ -12,6 +12,7 @@
   const modules = [];
   const GROUPS = [
     "Pilotage",
+    "Dépannage",
     "Atelier",
     "Commercial & assurances",
     "Logistique",
@@ -158,6 +159,8 @@
     complaint: "quality",
     poste: "planning",
     appt: "reception",
+    mission: "missions",
+    garde: "parc",
   };
   function focus(target, opts = {}) {
     if (!target) return;
@@ -579,7 +582,8 @@
     renderNav();
     initGloves();
     const h = location.hash.slice(1);
-    if (h.startsWith("bo")) {
+    if (!CX.activityOn("atelier")) document.body.classList.add("no-map");
+    if (h.startsWith("bo") || !CX.activityOn("atelier")) {
       current = h.split("/")[1] || "dashboard";
       setMode("bo");
     } else setMode("map");

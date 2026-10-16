@@ -224,5 +224,5 @@
     el.querySelector('[data-exp]').addEventListener('click', () => BO.download('ordres-reparation.csv', BO.csv([['OR', 'Plaque', 'Véhicule', 'Client', 'Assurance', 'Étape', 'Statut', 'Responsable', 'Avancement %', 'Restitution', 'Total TTC']].concat(rows.map(r => { const v = CX.veh(r.vehicleId); return [r.no, v.plate, CX.vlabel(v), CX.custName(r.customerId), r.claimId ? CX.ins(CX.claim(r.claimId).insurerId).short : 'Privé', CX.STAGES[r.stage].l, CX.statusOf(r), (CX.emp(r.lead) || {}).name || '', r.prog, r.dueAt || '', CX.roTotals(r).ttc]; }))), 'text/csv;charset=utf-8'));
   }
 
-  APP.register({ id: 'ros', label: 'Ordres de réparation', icon: 'wrench', group: 'Atelier', order: 2, render, badge: () => CX.S.ros.filter(CX.isLate).length });
+  APP.register({ id: 'ros', label: 'Ordres de réparation', icon: 'wrench', group: 'Atelier', order: 2, activity: 'atelier', render, badge: () => CX.S.ros.filter(CX.isLate).length });
 })();

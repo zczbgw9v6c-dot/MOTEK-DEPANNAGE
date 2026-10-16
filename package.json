@@ -1,5 +1,5 @@
 {
-  "name": "autohub-3d",
+  "name": "motek-depannage",
   "version": "0.3.0",
   "private": true,
   "type": "module",
@@ -17,6 +17,7 @@
     "verify:api": "node --experimental-strip-types scripts/verify-api.mjs",
     "verify:ui": "node scripts/verify-ui.mjs",
     "verify:v3": "node scripts/verify-v3.mjs",
+    "verify:depannage": "node scripts/verify-depannage.mjs",
     "start": "node --experimental-strip-types server/serve.ts",
     "serve": "npm run build && npm start"
   },

@@ -5,14 +5,14 @@
 (function () {
   const KEY = "motek-tour-done";
   const STEPS = [
-    { ic: "cube", t: "Bienvenue dans MOTEK", d: "Deux faces, une seule base : l’<b>atelier live</b> en 3D pour voir le garage en un coup d’œil, le <b>back-office</b> pour gérer dossiers, devis, pièces et factures. Tout ce que vous faites sur une tablette est visible sur les autres postes." },
-    { ic: "car", t: "Touchez une voiture", d: "Dans l’atelier live, touchez un véhicule : sa fiche s’ouvre à droite avec le client, l’étape en cours, le technicien et les boutons « Ouvrir l’OR » et « Fiche client ». La barre de gauche vous emmène directement à l’atelier, la cabine, l’accueil ou le parking." },
-    { ic: "wrench", t: "Le dossier, pas à pas", d: "Un ordre de réparation avance de gauche à droite : réception, devis, accord, pièces, travaux, contrôle qualité, prêt, facturé. Le bouton bleu en haut du dossier propose toujours l’étape suivante ; rien ne saute d’étape sans contrôle." },
-    { ic: "phone", t: "Dictez les travaux", d: "Dans l’onglet Travaux, le micro transforme une phrase en liste de tâches : « équilibrage, remontage des pneus, remplacement de la lunette arrière ». Vous relisez, puis validez. Le micro s’active dans Agent IA › Réglages." },
-    { ic: "box", t: "Pièce manquante → le magasin sait", d: "Sur le poste technicien, « Pièce manquante » envoie la demande au comptoir : elle apparaît dans Pièces & commandes, le magasinier la sert ou la commande, et le dossier se met à jour tout seul. Tout est centralisé." },
-    { ic: "camera", t: "Photos depuis la tablette", d: "Onglet Photos d’un dossier : « Prendre une photo » ouvre l’appareil, « Importer » prend plusieurs fichiers. Les photos sont rangées avant / après et visibles partout." },
-    { ic: "msg", t: "Demandez à MOTEK", d: "Sur le tableau de bord : « Où est la Golf MB-118-CC ? », « Livraisons du jour », « La Clio est prête ». L’assistant répond et propose une action que vous confirmez d’un geste. Rien ne part sans vous." },
-    { ic: "key", t: "Clés, paiement, et c’est fini", d: "La facture s’émet depuis le dossier, le règlement se saisit dans Facturation, puis « Remettre les clés » clôture. Si le client n’a pas réglé, MOTEK le dit avant de rendre la voiture." },
+    { ic: "truck", t: "Bienvenue dans MOTEK Dépannage", d: "Une seule base pour tout le monde : le <b>tableau de bord</b> au bureau, les <b>missions</b> sur la tablette du camion, le <b>parc</b> chez le gardien. Ce qu’un chauffeur touche sur la route est visible au bureau dans la seconde." },
+    { ic: "alert", t: "Une demande arrive", d: "AXA, la MAIF, un particulier ou la police appellent : « Nouvelle mission ». Motif, adresse, véhicule, conducteur, tarif prévu. La mission apparaît en rouge tant qu’aucun camion n’est affecté." },
+    { ic: "lift", t: "Affecter un camion", d: "« Affecter un camion » propose les camions disponibles et leur chauffeur habituel. Le camion passe « en mission », la mission passe « en route ». Les camions en entretien ne sont pas proposés." },
+    { ic: "pin", t: "Sur la route", d: "Le chauffeur touche « Sur place », puis « Réparé sur place » ou « Remorquage ». Les heures sont horodatées pour le mandant. « Appeler » compose directement le numéro du conducteur." },
+    { ic: "layers", t: "Déposer au parc", d: "Pour un remorquage vers le parc : choisir une place libre sur un des trois niveaux. Le véhicule apparaît sur le plan avec sa couleur, sa plaque et son nombre de jours de garde ; les frais courent automatiquement." },
+    { ic: "send", t: "Relances et abandons", d: "Au-delà de 30 jours, le parc signale « relance à faire » ; au-delà de 60, « abandon présumé ». Le bouton « Relancer » prépare le courrier au mandant avec le montant des frais ; vous le validez." },
+    { ic: "msg", t: "Demandez à MOTEK", d: "Sur le tableau de bord : « où est la AB-123-CD ? », « camions disponibles », « missions en attente », « à facturer ». La réponse arrive avec le bouton pour agir." },
+    { ic: "invoice", t: "Facturer et sortir", d: "Une mission terminée ou déposée se facture au mandant en un clic. La sortie du parc calcule les jours et les frais, note à qui le véhicule est remis, et laisse le règlement à la Facturation." },
   ];
   let i = 0, modal = null;
   const open = (from = 0) => {
@@ -24,7 +24,7 @@
       el.querySelector("[data-prev]").disabled = i === 0;
       el.querySelector("[data-next]").innerHTML = i === STEPS.length - 1 ? BO.icon("check", 15) + "C’est parti" : "Suivant " + BO.icon("arrowR", 15);
     };
-    modal = UI.modal({ title: "Prise en main de MOTEK", wide: true,
+    modal = UI.modal({ title: "Prise en main de MOTEK Dépannage", wide: true,
       body: `<div class="tour" data-tour></div><div class="tour-dots" data-dots></div>`,
       foot: `<label class="chk" style="margin-right:auto"><input type="checkbox" data-skip> Ne plus afficher au démarrage</label><button class="btn" data-prev>${BO.icon("arrowL", 15)}Précédent</button><button class="btn pri" data-next></button>`,
       onMount: (el, close) => {

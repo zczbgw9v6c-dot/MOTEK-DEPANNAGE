@@ -86,5 +86,5 @@
     el.querySelector('[data-act="map"]').addEventListener('click', () => APP.setMode('map'));
   }
 
-  APP.register({ id: 'dashboard', label: 'Tableau de bord', icon: 'dashboard', group: 'Pilotage', order: 1, render, badge: () => CX.alerts().filter(a => a.level === 'high').length });
+  APP.register({ id: 'dashboard-atelier', label: 'Tableau de bord atelier', icon: 'dashboard', group: 'Pilotage', order: 1, activity: 'atelier', render, badge: () => CX.alerts().filter(a => a.level === 'high').length });
 })();

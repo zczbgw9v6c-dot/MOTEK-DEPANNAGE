@@ -51,5 +51,5 @@
     el.querySelectorAll('[data-take]').forEach(b => b.addEventListener('click', () => { CX.assignTech(b.dataset.take, st.tech); UI.toast('Dossier pris', CX.ro(b.dataset.take).no, 'ok', 'wrench'); BO.now(); }));
     el.querySelectorAll('[data-finish]').forEach(b => b.addEventListener('click', () => { const r = CX.ro(b.dataset.finish), open = r.tasks.filter(t => t.p < 1).length; const go = () => { CX.setStage(r.id, CX.ST.cq, { by: st.tech }); UI.toast('Envoyé au contrôle qualité', r.no, 'ok', 'check'); BO.now(); }; if (open) BO.confirm('Des tâches ne sont pas cochées', open + ' tâche' + (open > 1 ? 's restent ouvertes' : ' reste ouverte') + '. Envoyer quand même au contrôle qualité ?', 'Envoyer quand même', go); else go(); }));
   }
-  APP.register({ id: 'tech', label: 'Poste technicien', icon: 'wrench', group: 'Atelier', order: 0, render, badge: () => (CX.S.partRequests || []).filter(q => q.status === 'À servir').length });
+  APP.register({ id: 'tech', label: 'Poste technicien', icon: 'wrench', group: 'Atelier', order: 0, activity: 'atelier', render, badge: () => (CX.S.partRequests || []).filter(q => q.status === 'À servir').length });
 })();

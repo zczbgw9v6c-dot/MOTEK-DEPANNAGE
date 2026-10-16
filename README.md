@@ -1,3 +1,23 @@
+# MOTEK Dépannage — plateforme pour dépanneurs-remorqueurs
+
+Dérivée de MOTEK (CRM de garage avec atelier 3D), adaptée au dépannage : **missions** (mandants assureurs, particuliers, police), **flotte et chauffeurs** (plateaux, paniers, porte-voitures, astreintes), **parc de gardiennage** sur trois niveaux (plan des places, frais de garde, relances, abandons), sinistres et assurances, facturation, agent IA en mode simulé et assistant « Demander à MOTEK ».
+
+Première cible : un dépanneur parisien avec une douzaine de camions et un parc souterrain. Données de démonstration **fictives**.
+
+```sh
+npm install
+npm run dev                      # http://127.0.0.1:5173/motek/
+npm test                         # tests du socle
+npm run verify:depannage         # parcours Chromium (base isolée : AUTOHUB_DB=.data/verify-dep.sqlite npm run dev)
+npm run build && npm start       # serveur de production
+```
+
+Profil d'activité par défaut : **Dépanneur-remorqueur** (Paramètres › Activités). Les modules atelier (ordres de réparation, postes, peinture…) restent dans le code et se réactivent avec l'activité « Atelier de réparation » pour un dépanneur qui répare aussi.
+
+Documentation détaillée héritée de MOTEK : `docs/`.
+
+---
+
 # MOTEK — CRM de garage avec atelier 3D · v3
 
 **Interface MOTEK v3** : `motek/` (ouvrir http://127.0.0.1:5173/motek/ en développement ; racine du serveur de production). Fusion du gabarit CRM-ERP avec MOTEK : activités configurables, atelier live épuré, showroom, garage intelligent (cas similaires, scan carte grise, assistant vocal) et agent IA en mode simulé. Détails : `docs/MOTEK_V3_FUSION.md`. L’interface historique ci-dessous reste disponible sur `/index.html`.

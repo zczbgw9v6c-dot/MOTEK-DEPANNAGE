@@ -86,5 +86,5 @@
     el.querySelector('[data-new]').addEventListener('click', () => bkForm(null, { date: st.day }));
   }
 
-  APP.register({ id: 'planning', label: 'Planning atelier', icon: 'gantt', group: 'Atelier', order: 3, render, badge: () => { let n = 0; CX.RESOURCES.forEach(r => { n += conflicts(CX.S.bookings.filter(b => b.date === today() && b.res === r.id)).size; }); return n; } });
+  APP.register({ id: 'planning', label: 'Planning atelier', icon: 'gantt', group: 'Atelier', order: 3, activity: 'atelier', render, badge: () => { let n = 0; CX.RESOURCES.forEach(r => { n += conflicts(CX.S.bookings.filter(b => b.date === today() && b.res === r.id)).size; }); return n; } });
 })();

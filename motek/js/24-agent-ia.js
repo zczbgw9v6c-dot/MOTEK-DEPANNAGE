@@ -19,6 +19,13 @@
   function suggest() {
     const S = CX.S, s = S.agent.settings, done = S.agent.done || {}, out = [];
     const add = (id, kind, prio, title, text, target, run) => { if (done[id] && U.diffDays(U.dOf(done[id]), today()) < 7) return; out.push({ id, kind, prio, title, text, target, run }); };
+    if (window.DEP && S.gardes) {
+      DEP.refreshGardeStatus();
+      DEP.inPark().filter(g => g.status !== 'En garde' && (!g.lastReminder || U.diffDays(g.lastReminder, today()) >= 7)).forEach(g => add('garde-' + g.id, g.status === 'Abandon présumé' ? 'invoice' : 'quote', g.status === 'Abandon présumé' ? 3 : 2, (g.status === 'Abandon présumé' ? 'Abandon présumé · ' : 'Relancer ' + g.mandant + ' · ') + g.vehicle.plate, DEP.gardeDays(g) + ' j de garde · ' + chf(DEP.gardeFees(g)) + ' de frais · ' + g.reason, { type: 'garde', id: g.id }, () => APP.open('parc', { id: g.id })));
+      S.missions.filter(m => ['Déposée au parc', 'Terminée'].includes(m.status)).forEach(m => add('bill-' + m.id, 'invoice', 2, 'Facturer ' + m.no + ' à ' + m.mandant, m.vehicle.make + ' ' + m.vehicle.model + ' · ' + chf(m.price) + ' HT', { type: 'mission', id: m.id }, () => APP.open('missions', { id: m.id })));
+      S.missions.filter(m => m.status === 'Demandée' && U.diffDays(U.dOf(m.at), today()) >= 0 && (U.nowMin() - U.toMin(U.tOf(m.at))) > 20).forEach(m => add('wait-' + m.id, 'ready', 3, 'Mission en attente depuis ' + Math.round(U.nowMin() - U.toMin(U.tOf(m.at))) + ' min · ' + m.no, m.kind + ' · ' + m.address, { type: 'mission', id: m.id }, () => APP.open('missions', { id: m.id })));
+    }
+    if (!CX.activityOn('atelier')) return out.sort((a, b) => b.prio - a.prio);
     S.ros.filter(r => r.stage === CX.ST.pret && !r.notified).forEach(r => add('ready-' + r.id, 'ready', 3, 'Prévenir : véhicule prêt', r.no + ' · ' + CX.vlabel(CX.veh(r.vehicleId)) + ' · ' + CX.custName(r.customerId), { type: 'ro', id: r.id }, () => BO.notifyReady(r.id, () => mark('ready-' + r.id, 'Client prévenu · ' + r.no))));
     S.quotes.filter(q => q.status === 'Envoyé' && q.sentAt && U.diffDays(U.dOf(q.sentAt), today()) >= s.quoteDays).forEach(q => add('quote-' + q.id, 'quote', 2, 'Relancer le devis ' + q.no, CX.custName(q.customerId) + ' · ' + chf2(CX.quoteTotals(q).ttc) + ' TTC · envoyé il y a ' + U.diffDays(U.dOf(q.sentAt), today()) + ' j', { type: 'quote', id: q.id }, () => BO.quoteRemind(q.id, () => mark('quote-' + q.id, 'Relance devis ' + q.no))));
     S.invoices.filter(i => i.status !== 'Payée' && i.due < today()).forEach(i => add('inv-' + i.id, 'invoice', 2, 'Rappel de facture ' + i.no, chf2(i.amount - i.paid) + ' · échue depuis ' + U.diffDays(i.due, today()) + ' j', { type: 'invoice', id: i.id }, () => BO.invoiceRemind(i.id, () => mark('inv-' + i.id, 'Rappel facture ' + i.no))));

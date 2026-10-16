@@ -5,7 +5,7 @@
    la carte 3D et le back-office restent synchronisés.
    ========================================================================== */
 (function () {
-  const KEY = "motek-v3";
+  const KEY = "motek-dep-v1";
 
   /* ---------------- helpers dates / formats ---------------- */
   const pad = (n) => String(n).padStart(2, "0");
@@ -361,13 +361,17 @@
     { k: "courtesy", l: "Véhicules de remplacement", d: "Flotte de courtoisie et prêts" },
     { k: "showroom", l: "Showroom / vente", d: "Véhicules d’occasion et neufs exposés" },
     { k: "intelligence", l: "Garage intelligent", d: "Cas similaires, assistant vocal, scan de plaque" },
-    { k: "agent", l: "Agent IA", d: "Relances devis, rappels d’entretien, standard téléphonique (mode simulé)" },
+    { k: "agent", l: "Agent IA", d: "Relances assureurs, frais de gardiennage, standard téléphonique (mode simulé)" },
+    { k: "atelier", l: "Atelier de réparation", d: "Ordres de réparation, postes, planning atelier, pièces, qualité" },
+    { k: "depannage", l: "Dépannage & remorquage", d: "Missions, camions, chauffeurs, mandats assureurs" },
+    { k: "parc", l: "Parc de gardiennage", d: "Niveaux, places, entrées / sorties, frais de garde" },
   ];
   const ACTIVITY_PROFILES = {
     carrosserie: { l: "Carrosserie-peinture", on: ["carrosserie", "peinture", "vitrage", "assurances", "courtesy", "intelligence", "agent"] },
     garage: { l: "Garage toutes activités", on: ["carrosserie", "peinture", "mecanique", "pneus", "vitrage", "assurances", "courtesy", "intelligence", "agent"] },
     concession: { l: "Concession", on: ["carrosserie", "peinture", "mecanique", "pneus", "vitrage", "assurances", "courtesy", "showroom", "intelligence", "agent"] },
     centre: { l: "Centre auto / entretien rapide", on: ["mecanique", "pneus", "vitrage", "courtesy", "intelligence", "agent"] },
+    depannage: { l: "Dépanneur-remorqueur", on: ["depannage", "parc", "assurances", "agent"] },
   };
   const defaultActivities = (profile = "garage") => Object.fromEntries(ACTIVITIES.map((a) => [a.k, ACTIVITY_PROFILES[profile].on.includes(a.k)]));
   const activityOn = (k) => { const a = S && S.company && S.company.activities; return !a || a[k] !== false; };
@@ -386,6 +390,48 @@
   /* ==========================================================================
      SEED — données de démonstration (cohérentes avec la carte 3D)
      ========================================================================== */
+  // Dépannage : camions, chauffeurs, parc souterrain (3 niveaux), missions et gardes fictifs.
+  function seedDepannage(S) {
+    const t = today();
+    const mkT = (i, v) => Object.assign({ id: "T" + (i + 1), status: "Disponible", driverId: null, km: 0, ct: addDays(t, 200), notes: "" }, v);
+    const trucks = [
+      mkT(0, { plate: "GA-101-DP", name: "Camion 01", kind: "Plateau", brand: "Iveco Daily", km: 142300, driverId: "D1", status: "En mission" }),
+      mkT(1, { plate: "GA-102-DP", name: "Camion 02", kind: "Plateau", brand: "Renault Master", km: 98500, driverId: "D2", status: "En mission" }),
+      mkT(2, { plate: "GB-203-DP", name: "Camion 03", kind: "Panier", brand: "Iveco Daily", km: 211800, driverId: "D3" }),
+      mkT(3, { plate: "GB-204-DP", name: "Camion 04", kind: "Plateau", brand: "Mercedes Sprinter", km: 76200, driverId: "D4" }),
+      mkT(4, { plate: "GC-305-DP", name: "Camion 05", kind: "Porte-voitures", brand: "Iveco Eurocargo", km: 302100, driverId: "D5", status: "En mission" }),
+      mkT(5, { plate: "GC-306-DP", name: "Camion 06", kind: "Plateau", brand: "Renault Master", km: 54000, driverId: "D6" }),
+      mkT(6, { plate: "GD-407-DP", name: "Camion 07", kind: "Panier", brand: "Fiat Ducato", km: 187400, driverId: "D7" }),
+      mkT(7, { plate: "GD-408-DP", name: "Camion 08", kind: "Plateau", brand: "Iveco Daily", km: 129900, driverId: "D8", status: "En mission" }),
+      mkT(8, { plate: "GE-509-DP", name: "Camion 09", kind: "Dépanneuse légère", brand: "Peugeot Boxer", km: 93100, driverId: "D9" }),
+      mkT(9, { plate: "GE-510-DP", name: "Camion 10", kind: "Plateau", brand: "Mercedes Sprinter", km: 168700, driverId: null, status: "Entretien", notes: "Révision + freins, retour prévu " + fmtD(addDays(t, 1)) }),
+      mkT(10, { plate: "GF-611-DP", name: "Camion 11", kind: "Plateau", brand: "Renault Master", km: 41200, driverId: "D10" }),
+      mkT(11, { plate: "GF-612-DP", name: "Camion 12", kind: "Porte-voitures", brand: "Iveco Eurocargo", km: 255600, driverId: "D11", status: "En mission" }),
+    ];
+    const drivers = [["D1", "Karim", "Haddad"], ["D2", "Sofiane", "Benali"], ["D3", "Thomas", "Leroy"], ["D4", "Ibrahim", "Diallo"], ["D5", "Mehdi", "Ouali"], ["D6", "Lucas", "Martin"], ["D7", "Yanis", "Ferhat"], ["D8", "Pierre", "Gauthier"], ["D9", "Samir", "Cherif"], ["D10", "Antoine", "Dupuis"], ["D11", "Moussa", "Traoré"], ["D12", "Rayan", "Belkacem"]].map(([id, first, last], i) => ({ id, first, last, name: first + " " + last, ini: first[0] + last[0], role: "chauffeur", title: "Chauffeur-dépanneur", since: 2012 + (i % 10), phone: "+33 6 " + pad(10 + i * 7) + " " + pad(20 + i * 3) + " " + pad(30 + i * 5) + " " + pad(11 + i), email: first.toLowerCase() + "." + last.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "") + "@dandepanne-demo.fr", costH: 32, skills: ["Permis C", "Remorquage", i % 3 ? "Plateau" : "Panier"], color: ["#1768ee", "#2a2e35", "#b96400", "#1b7f4c", "#7c3aed", "#0e7490"][i % 6], astreinte: i < 4 }));
+    const parc = { levels: [{ id: "N1", name: "Niveau -1", slots: 40 }, { id: "N2", name: "Niveau -2", slots: 40 }, { id: "N3", name: "Niveau -3", slots: 36 }], dailyFee: 18, adminFee: 45 };
+    const MANDANTS = ["AXA", "MAIF", "Allianz", "Macif", "Groupama", "Matmut", "Particulier", "Police municipale", "Leasing Arval"];
+    const KINDS = ["Panne batterie", "Bris de glace", "Vandalisme", "Accident", "Remorquage simple", "Crevaison", "Panne carburant", "Erreur carburant"];
+    const CARS = [["Peugeot", "208", "#f2b31c"], ["Renault", "Clio V", "#c9ced6"], ["Citroën", "C3", "#8aa7c4"], ["Volkswagen", "Golf", "#1d2a44"], ["Toyota", "Yaris", "#d7261e"], ["Dacia", "Sandero", "#f4f5f6"], ["BMW", "Série 1", "#121418"], ["Tesla", "Model 3", "#e9ebee"], ["Fiat", "500", "#9fd0c3"], ["Audi", "A3", "#5b6670"], ["Mercedes", "Classe A", "#2b2f36"], ["Kia", "Picanto", "#e35d2b"]];
+    const STREETS = ["rue du Faubourg-Saint-Martin", "boulevard de Magenta", "rue de Paradis", "quai de Valmy", "rue La Fayette", "avenue Parmentier", "rue d’Hauteville", "boulevard de Strasbourg", "rue Bichat", "rue de Lancry", "place de la République", "rue Beaurepaire"];
+    const rnd = rng(hash("dep" + t));
+    const plate = (i) => String.fromCharCode(65 + (i * 7) % 26) + String.fromCharCode(65 + (i * 11) % 26) + "-" + pad(100 + (i * 37) % 900).slice(-3) + "-" + String.fromCharCode(65 + (i * 5) % 26) + String.fromCharCode(65 + (i * 13) % 26);
+    const missions = [], gardes = [];
+    let mno = 2610;
+    const STATUSES = ["Demandée", "Affectée", "En route", "Sur place", "Remorquage", "Déposée au parc", "Terminée", "Facturée"];
+    for (let i = 0; i < 14; i++) {
+      const c = CARS[i % CARS.length], k = KINDS[i % KINDS.length], st = i < 2 ? "Demandée" : i < 4 ? "Affectée" : i < 7 ? "En route" : i < 9 ? "Sur place" : i < 11 ? "Remorquage" : i < 13 ? "Déposée au parc" : "Terminée";
+      const truck = st === "Demandée" ? null : trucks[i % trucks.length];
+      missions.push({ id: "M" + (i + 1), no: "MI-" + (mno + i), at: t + " " + hm(7 * 60 + i * 38), mandant: MANDANTS[i % MANDANTS.length], ref: MANDANTS[i % MANDANTS.length] === "Particulier" ? "" : "SIN-" + (48100 + i * 17), kind: k, status: st, address: (3 + (i * 7) % 90) + " " + STREETS[i % STREETS.length] + ", 750" + (10 + (i % 5)) + " Paris", vehicle: { plate: plate(i), make: c[0], model: c[1], hex: c[2], color: "" }, customer: { name: ["Nadia Benhamou", "Marc Lefèvre", "Sophie Girard", "Julien Moreau", "Aïcha Diop", "Thomas Petit", "Clara Fontaine", "Hugo Lambert", "Inès Roux", "Léo Garnier", "Camille Picard", "Nour Chevalier", "Paul Renard", "Emma Marchand"][i], phone: "+33 6 " + pad(20 + i) + " 11 22 " + pad(10 + i) }, truckId: truck ? truck.id : null, driverId: truck ? truck.driverId : null, eta: t + " " + hm(7 * 60 + i * 38 + 35), arrivedAt: ["Sur place", "Remorquage", "Déposée au parc", "Terminée"].includes(st) ? t + " " + hm(7 * 60 + i * 38 + 31) : null, doneAt: ["Déposée au parc", "Terminée"].includes(st) ? t + " " + hm(7 * 60 + i * 38 + 95) : null, destination: ["Remorquage", "Déposée au parc"].includes(st) ? "Parc Dan Dépanne" : k === "Panne batterie" || k === "Crevaison" ? "Sur place" : "Garage du client", price: [120, 95, 180, 260, 150, 90, 110, 140][i % 8], notes: "", photos: [], history: [{ at: t + " " + hm(7 * 60 + i * 38), text: "Mission créée (" + MANDANTS[i % MANDANTS.length] + ")" }] });
+    }
+    // gardes : véhicules au parc, certains depuis longtemps (frais, relances)
+    const slotOf = (lvl, n) => lvl + "-" + pad(n);
+    for (let i = 0; i < 46; i++) {
+      const c = CARS[(i * 5) % CARS.length], days = [1, 2, 3, 4, 6, 8, 11, 15, 19, 24, 33, 41, 58, 77, 95][i % 15], lvl = parc.levels[i % 3].id;
+      gardes.push({ id: "G" + (i + 1), no: "GA-" + (5100 + i), since: addDays(t, -days), mandant: MANDANTS[(i * 3) % MANDANTS.length], ref: "SIN-" + (47000 + i * 29), vehicle: { plate: plate(100 + i), make: c[0], model: c[1], hex: c[2] }, reason: ["Accident – expertise en attente", "Vandalisme – dépôt de plainte", "Fourrière assureur", "Bris de glace – pièces en commande", "Épave en attente de décision"][i % 5], level: lvl, slot: slotOf(lvl, 1 + Math.floor(i / 3) * 2 + (i % 2)), status: days > 60 && i % 2 ? "Abandon présumé" : days > 30 ? "Relance à faire" : "En garde", owner: { name: "Propriétaire " + (i + 1), phone: "+33 6 " + pad(30 + i) + " 00 11 " + pad(22 + i) }, dailyFee: parc.dailyFee, outAt: null, paid: 0, history: [] });
+    }
+    return { trucks, drivers, parc, missions, gardes, missionSeq: mno + 14 };
+  }
   // Mémoire de diagnostic : cas fictifs (symptômes, codes, cause, preuve, réparation).
   function seedCases() {
     const t = today();
@@ -492,10 +538,10 @@
   function seedData() {
     const S = { v: 1, created: Date.now(), ext: {} };
     S.company = {
-      name: "MOTEK Garage",
-      address: "12 rue des Ateliers, 69007 Lyon",
+      name: "Dan Dépanne",
+      address: "Rue Claude Vellefaux, 75010 Paris",
       phone: "+33 4 72 634 12 00",
-      email: "atelier@motek-demo.fr",
+      email: "contact@dandepanne-demo.fr",
       siret: "123 456 789 00012",
       tvaIntra: "FR12 123456789",
       iban: "FR76 3000 6000 0112 3456 7890 189",
@@ -511,8 +557,8 @@
       terms: 30,
       warrantyMonths: 24,
       review: "https://g.page/r/motek-demo/review",
-      activities: defaultActivities("garage"),
-      profile: "garage",
+      activities: defaultActivities("depannage"),
+      profile: "depannage",
     };
     S.meId = "E1";
 
@@ -3597,6 +3643,9 @@
     /* ---------- demandes de pièces émises depuis l'atelier (comptoir magasin) ---------- */
     S.partRequests = [];
 
+    /* ---------- dépannage : missions, camions, parc de gardiennage ---------- */
+    Object.assign(S, seedDepannage(S));
+
     /* ---------- garage intelligent & agent IA ---------- */
     S.cases = seedCases();
     S.agent = seedAgent();
@@ -4380,9 +4429,10 @@
   // Complète un état (local ou serveur) créé avant l’ajout d’un champ.
   const migrate = (st) => {
     if (st && st.company && !st.company.activities) {
-      st.company.activities = defaultActivities("garage");
-      st.company.profile = "garage";
+      st.company.activities = defaultActivities("depannage");
+      st.company.profile = "depannage";
     }
+    if (st && !st.missions) Object.assign(st, seedDepannage(st));
     if (st && !st.showroom) st.showroom = seedShowroom();
     if (st && !st.cases) st.cases = seedCases();
     if (st && !st.agent) st.agent = seedAgent();
@@ -6168,6 +6218,7 @@
     adjustStock,
     lendCar,
     seedShowroom,
+    seedDepannage,
     seedCases,
     seedAgent,
     startLoan,
