@@ -1,4 +1,4 @@
-// Vérification navigateur de MOTEK Dépannage.
+// Vérification navigateur de MOTEK Dépann.
 // Prérequis : `npx playwright install chromium`, puis AUTOHUB_DB=.data/verify-dep.sqlite npm run dev
 // Usage : node scripts/verify-depannage.mjs [http://127.0.0.1:5173]
 import { chromium } from "playwright";
@@ -23,10 +23,24 @@ await ev(() => { localStorage.clear(); });
 await Promise.all([page.waitForNavigation({ timeout: 20000 }).catch(() => {}), ev(() => { CX.reset(); return true; }).catch(() => {})]);
 await page.waitForTimeout(3000);
 
-await step("Profil dépanneur : back-office direct, navigation sans modules atelier", async () => {
-  const s = await ev(() => ({ mode: APP.mode, nomap: document.body.classList.contains("no-map"), nav: document.querySelector(".bo-nav").innerText.replace(/\n+/g, " | "), profile: CX.S.company.profile, name: CX.S.company.name }));
-  expect(s.mode === "bo" && s.nomap, "mode back-office sans carte : " + JSON.stringify(s));
-  for (const l of ["Missions", "Flotte & chauffeurs", "Parc de gardiennage", "Sinistres & assurances", "Facturation", "Agent IA"]) expect(s.nav.includes(l), "module manquant : " + l);
+await step("Parc live 3D : carte par défaut, véhicules gardés et dépôt des camions", async () => {
+  await page.waitForFunction(() => window.PARC3D && PARC3D.counts && PARC3D.counts().cars > 0, null, { timeout: 15000 });
+  const s = await ev(() => ({ mode: APP.mode, nomap: document.body.classList.contains("no-map"), map: !!document.querySelector("#view-map canvas"), ...PARC3D.counts(), park: DEP.inPark().length, trucks: CX.S.trucks.length }));
+  expect(s.mode === "map" && !s.nomap && s.map, "carte 3D affichée par défaut : " + JSON.stringify(s));
+  expect(s.cars === Math.min(s.park, 96) && s.trucks === 12, "véhicules du parc et camions dessinés : " + JSON.stringify(s));
+  await shot("00-parc-live");
+  const g = await ev(() => DEP.inPark()[0]);
+  await ev((id) => PARC3D.select({ kind: "garde", id }), g.id); await page.waitForTimeout(400);
+  expect((await ev(() => document.querySelector("#detail").innerText)).includes(g.vehicle.plate), "fiche du véhicule sélectionné");
+  const t = await ev(() => CX.S.trucks[0]);
+  await ev((id) => PARC3D.select({ kind: "truck", id }), t.id); await page.waitForTimeout(400);
+  expect((await ev(() => document.querySelector("#detail").innerText)).includes(t.name || t.plate), "fiche du camion sélectionné");
+  await ev(() => APP.setMode("bo")); await page.waitForTimeout(600);
+});
+
+await step("Profil dépanneur : navigation sans modules atelier", async () => {
+  const s = await ev(() => ({ nav: document.querySelector(".bo-nav").innerText.replace(/\n+/g, " | "), profile: CX.S.company.profile, name: CX.S.company.name }));
+  for (const l of ["Missions", "Flotte & chauffeurs", "Parc de gardiennage", "Mandats & assurances", "Facturation", "Agent IA"]) expect(s.nav.includes(l), "module manquant : " + l);
   for (const l of ["Ordres de réparation", "Peinture", "Showroom", "Poste technicien", "Planning atelier"]) expect(!s.nav.includes(l), "module atelier visible : " + l);
   expect(s.profile === "depannage" && /Dan Dépanne/.test(s.name), "profil et société");
   await top(); await shot("01-tableau-de-bord");
@@ -88,6 +102,23 @@ await step("Flotte et agent IA : camions, chauffeurs, suggestions dépannage", a
   const kinds = await ev(() => AGENT.suggest().map((x) => x.title));
   expect(kinds.some((t) => /Relancer|Abandon/.test(t)) && kinds.some((t) => /Facturer MI-/.test(t)), "suggestions dépannage : " + kinds.slice(0, 4).join(" | "));
   expect(!kinds.some((t) => /entretien · |Contrôle technique/.test(t)), "pas de suggestions atelier");
+});
+
+await step("Mandats & assurances : statuts, demande de prise en charge, boîte mail simulée", async () => {
+  await ev(() => APP.open("mandats")); await page.waitForTimeout(500);
+  const m = await ev(() => ({ n: DEP.mandats().length, mails: CX.S.insMail.length }));
+  expect(m.n > 5 && m.mails >= 4, "mandats et courriels : " + JSON.stringify(m));
+  const first = await ev(() => { const x = DEP.mandats().find((x) => x.ins.status === "À déclarer"); return x && x.id; });
+  expect(first, "un mandat à déclarer");
+  await ev((id) => DEP.setMandatStatus(id, "Prise en charge demandée"), first);
+  expect((await ev((id) => DEP.mandats().find((x) => x.id === id).ins.status, first)) === "Prise en charge demandée", "statut changé");
+  const mail = await ev(() => CX.S.insMail.find((x) => !x.handledAt && x.intent === "accord"));
+  expect(mail, "un courriel d’accord à traiter");
+  await ev((id) => DEP.applyMail(id), mail.id); await page.waitForTimeout(300);
+  const after = await ev((id) => { const ml = CX.S.insMail.find((x) => x.id === id); const md = DEP.mandats().find((x) => x.ref === ml.ref || (x.vehicle && x.vehicle.plate === ml.plate)); return { handled: !!ml.handledAt, status: md && md.ins.status }; }, mail.id);
+  expect(after.handled && after.status === "Accordée", "courriel appliqué : " + JSON.stringify(after));
+  await ev(() => APP.open("mandats", { tab: "mail" })); await page.waitForTimeout(400);
+  await top(); await shot("05-mandats");
 });
 
 await step("Persistance : l’état est partagé entre deux pages", async () => {

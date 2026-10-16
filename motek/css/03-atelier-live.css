@@ -267,3 +267,26 @@
 }
 body.gants #view-map .ctl button.nav{min-width:64px;height:56px;font-size:10px}
 body.gants #view-map .detail .vcard,body.gants #view-map .detail .br{min-height:52px}
+
+/* ---- parc live (MOTEK Dépann) : fiche latérale ---- */
+#view-map .detail .pd{font-size:13px}
+#view-map .detail .pd-h{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
+#view-map .detail .pd-ic{width:46px;height:46px;border-radius:14px;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+#view-map .detail .pd-k{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--red)}
+#view-map .detail .pd h3{font-size:18px;letter-spacing:-.02em;margin:2px 0 6px}
+#view-map .detail .pd-s{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#view-map .detail .pd-x{margin-left:auto;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:var(--ink3)}
+#view-map .detail .pd-x:hover{background:#f2f3f5;color:var(--ink)}
+#view-map .detail .pd .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#view-map .detail .pd .tile{background:#f5f6f8;border-radius:11px;padding:9px 11px}
+#view-map .detail .pd .tile .tl{font-size:10.5px;color:var(--ink3);font-weight:700}
+#view-map .detail .pd .tile .tv{font-size:17px;font-weight:800;margin-top:2px}
+#view-map .detail .pd .kv{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:0}
+#view-map .detail .pd .kv dt{color:var(--ink3);font-weight:700;font-size:12px}
+#view-map .detail .pd .kv dd{margin:0}
+#view-map .detail .pd-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+#view-map .detail .pd-acts .btn{height:38px;padding:0 12px;border-radius:10px;font-weight:700;display:inline-flex;align-items:center;gap:6px;background:#f2f3f5;color:var(--ink)}
+#view-map .detail .pd-acts .btn.pri{background:var(--red);color:#fff}
+#view-map .detail .pd .form-note{display:flex;gap:8px;background:#f5f6f8;border-radius:11px;padding:10px 12px}
+#view-map .detail .pd .mt{margin-top:12px}
+#view-map .kpis .kpi:nth-child(2){display:flex}

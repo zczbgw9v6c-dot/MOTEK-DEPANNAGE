@@ -582,14 +582,13 @@
     renderNav();
     initGloves();
     const h = location.hash.slice(1);
-    if (!CX.activityOn("atelier")) {
-      document.body.classList.add("no-map");
-      // Sans carte 3D, c'est la coque qui fait vivre l'horloge de l'en-tête.
-      const tick = () => { const c = $("#clock"); if (c) c.textContent = U.hm(U.nowMin()); };
-      tick();
-      setInterval(tick, 15000);
-    }
-    if (h.startsWith("bo") || !CX.activityOn("atelier")) {
+    const hasMap = CX.activityOn("atelier") || CX.activityOn("parc");
+    if (!hasMap) document.body.classList.add("no-map");
+    // L'horloge de l'en-tête vit ici (la scène 3D la met aussi à jour).
+    const tick = () => { const c = $("#clock"); if (c) c.textContent = U.hm(U.nowMin()); };
+    tick();
+    setInterval(tick, 15000);
+    if (h.startsWith("bo") || !hasMap) {
       current = h.split("/")[1] || "dashboard";
       setMode("bo");
     } else setMode("map");

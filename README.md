@@ -1,4 +1,4 @@
-# MOTEK Dépannage — plateforme pour dépanneurs-remorqueurs
+# MOTEK Dépann — plateforme pour dépanneurs-remorqueurs
 
 Dérivée de MOTEK (CRM de garage avec atelier 3D), adaptée au dépannage : **missions** (mandants assureurs, particuliers, police), **flotte et chauffeurs** (plateaux, paniers, porte-voitures, astreintes), **parc de gardiennage** sur trois niveaux (plan des places, frais de garde, relances, abandons), sinistres et assurances, facturation, agent IA en mode simulé et assistant « Demander à MOTEK ».
 

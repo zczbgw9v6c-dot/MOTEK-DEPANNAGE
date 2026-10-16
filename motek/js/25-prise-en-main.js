@@ -5,7 +5,7 @@
 (function () {
   const KEY = "motek-tour-done";
   const STEPS = [
-    { ic: "truck", t: "Bienvenue dans MOTEK Dépannage", d: "Une seule base pour tout le monde : le <b>tableau de bord</b> au bureau, les <b>missions</b> sur la tablette du camion, le <b>parc</b> chez le gardien. Ce qu’un chauffeur touche sur la route est visible au bureau dans la seconde." },
+    { ic: "truck", t: "Bienvenue dans MOTEK Dépann", d: "Une seule base pour tout le monde : le <b>tableau de bord</b> au bureau, les <b>missions</b> sur la tablette du camion, le <b>parc</b> chez le gardien. Ce qu’un chauffeur touche sur la route est visible au bureau dans la seconde." },
     { ic: "alert", t: "Une demande arrive", d: "AXA, la MAIF, un particulier ou la police appellent : « Nouvelle mission ». Motif, adresse, véhicule, conducteur, tarif prévu. La mission apparaît en rouge tant qu’aucun camion n’est affecté." },
     { ic: "lift", t: "Affecter un camion", d: "« Affecter un camion » propose les camions disponibles et leur chauffeur habituel. Le camion passe « en mission », la mission passe « en route ». Les camions en entretien ne sont pas proposés." },
     { ic: "pin", t: "Sur la route", d: "Le chauffeur touche « Sur place », puis « Réparé sur place » ou « Remorquage ». Les heures sont horodatées pour le mandant. « Appeler » compose directement le numéro du conducteur." },
@@ -24,7 +24,7 @@
       el.querySelector("[data-prev]").disabled = i === 0;
       el.querySelector("[data-next]").innerHTML = i === STEPS.length - 1 ? BO.icon("check", 15) + "C’est parti" : "Suivant " + BO.icon("arrowR", 15);
     };
-    modal = UI.modal({ title: "Prise en main de MOTEK Dépannage", wide: true,
+    modal = UI.modal({ title: "Prise en main de MOTEK Dépann", wide: true,
       body: `<div class="tour" data-tour></div><div class="tour-dots" data-dots></div>`,
       foot: `<label class="chk" style="margin-right:auto"><input type="checkbox" data-skip> Ne plus afficher au démarrage</label><button class="btn" data-prev>${BO.icon("arrowL", 15)}Précédent</button><button class="btn pri" data-next></button>`,
       onMount: (el, close) => {
