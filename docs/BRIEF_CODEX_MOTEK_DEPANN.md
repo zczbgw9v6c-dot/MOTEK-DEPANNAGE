@@ -2,16 +2,16 @@
 
 Tu reprends **MOTEK Dépann**, la plateforme de gestion d'un dépanneur-remorqueur parisien (Dan Dépann, 25 avenue Claude Vellefaux, 75010 Paris, 24h/24, agréé toutes assurances, 12 camions dont 5 paniers Toyota Hilux 2025, parc de gardiennage souterrain sur 3 niveaux). Le produit est dérivé de MOTEK (CRM de garage) mais c'est un dépôt séparé : **ne touche pas au dépôt MOTEK**.
 
-Lis d'abord `README.md`, `docs/MOTEK_V3_FUSION.md` (architecture héritée) et ce brief. Travaille sur une branche `codex/revue-1`, pousse, puis ouvre une PR vers `main`. Je lis la PR avant de merger.
+Lis d'abord `README.md`, **`docs/AUDIT_CLAUDE_MOTEK_DEPANN.md`** (audit et refonte du 16 octobre : équipe réelle, bugs corrigés, ce qu'il reste à faire), `docs/MOTEK_V3_FUSION.md` (architecture héritée) et ce brief. Travaille sur une branche `codex/revue-1`, pousse, puis ouvre une PR vers `main`. Je lis la PR avant de merger.
 
 ## Démarrage
 
 ```bash
 npm install
-npm test                                   # 83 tests unitaires (node:test)
+npm test                                   # 97 tests unitaires (node:test), dont tests/depannage.test.ts
 npm run build                              # Vite
 AUTOHUB_DB=.data/verify-dep.sqlite npm run dev   # http://127.0.0.1:5173/motek/
-node scripts/verify-depannage.mjs          # 12 étapes Playwright (chromium requis)
+node scripts/verify-depannage.mjs          # 14 étapes Playwright (chromium requis), captures desktop / iPad / téléphone
 ```
 
 Le serveur de démo Render est gratuit : pas de disque, les données repartent du jeu de démonstration à chaque redéploiement. `MOTEK_DEMO_PASSWORD` protège l'accès (HTTP Basic, utilisateur `motek`).

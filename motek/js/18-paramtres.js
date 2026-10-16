@@ -45,5 +45,5 @@
     el.querySelector('[data-reset]').addEventListener('click', () => BO.confirm('Réinitialiser la démonstration ?', 'Toutes les modifications (OR, devis, factures, pointages…) seront remplacées par les données de départ. L’atelier live redémarre son scénario.', 'Réinitialiser', () => { CX.reset(); }, true));
   }
 
-  APP.register({ id: 'settings', label: 'Paramètres', icon: 'settings', group: 'Système', order: 1, render });
+  APP.register({ id: 'settings', label: 'Paramètres', icon: 'settings', group: 'Système', order: 1, activity: 'atelier', render });
 })();

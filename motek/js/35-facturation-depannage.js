@@ -13,7 +13,10 @@
   const late = i => i.status !== 'Payée' && i.due < today();
   const stat = i => late(i) ? 'En retard' : i.status;
   const TONE = { 'Émise': 'amber', 'Payée': 'green', 'En retard': 'red', 'Partiel': 'amber' };
-  const nextNo = () => 'FD-' + (2026000 + 400 + list().length + 1);
+  const nextNo = () => 'FD-' + (list().reduce((a, i) => Math.max(a, +String(i.no).replace(/\D/g, '') || 0), 2026400) + 1);
+  /** Mandat (assurance) lié à une facture : la mission ou la garde source. */
+  const srcOf = i => i.kind === 'mission' ? CX.S.missions.find(m => m.id === i.srcId) : CX.S.gardes.find(g => g.id === i.srcId);
+  const syncMandat = (i, status, text) => { const s = srcOf(i); if (!s || s.mandant === 'Particulier') return; s.insurance = s.insurance || { status: 'À déclarer', history: [] }; if (s.insurance.status === status) return; s.insurance.status = status; s.insurance.history.unshift({ at: CX.now(), text: text || status, by: CX.S.meId }); if (status === 'Payée') { s.insurance.paidAt = today(); s.insurance.paid = i.paid; } };
   const LABELS = {
     'Remorquage simple': m => 'Remorquage — ' + m.address + ' → ' + (m.destination || 'garage'),
     'Panne batterie': () => 'Dépannage sur place — diagnostic, démarrage ou remplacement de batterie',
@@ -33,7 +36,7 @@
     const lines = [{ label: (LABELS[m.kind] || (x => x.kind + ' — ' + x.address))(m), qty: 1, price: m.price }];
     if (/batterie/i.test(m.kind)) { const so = (CX.S.supplyOrders || []).find(o => o.missionId === m.id && o.status === 'Posée'); if (so) lines.push({ label: 'Fourniture — ' + so.item, qty: so.qty, price: Math.round(so.price * 1.25) }); }
     const i = mk({ payer: m.mandant, ref: m.ref || '', kind: 'mission', srcId: m.id, plate: m.vehicle.plate, label: m.kind + ' · ' + m.address, lines });
-    list().unshift(i); if (m.status !== 'Facturée') DEP.setMissionStatus(m.id, 'Facturée'); CX.touch('dinvoice');
+    list().unshift(i); if (m.status !== 'Facturée') DEP.setMissionStatus(m.id, 'Facturée'); syncMandat(i, 'Facturée', 'Facture ' + i.no + ' émise'); CX.touch('dinvoice');
     UI.toast('Facture ' + i.no, chf2(i.ttc) + ' TTC à ' + i.payer, 'ok', 'invoice'); return i;
   }
   /** Facture une garde restituée : jours × tarif + frais de dossier. */
@@ -42,19 +45,19 @@
     if (list().some(i => i.kind === 'garde' && i.srcId === g.id)) { UI.toast('Déjà facturée', g.no, 'warn'); return null; }
     const d = DEP.gardeDays(g), lines = [{ label: 'Gardiennage ' + d + ' jour' + (d > 1 ? 's' : '') + ' · ' + g.vehicle.plate + ' (' + g.level + ')', qty: d, price: g.dailyFee || CX.S.parc.dailyFee }, { label: 'Frais de dossier', qty: 1, price: CX.S.parc.adminFee || 0 }];
     const i = mk({ payer: g.mandant, ref: g.ref || '', kind: 'garde', srcId: g.id, plate: g.vehicle.plate, label: 'Gardiennage ' + d + ' j · ' + g.vehicle.plate, lines, paid: g.paid || 0 });
-    if (i.paid >= i.ttc) i.status = 'Payée'; list().unshift(i); CX.touch('dinvoice');
+    if (i.paid >= i.ttc) { i.status = 'Payée'; i.paidAt = today(); } list().unshift(i); syncMandat(i, i.status === 'Payée' ? 'Payée' : 'Facturée', 'Facture ' + i.no + (i.status === 'Payée' ? ' réglée à la sortie' : ' émise')); CX.touch('dinvoice');
     UI.toast('Facture ' + i.no, chf2(i.ttc) + ' TTC à ' + i.payer, 'ok', 'invoice'); return i;
   }
   function pay(i, amount, date, ref) {
     i.paid = Math.min(i.ttc, (i.paid || 0) + amount); i.status = i.paid >= i.ttc - 0.005 ? 'Payée' : 'Partiel'; if (i.status === 'Payée') i.paidAt = date || today();
-    i.history.unshift({ at: CX.now(), text: 'Encaissement ' + chf2(amount) + (ref ? ' · ' + ref : '') + ' · valeur ' + U.fmtD(date || today()), by: CX.S.meId }); CX.touch('dinvoice');
+    i.history.unshift({ at: CX.now(), text: 'Encaissement ' + chf2(amount) + (ref ? ' · ' + ref : '') + ' · valeur ' + U.fmtD(date || today()), by: CX.S.meId }); if (i.status === 'Payée') syncMandat(i, 'Payée', 'Paiement reçu ' + chf2(i.paid) + (ref ? ' · ' + ref : '')); CX.touch('dinvoice');
   }
-  window.DEP = window.DEP || {}; DEP.billMission = billMission; DEP.billGarde = billGarde; DEP.invoices = list; DEP.payInvoice = pay;
+  window.DEP = window.DEP || {}; DEP.billMission = billMission; DEP.billGarde = billGarde; DEP.invoices = list; DEP.payInvoice = pay; DEP.invoiceOf = (kind, srcId) => list().find(i => i.kind === kind && i.srcId === srcId) || null; DEP.printInvoice = print;
 
   function print(i) {
     const co = CX.S.company;
     const inner = `<div class="hd"><div class="brand">${UI.logo(42)}<div><b>${esc(co.name)}</b><small>Dépannage · Remorquage · Gardiennage · 24h/24</small></div></div><div class="co">${esc(co.address)}<br>${esc(co.phone)} · ${esc(co.email)}</div></div>
-      <div class="addr"><b>${esc(i.payer)}</b><br>${/AXA|MAIF|Allianz|Macif|Groupama|Matmut/.test(i.payer) ? 'Service sinistres automobile' : ''}<br>${i.ref ? 'Référence sinistre ' + esc(i.ref) : ''}</div>
+      <div class="addr"><b>${esc(i.payer)}</b><br>${(CX.S.insurers || []).some(x => x.short === i.payer) ? 'Service sinistres automobile' : ''}<br>${i.ref ? 'Référence sinistre ' + esc(i.ref) : ''}</div>
       <h1>Facture ${esc(i.no)}</h1><div class="meta">${esc(i.plate)} · ${esc(U.fmtD(i.at))} · échéance ${esc(U.fmtD(i.due))}</div>
       <table><thead><tr><th>Désignation</th><th class="n">Qté</th><th class="n">PU HT</th><th class="n">Total HT</th></tr></thead><tbody>${i.lines.map(l => `<tr><td>${esc(l.label)}</td><td class="n">${l.qty}</td><td class="n">${chf2(l.price)}</td><td class="n">${chf2(l.qty * l.price)}</td></tr>`).join('')}</tbody></table>
       <table class="tot"><tr><td>Montant HT</td><td class="n">${chf2(i.ht)}</td></tr><tr><td>TVA ${BO.tvaLbl()}</td><td class="n">${chf2(i.tva)}</td></tr><tr class="big"><td>Montant TTC</td><td class="n">${chf2(i.ttc)}</td></tr>${i.paid ? `<tr><td>Déjà réglé</td><td class="n">− ${chf2(i.paid)}</td></tr><tr class="big"><td>Reste dû</td><td class="n">${chf2(rest(i))}</td></tr>` : ''}</table>

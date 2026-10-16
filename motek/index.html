@@ -27,7 +27,7 @@
   </nav>
   <div class="search">
     <div class="box"><svg class="i" viewBox="0 0 24 24" style="color:var(--ink3)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="q" placeholder="Rechercher plaque, mission, mandat, camion…" autocomplete="off"><span class="kbd">/</span></div>
+      <input id="q" placeholder="Rechercher une plaque, une mission, un dossier…" autocomplete="off"><span class="kbd">/</span></div>
     <div class="sres" id="sres"></div>
   </div>
   <div class="spacer"></div>
@@ -46,9 +46,9 @@
 <div id="scene" class="grab"></div>
 
 <div class="kpis">
-  <div class="card kpi"><div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M19 17h2v-4l-2.5-5.5A2 2 0 0 0 16.7 6H7.3a2 2 0 0 0-1.8 1.5L3 13v4h2"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5M3 13h18"/></svg></div><div><div class="l">Véhicules sur site</div><div class="v"><b class="tnum" id="k1">13</b><span class="d" id="k1d">↑ +2</span></div><div class="s" id="k1s">8 en atelier · 3 prêts</div></div></div>
-  <div class="card kpi"><div class="ic"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div><div class="l">Délais respectés</div><div class="v"><b class="tnum">94.8%</b><span class="d">↑ +1.2%</span></div><div class="s">30 derniers jours</div></div></div>
-  <div class="card kpi"><div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div><div><div class="l">CA du jour</div><div class="v"><b class="tnum" id="k3">18 450 €</b><span class="d" id="k3d">↑ +6.2%</span></div><div class="s" id="k3s">7 factures · objectif 24 000</div></div></div>
+  <div class="card kpi"><div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M19 17h2v-4l-2.5-5.5A2 2 0 0 0 16.7 6H7.3a2 2 0 0 0-1.8 1.5L3 13v4h2"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5M3 13h18"/></svg></div><div><div class="l">Véhicules sur site</div><div class="v"><b class="tnum" id="k1">—</b><span class="d" id="k1d"></span></div><div class="s" id="k1s"></div></div></div>
+  <div class="card kpi"><div class="ic"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div><div class="l">Camions disponibles</div><div class="v"><b class="tnum">—</b><span class="d"></span></div><div class="s"></div></div></div>
+  <div class="card kpi"><div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div><div><div class="l">En entretien</div><div class="v"><b class="tnum" id="k3">—</b><span class="d" id="k3d"></span></div><div class="s" id="k3s"></div></div></div>
 </div>
 
 <div class="card ctl">
@@ -121,6 +121,8 @@
 <script type="module" src="./js/35-facturation-depannage.js"></script>
 <script type="module" src="./js/36-commandes-fournisseurs.js"></script>
 <script type="module" src="./js/37-agent-depannage.js"></script>
+<script type="module" src="./js/38-parametres-depannage.js"></script>
+<script type="module" src="./js/39-poste-depanneur.js"></script>
 <script type="module" src="./js/19-bloc.js"></script>
 <script type="module" src="./js/40-parc-live-3d.js"></script>
 <script type="module" src="./js/25-prise-en-main.js"></script>

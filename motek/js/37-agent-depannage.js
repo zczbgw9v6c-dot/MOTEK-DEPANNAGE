@@ -76,8 +76,8 @@
   function render(el, params) {
     if (params.tab) { st.tab = params.tab === 'inbox' ? 'mail' : params.tab; APP.setParams({ tab: null }); }
     const S = CX.S, sugg = suggestions(), pend = mails().filter(m => !m.handledAt), rem = toRemind();
-    el.innerHTML = `<div class="bo-page">${BO.head('Agent IA', `${sugg.length} suggestions · ${pend.length} courriel${pend.length > 1 ? 's' : ''} assureur à traiter · ${rem.length} relance${rem.length > 1 ? 's' : ''} à faire`, `<button class="btn" data-open="mandats">${BO.icon('shield', 15)}Mandats</button>`)}
-      <div class="form-note mb">${BO.icon('eye', 16)}<div><b>Mode simulé, sans service externe.</b> L’agent lit les données de MOTEK et des courriels d’exemple ; il prépare les messages, vous les envoyez. Le raccordement d’une vraie boîte mail (IMAP / Gmail) et de WhatsApp Business se fait avec votre accord, plus tard.</div></div>
+    el.innerHTML = `<div class="bo-page">${BO.head('Agent IA · relances & courriels', `${sugg.length} suggestions · ${pend.length} courriel${pend.length > 1 ? 's' : ''} assureur à traiter · ${rem.length} relance${rem.length > 1 ? 's' : ''} à faire`, `<button class="btn" data-open="mandats">${BO.icon('shield', 15)}Mandats</button>`)}
+      <div class="form-note mb">${BO.icon('eye', 16)}<div><b>Ce que faisaient Moïse et Florence à la main.</b> L’agent lit les dossiers et les courriels des assureurs, prépare relances, demandes de prise en charge et messages WhatsApp ; vous relisez et vous envoyez. Mode simulé, sans service externe : les courriels sont des exemples. Le raccordement d’une vraie boîte mail (IMAP / Gmail) et de WhatsApp Business se fait avec votre accord, plus tard.</div></div>
       ${BO.tabs([['sugg', 'Suggestions du jour', sugg.length], ['mail', 'Courriels assureurs', pend.length, pend.length ? 'red' : ''], ['wa', 'WhatsApp clients', waLog().length], ['log', 'Journal', S.agent.log.length]], st.tab)}
       <div class="mt" data-body></div></div>`;
     const body = el.querySelector('[data-body]');
@@ -104,5 +104,5 @@
     if (st.tab === 'log') body.innerHTML = `<div class="card"><div>${S.agent.log.length ? S.agent.log.slice(0, 60).map(l => `<div class="todo"><span class="tic low">${BO.icon('cube', 16)}</span><div class="tx"><b>${esc(l.text)}</b><span>${esc(BO.dt(l.at))}${(l.done || []).length ? ' · ' + esc(l.done.join(' · ')) : ''}</span></div></div>`).join('') : BO.empty('cube', 'Journal vide', '', '', true)}</div></div>`;
     el.querySelectorAll('.tabs [data-tab]').forEach(b => b.addEventListener('click', () => { st.tab = b.dataset.tab; APP.refresh(); }));
   }
-  APP.register({ id: 'agent', label: 'Agent IA', icon: 'cube', group: 'Pilotage', order: 3, activity: 'agent', render, badge: () => { try { return mails().filter(m => !m.handledAt).length + suggestions().filter(s => s.prio >= 3).length; } catch (e) { return 0; } } });
+  APP.register({ id: 'agent', label: 'Agent IA · relances', icon: 'mail', group: 'Pilotage', order: 3, activity: 'agent', render, badge: () => { try { return mails().filter(m => !m.handledAt).length + suggestions().filter(s => s.prio >= 3).length; } catch (e) { return 0; } } });
 })();

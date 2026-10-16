@@ -13,7 +13,7 @@
   const list = () => (CX.S.supplyOrders = CX.S.supplyOrders || []);
   const suppliers = () => (CX.S.depSuppliers = CX.S.depSuppliers || []);
   const supplier = id => suppliers().find(s => s.id === id) || null;
-  const nextNo = () => 'CB-' + (1040 + list().length + 1);
+  const nextNo = () => 'CB-' + (list().reduce((a, o) => Math.max(a, +String(o.no).replace(/\D/g, '') || 0), 1040) + 1);
   const BATT = ['Batterie 12 V 60 Ah L2 (Clio, 208, C3)', 'Batterie 12 V 70 Ah L3 (Golf, 308)', 'Batterie AGM 12 V 80 Ah L4 (start-stop)', 'Batterie EFB 12 V 70 Ah L3', 'Batterie 12 V 95 Ah L5 (utilitaires)', 'Pneu 205/55 R16', 'Pneu 195/65 R15', 'Jerrican 20 L SP95', 'Jerrican 20 L gazole'];
 
   function setStatus(o, s, text) { o.status = s; o.history.unshift({ at: CX.now(), text: text || s, by: CX.S.meId }); if (s === 'Posée' && o.missionId) { const m = DEP.mission(o.missionId); if (m) m.history.unshift({ at: CX.now(), text: 'Batterie posée : ' + o.item, by: CX.S.meId }); } CX.touch('supply'); }

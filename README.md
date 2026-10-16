@@ -14,6 +14,8 @@ npm run build && npm start       # serveur de production
 
 Profil d'activité par défaut : **Dépanneur-remorqueur** (Paramètres › Activités). Les modules atelier (ordres de réparation, postes, peinture…) restent dans le code et se réactivent avec l'activité « Atelier de réparation » pour un dépanneur qui répare aussi.
 
+**Équipe réelle dans la démo** : Joseph (gérant), Damien, Dylan, Laurent et Trump (dépanneurs, écran **Ma tournée** sur téléphone), Moïse et Florence (bureau). Audit, corrections et suite recommandée : `docs/AUDIT_CLAUDE_MOTEK_DEPANN.md`. Captures : `screenshots/depann/`.
+
 Documentation détaillée héritée de MOTEK : `docs/`.
 
 ---

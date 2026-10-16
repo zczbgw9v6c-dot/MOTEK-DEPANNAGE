@@ -38,7 +38,7 @@ await step("Parc live 3D : carte par défaut, véhicules gardés et dépôt des 
   await ev((id) => PARC3D.select({ kind: "truck", id }), t.id); await page.waitForTimeout(400);
   expect((await ev(() => document.querySelector("#detail").innerText)).includes(t.name || t.plate), "fiche du camion sélectionné");
   await ev(() => PARC3D.select({ kind: "office" })); await page.waitForTimeout(400);
-  expect(/Nadia|Karim|Sabrina/.test(await ev(() => document.querySelector("#detail").innerText)), "fiche du bureau avec les collaborateurs");
+  expect(/Moïse|Florence/.test(await ev(() => document.querySelector("#detail").innerText)), "fiche du bureau avec Moïse et Florence");
   const steps = await ev(() => { const g = DEP.inPark().find((x) => x.step === "Non traité"); PARC3D.select({ kind: "garde", id: g.id }); document.querySelector('#detail [data-step="Expertise en attente"]').click(); return DEP.garde(g.id).step; });
   expect(steps === "Expertise en attente", "étape du dossier changée depuis la fiche 3D");
   for (const z of ["N2", "DEPOT", "ALL"]) await ev((z) => PARC3D.setPlace(z), z);
@@ -54,16 +54,22 @@ await step("Parc live 3D : carte par défaut, véhicules gardés et dépôt des 
 
 await step("Profil dépanneur : navigation sans modules atelier", async () => {
   const s = await ev(() => ({ nav: document.querySelector(".bo-nav").innerText.replace(/\n+/g, " | "), profile: CX.S.company.profile, name: CX.S.company.name }));
-  for (const l of ["Missions", "Flotte & chauffeurs", "Parc de gardiennage", "Mandats & assurances", "Commandes fournisseurs", "Facturation", "Agent IA"]) expect(s.nav.includes(l), "module manquant : " + l);
+  for (const l of ["Missions", "Camions & équipe", "Parc de gardiennage", "Assureurs & mandats", "Commandes fournisseurs", "Facturation", "Agent IA", "Ma tournée", "Paramètres"]) expect(s.nav.includes(l), "module manquant : " + l);
+  for (const l of ["Clients & véhicules"]) expect(!s.nav.includes(l), "module garage visible : " + l);
   expect(/Joseph/.test(await ev(() => document.querySelector("header .user .un").textContent)), "utilisateur Joseph");
   for (const l of ["Ordres de réparation", "Peinture", "Showroom", "Poste technicien", "Planning atelier"]) expect(!s.nav.includes(l), "module atelier visible : " + l);
   expect(s.profile === "depannage" && /Dan Dépann/.test(s.name), "profil et société");
   await top(); await shot("01-tableau-de-bord");
 });
 
-await step("Tableau de bord : journée du dépanneur et assistant", async () => {
-  const k = await ev(() => [...document.querySelectorAll(".kpis.today .kpi .lb")].map((x) => x.textContent));
-  for (const l of ["Missions en attente", "Camions sur la route", "Camions disponibles", "Véhicules au parc", "Terminées aujourd’hui", "Gardes à relancer"]) expect(k.includes(l), "indicateur manquant : " + l);
+await step("Tableau de bord : quatre chiffres, les quatre dépanneurs, assistant", async () => {
+  const k = await ev(() => [...document.querySelectorAll(".kpis.hero4 .kpi .lb")].map((x) => x.textContent));
+  for (const l of ["Missions en cours", "Dépanneurs libres", "Véhicules au parc", "À encaisser"]) expect(k.includes(l), "indicateur manquant : " + l);
+  const drv = await ev(() => [...document.querySelectorAll(".drivers .drv .drv-h b")].map((x) => x.textContent.trim()));
+  expect(drv.join() === "Damien,Dylan,Laurent,Trump", "les quatre dépanneurs : " + drv.join());
+  expect((await ev(() => document.querySelectorAll(".drivers .drv.busy").length)) === 4, "tous en mission au départ");
+  await page.fill("[data-voice] [data-vq]", "Qui est libre ?"); await ev(() => document.querySelector("[data-voice] [data-vgo]").click()); await page.waitForTimeout(300);
+  expect(/libre/.test(await ev(() => document.querySelector("[data-vout]").textContent)), "l’assistant répond sur les dépanneurs");
   const plate = await ev(() => DEP.inPark()[0].vehicle.plate);
   await page.fill("[data-voice] [data-vq]", "Où est la " + plate + " ?"); await ev(() => document.querySelector("[data-voice] [data-vgo]").click()); await page.waitForTimeout(300);
   expect(/place/.test(await ev(() => document.querySelector("[data-vout]").textContent)), "l’assistant localise un véhicule au parc");
@@ -71,14 +77,17 @@ await step("Tableau de bord : journée du dépanneur et assistant", async () => 
   expect(/disponible/.test(await ev(() => document.querySelector("[data-vout]").textContent)), "camions disponibles");
 });
 
-await step("Missions : création, affectation, sur place, remorquage, dépôt au parc, facturation", async () => {
+await step("Missions : création, affectation d’un dépanneur, sur place, remorquage, dépôt au parc, facture réelle", async () => {
   await ev(() => APP.open("missions")); await page.waitForTimeout(500);
   const n0 = await ev(() => CX.S.missions.length);
   await ev(() => document.querySelector("[data-new]").click()); await page.waitForTimeout(300);
   await ev(() => { const set = (k, v) => { document.querySelector(`[name="${k}"]`).value = v; }; set("address", "8 rue de Paradis, 75010 Paris"); set("plate", "ZZ-999-ZZ"); set("make", "Renault"); set("model", "Clio"); set("cname", "Test Client"); set("cphone", "+33 6 00 00 00 00"); document.querySelector("[data-ok]").click(); }); await page.waitForTimeout(400);
   const m = await ev(() => CX.S.missions[0]);
   expect((await ev(() => CX.S.missions.length)) === n0 + 1 && m.status === "Demandée" && m.vehicle.plate === "ZZ-999-ZZ", "mission créée");
-  await ev((id) => DEP.assign(id, CX.S.trucks.find((t) => t.status === "Disponible").id), m.id);
+  expect((await ev((id) => DEP.assign(id, CX.S.trucks.find((t) => t.status === "Disponible").id, "D1"), m.id)) === null, "Damien est déjà en mission : affectation refusée");
+  await ev(() => { const cur = DEP.driverMission("D1"); DEP.setMissionStatus(cur.id, "Terminée"); });
+  expect((await ev(() => DEP.freeDrivers().map((d) => d.first).join())) === "Damien", "Damien libéré");
+  await ev((id) => DEP.assign(id, DEP.truckOfDriver("D1").id, "D1"), m.id);
   await ev((id) => DEP.setMissionStatus(id, "En route"), m.id);
   await ev((id) => DEP.setMissionStatus(id, "Sur place"), m.id);
   await ev((id) => DEP.setMissionStatus(id, "Remorquage"), m.id);
@@ -88,8 +97,10 @@ await step("Missions : création, affectation, sur place, remorquage, dépôt au
   await ev((id) => DEP.depositToParc(id, "N2", "N2-39"), m.id);
   const st2 = await ev((id) => ({ s: DEP.mission(id).status, parked: DEP.inPark().length, truck: DEP.truck(DEP.mission(id).truckId).status, g: DEP.inPark().find((g) => g.slot === "N2-39") }), m.id);
   expect(st2.s === "Déposée au parc" && st2.parked === before + 1 && st2.truck === "Disponible" && st2.g && st2.g.vehicle.plate === "ZZ-999-ZZ", "dépôt au parc : " + JSON.stringify({ s: st2.s, parked: st2.parked, truck: st2.truck }));
-  await ev((id) => DEP.setMissionStatus(id, "Facturée"), m.id);
-  expect((await ev((id) => DEP.mission(id).status, m.id)) === "Facturée", "facturée");
+  const inv0 = await ev(() => DEP.invoices().length);
+  await ev((id) => DEP.invoiceMission(id), m.id);
+  const fac = await ev((id) => ({ st: DEP.mission(id).status, n: DEP.invoices().length, inv: DEP.invoiceOf("mission", id) }), m.id);
+  expect(fac.st === "Facturée" && fac.n === inv0 + 1 && fac.inv && fac.inv.payer === "AXA", "facturée avec une vraie facture : " + JSON.stringify({ st: fac.st, n: fac.n }));
   await ev(() => APP.refresh()); await page.waitForTimeout(400);
   await top(); await shot("02-missions");
 });
@@ -113,12 +124,15 @@ await step("Flotte et agent IA : camions, chauffeurs, suggestions dépannage", a
   const f = await ev(() => ({ cards: document.querySelectorAll(".fleet .kcar").length, icons: document.querySelectorAll(".fleet .kcar svg.tic").length }));
   expect(f.cards === 12 && f.icons === 12, "flotte avec pictogrammes par type : " + JSON.stringify(f));
   await ev(() => APP.open("fleet", { tab: "chauffeurs" })); await page.waitForTimeout(300);
-  expect((await ev(() => document.querySelectorAll(".techs .techbtn").length)) === 12, "chauffeurs");
+  expect((await ev(() => document.querySelectorAll(".drivers .drv").length)) === 4, "quatre dépanneurs");
   await ev(() => APP.open("fleet", { tab: "bureau" })); await page.waitForTimeout(300);
-  expect((await ev(() => document.querySelectorAll(".staff").length)) === 4, "bureau : Joseph + 3 collaborateurs avec accès");
+  expect((await ev(() => document.querySelectorAll(".staff").length)) === 3, "bureau : Joseph + Moïse + Florence");
   await shot("04-flotte");
   await ev(() => APP.open("agent")); await page.waitForTimeout(500);
   const kinds = await ev(() => AGENT.suggest().map((x) => x.title));
+  const comp = await ev(() => { APP.open("mandats", { tab: "compagnies" }); return new Promise((r) => setTimeout(() => r(document.querySelector("#bo-content").innerText), 300)); });
+  expect(/Impayés/i.test(comp) && /Délai de paiement/i.test(comp), "tableau par compagnie");
+  await ev(() => APP.open("agent"));
   expect(kinds.some((t) => /Relancer|Abandon/.test(t)) && kinds.some((t) => /Facturer MI-/.test(t)), "suggestions dépannage : " + kinds.slice(0, 4).join(" | "));
   expect(!kinds.some((t) => /entretien · |Contrôle technique/.test(t)), "pas de suggestions atelier");
 });
@@ -183,7 +197,38 @@ await step("Agent IA : courriels classés, relances, WhatsApp tracé", async () 
   await top(); await shot("08-agent");
 });
 
+await step("Ma tournée (téléphone) : le dépanneur voit sa mission et avance d’un bouton", async () => {
+  const ph = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await ph.goto(base + "/motek/#bo/tournee"); await ph.waitForTimeout(2200);
+  await ph.evaluate(() => { localStorage.setItem("motek-tour-done", "1"); APP.open("tournee", { who: "D2" }); }); await ph.waitForTimeout(500);
+  const t = await ph.evaluate(() => document.querySelector("#bo-content").innerText);
+  expect(/Dylan/.test(t) && /Sur place|En route|Remorquage|Affectée|Libre/.test(t), "écran du dépanneur : " + t.slice(0, 80));
+  const st0 = await ph.evaluate(() => (DEP.driverMission("D2") || {}).status);
+  expect(st0 === "Sur place", "Dylan est sur place : " + st0);
+  await ph.evaluate(() => document.querySelector('[data-st="Remorquage"]').click()); await ph.waitForTimeout(400);
+  expect((await ph.evaluate(() => DEP.driverMission("D2").status)) === "Remorquage", "bouton « Je remorque »");
+  const overflow = await ph.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
+  expect(!overflow, "pas de défilement horizontal sur téléphone");
+  await ph.screenshot({ path: `${out}/09-ma-tournee-telephone.png` });
+  await ph.close();
+});
+
+await step("iPad : tableau de bord en portrait et en paysage sans débordement", async () => {
+  for (const [w, h, n] of [[1180, 820, "10-ipad-paysage"], [834, 1194, "11-ipad-portrait"]]) {
+    const p = await browser.newPage({ viewport: { width: w, height: h } });
+    await p.goto(base + "/motek/#bo/dashboard"); await p.waitForTimeout(2000);
+    await p.evaluate(() => localStorage.setItem("motek-tour-done", "1"));
+    const o = await p.evaluate(() => ({ x: document.querySelector("#bo-content").scrollWidth > document.querySelector("#bo-content").clientWidth + 1, drv: document.querySelectorAll(".drivers .drv").length }));
+    expect(!o.x && o.drv === 4, n + " : " + JSON.stringify(o));
+    await p.screenshot({ path: `${out}/${n}.png` });
+    await p.close();
+  }
+});
+
 await step("Prise en main : visite page par page", async () => {
+  // Les pages téléphone / iPad ont modifié l’état : on recharge pour repartir d’une carte à jour.
+  await page.goto(base + "/motek/#bo/dashboard"); await page.waitForTimeout(2200);
+  await page.reload(); await page.waitForTimeout(2200);
   await ev(() => TOUR.open(0)); await page.waitForTimeout(800);
   expect((await ev(() => APP.mode)) === "map" && !!(await ev(() => document.querySelector(".coach"))), "première étape sur la carte");
   for (let k = 0; k < 4; k++) { await ev(() => document.querySelector(".coach [data-next]").click()); await page.waitForTimeout(500); }

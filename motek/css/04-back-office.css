@@ -689,3 +689,116 @@ body.no-map .coach{top:72px}
 .coach .btn{height:32px;padding:0 12px;border-radius:9px;font-weight:700;font-size:12.5px;border:1px solid var(--line2);background:#fff;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .coach .btn.pri{background:var(--red);border-color:var(--red);color:#fff}
 .coach .btn:disabled{opacity:.45;cursor:default}
+
+/* ==========================================================================
+   MOTEK Dépann — tableau de bord de Joseph, dépanneurs, Ma tournée (iPad / téléphone)
+   ========================================================================== */
+.bo .kpis.k4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.bo .kpis.k5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.bo .kpis.hero4 .kpi{min-height:124px;padding:16px 18px 14px}
+.bo .kpis.hero4 .kpi .v{font-size:32px;margin-top:8px}
+.bo .kpis.hero4 .kpi .lb{font-size:12px}
+.bo .kpis.hero4 .kpi .s{font-size:12px}
+.bo .btn.big{height:46px;padding:0 18px;font-size:14px;border-radius:12px;gap:9px}
+.bo .btn.big svg.i{width:18px;height:18px}
+.bo .dash h2.sec{margin-top:6px}
+/* bandeau des dépanneurs */
+.bo .drivers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.bo .drv{background:#fff;border:1px solid #e8eaee;border-radius:16px;padding:14px 14px 12px;box-shadow:0 1px 2px rgba(16,18,24,.05),0 6px 20px rgba(16,18,24,.05);cursor:pointer;min-width:0;transition:transform .15s,box-shadow .15s;position:relative}
+.bo .drv:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.bo .drv.free{background:linear-gradient(180deg,#fff,#f3faf5)}
+.bo .drv-h{display:flex;align-items:center;gap:11px}
+.bo .drv-h .bav{width:46px;height:46px;font-size:15px}
+.bo .drv-h b{display:block;font-size:16px;letter-spacing:-.01em}
+.bo .drv-h small{display:block;font-size:11.5px;color:var(--ink3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bo .drv-h > div{min-width:0;flex:1}
+.bo .drv-call{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:var(--green-soft);color:var(--green);flex:none}
+.bo .drv-call:hover{background:#d6efe0}
+.bo .drv-m{display:flex;align-items:center;gap:8px;margin-top:12px}
+.bo .drv-since{font-size:11.5px;color:var(--ink3)}
+.bo .drv-k{margin-top:8px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.bo .drv-a{margin-top:5px;font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bo .drv.busy{box-shadow:inset 0 0 0 1.5px var(--amber-soft),0 1px 2px rgba(16,18,24,.05),0 6px 20px rgba(16,18,24,.05)}
+/* camions en miniature */
+.bo .trucks-mini{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.bo .tm{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px 6px;border-radius:10px;background:#f6f7f9;color:var(--ink2);cursor:pointer;font-size:10.5px;font-weight:800}
+.bo .tm.ok{color:var(--green);background:var(--green-soft)}.bo .tm.busy{color:var(--amber);background:var(--amber-soft)}.bo .tm.ko{color:#b42318;background:#fdecea}
+.bo .tm svg.tic{width:26px;height:auto}
+/* fiche mission : frise et dépanneur */
+.bo .mflow{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px}
+.bo .mflow span{font-size:11px;font-weight:700;padding:4px 9px;border-radius:7px;background:#f1f3f5;color:var(--ink3)}
+.bo .mflow span.done{background:var(--green-soft);color:var(--green)}.bo .mflow span.cur{background:var(--red);color:#fff}
+.bo .drv-line{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:12px;background:#f6f7f9}
+.bo .drv-line > div{flex:1;min-width:0}.bo .drv-line b{display:block;font-size:14px}.bo .drv-line small{color:var(--ink3);font-size:11.5px}
+.bo .mwho{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none;text-align:right}
+/* Ma tournée (téléphone) */
+.bo .tour-page{max-width:640px}
+.bo .tp-pick h1{font-size:26px;letter-spacing:-.02em;margin-bottom:6px}
+.bo .tp-people{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px}
+.bo .tp-person{display:flex;flex-direction:column;align-items:center;gap:8px;padding:22px 12px 18px;border-radius:18px;background:#fff;border:1.5px solid var(--line2);font:inherit;cursor:pointer;min-height:140px}
+.bo .tp-person:hover{border-color:var(--red)}
+.bo .tp-person b{font-size:17px}.bo .tp-person small{color:var(--ink3);font-size:12px}
+.bo .tp-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.bo .tp-head > div{flex:1;min-width:0}.bo .tp-head b{font-size:19px;display:block;letter-spacing:-.01em}.bo .tp-head small{color:var(--ink3);font-size:12px;display:block;margin-top:2px}
+.bo .tp-cur h2{font-size:24px;letter-spacing:-.02em;margin:10px 0 12px}
+.bo .tp-veh{display:flex;align-items:center;gap:14px}
+.bo .tp-addr{display:flex;align-items:center;gap:10px;margin-top:14px;padding:14px;border-radius:14px;background:#f6f7f9;text-decoration:none;color:var(--ink);font-weight:700;font-size:15px;line-height:1.3}
+.bo .tp-addr span{flex:1}.bo .tp-addr em{font-style:normal;font-size:12px;color:var(--red-d);white-space:nowrap}
+.bo .tp-addr svg.i{color:var(--red);flex:none}
+.bo .tp-dest{margin-top:10px;font-size:13px;color:var(--ink2);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.bo .tp-note{width:100%;margin-top:6px;padding:10px 12px;border-radius:10px;background:var(--amber-soft);color:var(--amber);font-weight:700;display:flex;gap:6px;align-items:center}
+.bo .tp-steps{display:flex;gap:4px;margin-top:16px}
+.bo .tp-steps span{flex:1;text-align:center;font-size:10.5px;font-weight:700;padding:6px 2px;border-radius:7px;background:#f1f3f5;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bo .tp-steps span.done{background:var(--green-soft);color:var(--green)}.bo .tp-steps span.cur{background:var(--red);color:#fff}
+.bo .tp-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:16px}
+.bo .tp-actions .btn.big{height:62px;font-size:16px;border-radius:16px}
+.bo .tp-contact{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.bo .tp-contact .btn.big{height:52px;font-size:13.5px;padding:0 8px}
+.bo .tp-free h2{display:flex;align-items:center;gap:8px;font-size:22px;color:var(--green)}
+.bo .tp-free h2 svg.i{color:var(--green)}
+/* iPad paysage (≤ 1180) */
+@media (max-width:1180px){
+  .bo .kpis.k5{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .bo .trucks-mini{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .bo .dash-main{grid-template-columns:minmax(0,1fr) 340px}
+}
+/* iPad portrait (≤ 1100) : rail d'icônes à gauche, deux dépanneurs par ligne */
+@media (max-width:1100px){
+  .bo .kpis.k4,.bo .kpis.hero4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bo .drivers{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bo .dash-main{grid-template-columns:minmax(0,1fr)}
+  .bo .trucks-mini{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .bo .pg-h h1{font-size:23px}
+}
+/* téléphone (≤ 760) */
+@media (max-width:760px){
+  .bo .kpis.k4,.bo .kpis.hero4,.bo .kpis.k5{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bo .kpis.hero4 .kpi{min-height:104px;padding:12px 14px}
+  .bo .kpis.hero4 .kpi .v{font-size:26px}
+  .bo .drivers{grid-template-columns:minmax(0,1fr)}
+  .bo .trucks-mini{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .bo .pg-h{align-items:flex-start;flex-direction:column}
+  .bo .pg-h .act .btn{flex:1}
+  .bo .tp-contact{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .bo .tp-contact .btn.big{font-size:12px;gap:5px}
+  .bo .mwho{display:none}
+  .bo .todo .ta .btn{min-width:0}
+  #bo-content{padding:12px 12px 90px}
+}
+/* téléphone : en-tête compact, rail étroit (écran « Ma tournée » du dépanneur) */
+@media (max-width:760px){
+  .top{gap:8px;padding:0 10px}
+  .top .modes,.top .zone,.top .user > div:not(.av),.top .user > svg,#helpbtn,#gbtn{display:none}
+  .top .brand{min-width:0}.top .brand .nm{font-size:14.5px}.top .brand .mark{width:30px;height:30px}
+  .top .search{flex:1 1 auto;width:auto;min-width:0}
+  .top .search .box{justify-content:flex-start;padding:0 10px}.top .search .box input{display:block}
+  .bo-nav{width:56px;padding:8px 4px 16px}
+  .bo-nav a{min-height:44px}.bo-nav a svg{width:20px;height:20px}
+  body.mode-bo .top .search{flex-basis:auto}
+}
+@media (max-width:1280px) and (min-width:1101px){
+  .bo .drv-h .bav{width:40px;height:40px;font-size:13px}
+  .bo .drv-h b{font-size:15px}
+  .bo .drv-a{font-size:11.5px}
+}
+@media (max-width:760px){.top .bell,.top .syncpill{display:none!important}.top .user{padding:0}}

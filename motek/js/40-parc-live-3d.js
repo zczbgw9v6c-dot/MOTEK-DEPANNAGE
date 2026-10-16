@@ -127,7 +127,8 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
     box(office, 0.25, 3, OFFICE.d, wallM, OFFICE.x - OFFICE.w / 2, 1.6, OFFICE.z); box(office, 0.25, 3, OFFICE.d, wallM, OFFICE.x + OFFICE.w / 2, 1.6, OFFICE.z);
     box(office, OFFICE.w, 2.2, 0.12, mat(0x9fc3e6, { transparent: true, opacity: 0.35, roughness: 0.1, metalness: 0.2 }), OFFICE.x, 1.3, OFFICE.z + OFFICE.d / 2, false);
     box(office, OFFICE.w + 0.8, 0.25, OFFICE.d + 0.8, mat(0xdde1e6, { transparent: true, opacity: 0.55 }), OFFICE.x, 3.2, OFFICE.z, false);
-    const staff = (CX.S && CX.S.office) || [];
+    const me = CX.S && CX.emp ? CX.emp(CX.S.meId) : null;
+    const staff = [me].concat((CX.S && CX.S.office) || []).filter(Boolean).slice(0, 3);
     [[-4], [0], [4]].forEach(([dx], i) => {
       const x = OFFICE.x + dx, z = OFFICE.z - 1;
       box(office, 2.4, 0.08, 1.2, deskM, x, 0.95, z); for (const [a, b] of [[-1.1, -0.5], [1.1, -0.5], [-1.1, 0.5], [1.1, 0.5]]) box(office, 0.08, 0.9, 0.08, mat(0x5b6670), x + a, 0.5, z + b, false);
@@ -136,7 +137,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
       box(office, 0.7, 0.8, 0.5, mat(col), x, 0.9, z + 1.1); const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 14, 12), mat(0xf1d2b6)); head.position.set(x, 1.6, z + 1.1); head.castShadow = true; office.add(head);
       if (staff[i]) { const s = label(staff[i].first, { size: 34, w: 3.6 }); s.position.set(x, 2.5, z + 1.1); office.add(s); }
     });
-    const s = label("Bureau · accueil & gestion", { bg: "rgba(124,58,237,.95)", fg: "#fff", size: 40, w: 10 }); s.position.set(OFFICE.x, 4.6, OFFICE.z); office.add(s);
+    const s = label("Bureau", { bg: "rgba(124,58,237,.95)", fg: "#fff", size: 44, w: 6 }); s.position.set(OFFICE.x, 4.6, OFFICE.z); office.add(s);
     office.userData = { kind: "office" };
   })();
 
@@ -241,9 +242,10 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
     });
     S.trucks.slice(0, 12).forEach((t, i) => {
       const p = bayPos(i);
-      if (t.status === "En mission") { const s = label(t.name + " · en mission", { bg: "rgba(255,140,0,.22)", fg: "#b96400", size: 28, w: 5.4 }); s.position.set(p.x, 0.7, p.z); s.userData = { kind: "truck", id: t.id }; dyn.add(s); pick.push(s); return; }
+      const drv = t.driverId ? DEP.driver(t.driverId) : null;
+      if (t.status === "En mission") { const s = label((drv ? drv.first + " · " : "") + t.name + " · en mission", { bg: "rgba(255,140,0,.22)", fg: "#b96400", size: 28, w: 5.8 }); s.position.set(p.x, 0.7, p.z); s.userData = { kind: "truck", id: t.id }; dyn.add(s); pick.push(s); return; }
       const tr = truck(t, TONE[t.status] || 0x1b9a55); tr.position.set(p.x, 0, p.z); tr.rotation.y = p.row ? 0 : Math.PI;
-      const s = label(t.name + (t.kind === "Panier" ? " · Hilux" : ""), { size: 32, w: 5 }); s.position.set(0, 4.4, 0); tr.add(s);
+      const s = label(t.name + (drv ? " · " + drv.first : t.kind === "Panier" ? " · Hilux" : ""), { size: 32, w: 5 }); s.position.set(0, 4.4, 0); tr.add(s);
       if (t.status === "Entretien") { const cone = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.9, 10), mat(0xff6a00)); cone.position.set(p.x + 2.6, 0.45, p.z + (p.row ? -6 : 6)); dyn.add(cone); }
       tr.userData = { kind: "truck", id: t.id }; dyn.add(tr); pick.push(tr);
     });
@@ -277,7 +279,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
   function showTruck(t) {
     const m = CX.S.missions.find((x) => x.truckId === t.id && !["Terminée", "Facturée"].includes(x.status)), d = t.driverId ? DEP.driver(t.driverId) : null;
     detail.innerHTML = `<div class="pd"><div class="pd-h"><div class="pd-ic" style="background:#1768ee;display:grid;place-items:center;color:#fff">${UI.truckIcon ? UI.truckIcon(t.kind, 26, "#fff") : UI.icon("truck", 20)}</div><div><div class="pd-k">Dépôt camions · ${esc(t.kind)}</div><h3>${esc(t.name)}</h3><div class="pd-s">${esc(t.brand || "")}${t.year ? " " + t.year : ""} · ${esc(t.plate)} ${BO.chip(t.status, t.status === "Disponible" ? "green" : t.status === "Entretien" ? "red" : "amber", true)}</div></div><button class="pd-x" data-x>${UI.icon("x", 16)}</button></div>
-      <dl class="kv"><dt>Chauffeur</dt><dd>${d ? esc(d.name) + "<br>" + esc(d.phone || "") : "—"}</dd><dt>Kilométrage</dt><dd>${esc(BO.num(t.km))} km</dd>${t.ct ? `<dt>Contrôle technique</dt><dd>${esc(U.fmtD(t.ct))}</dd>` : ""}${t.notes ? `<dt>Notes</dt><dd>${esc(t.notes)}</dd>` : ""}</dl>
+      <dl class="kv"><dt>Dépanneur</dt><dd>${d ? esc(d.first) + (d.phone ? ' · <a class="lnk" href="tel:' + esc(String(d.phone).replace(/\s/g, '')) + '">' + esc(d.phone) + '</a>' : '') : "camion de réserve, sans dépanneur attitré"}</dd><dt>Kilométrage</dt><dd>${esc(BO.num(t.km))} km</dd>${t.ct ? `<dt>Contrôle technique</dt><dd>${esc(U.fmtD(t.ct))}</dd>` : ""}${t.notes ? `<dt>Notes</dt><dd>${esc(t.notes)}</dd>` : ""}</dl>
       ${m ? `<div class="form-note mt">${UI.icon("pin", 15)}<div><b>${esc(m.no)}</b> · ${esc(m.status)}<br>${esc(m.kind)} · ${esc(m.address)}</div></div>` : ""}
       <div class="pd-acts">${m ? `<button class="btn pri" data-open="missions:${m.id}">${UI.icon("truck", 14)}Ouvrir la mission</button>` : `<button class="btn pri" data-open="missions::new">${UI.icon("plus", 14)}Nouvelle mission</button>`}<button class="btn" data-open="fleet">${UI.icon("lift", 14)}Flotte</button></div></div>`;
     bindDetail();
@@ -285,7 +287,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
   function showOffice() {
     const staff = CX.S.office || [], me = CX.emp(CX.S.meId);
     const mods = APP.modules ? APP.modules() : [];
-    detail.innerHTML = `<div class="pd"><div class="pd-h"><div class="pd-ic" style="background:#7c3aed;display:grid;place-items:center;color:#fff">${UI.icon("users", 20)}</div><div><div class="pd-k">Bureau · 25 av. Claude Vellefaux</div><h3>Accueil & gestion</h3><div class="pd-s">${staff.length} collaborateurs avec un accès MOTEK</div></div><button class="pd-x" data-x>${UI.icon("x", 16)}</button></div>
+    detail.innerHTML = `<div class="pd"><div class="pd-h"><div class="pd-ic" style="background:#7c3aed;display:grid;place-items:center;color:#fff">${UI.icon("users", 20)}</div><div><div class="pd-k">Bureau · 25 av. Claude Vellefaux</div><h3>Le bureau</h3><div class="pd-s">Joseph, ${esc(staff.map((p) => p.first).join(" et "))}</div></div><button class="pd-x" data-x>${UI.icon("x", 16)}</button></div>
       <div class="pd-staff">${me ? `<div class="ps"><span class="bav" style="background:#121418">${esc(me.ini)}</span><div><b>${esc(me.first)}</b><small>${esc(me.title || "Gérant")} · tous les accès</small></div></div>` : ""}${staff.map((p) => `<div class="ps"><span class="bav" style="background:${esc(p.color)}">${esc(p.ini)}</span><div><b>${esc(p.name)}</b><small>${esc(p.title)}</small><small class="acc">${(p.access || []).map((a) => { const m = mods.find((x) => x.id === a); return esc(m ? m.label : a); }).join(" · ")}</small></div></div>`).join("")}</div>
       <div class="pd-acts"><button class="btn pri" data-open="fleet:bureau">${UI.icon("users", 14)}Gérer les accès</button><button class="btn" data-open="dashboard">${UI.icon("dashboard", 14)}Tableau de bord</button></div></div>`;
     bindDetail();
@@ -323,7 +325,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
     DEPOT: () => fitRect(DEPOT, 0.25, 0.85, 1.05),
     OFFICE: () => flyTo({ x: OFFICE.x, z: OFFICE.z }, 30, 0.2, 1.0),
   };
-  const PLACES = [["ALL", "cube", "Site", "Parc, dépôt et bureau"], ["PARC", "layers", "Parc", "Trois niveaux de gardiennage"], ["DEPOT", "truck", "Camions", "Dépôt : paniers, plateaux, porte-voitures"], ["OFFICE", "users", "Bureau", "Accueil, sinistres, facturation"]];
+  const PLACES = [["ALL", "cube", "Site", "Parc, dépôt et bureau"], ["PARC", "layers", "Parc", "Trois niveaux de gardiennage"], ["DEPOT", "truck", "Camions", "Dépôt : paniers, plateaux, porte-voitures"], ["OFFICE", "users", "Bureau", "Joseph, Moïse et Florence"]];
   const ctl = view.querySelector(".ctl");
   const zt = $("#zt"), zs = $("#zs"), ztag = $("#ztag"), zbtn = $("#zbtn"), zmenu = $("#zmenu");
   const TAGS = { ALL: "SITE", PARC: "PARC", DEPOT: "DEP", OFFICE: "BUR" };

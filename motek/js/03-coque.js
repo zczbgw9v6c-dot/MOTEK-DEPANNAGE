@@ -77,7 +77,7 @@
 
   /** Ouvre un module du back-office (bascule en back-office si besoin). */
   function open(id, p = {}) {
-    let m = modules.find((x) => x.id === id) || modules[0];
+    let m = modules.find((x) => x.id === id && isActive(x)) || modules.find((x) => x.id === id) || modules[0];
     if (m && !isActive(m)) m = modules.find((x) => x.id === "dashboard") || modules[0];
     if (!m) return;
     current = m.id;
@@ -104,7 +104,7 @@
     if (mode === "bo" && current) {
       const el = $("#bo-content");
       const st = el.scrollTop;
-      const m = modules.find((x) => x.id === current);
+      const m = modules.find((x) => x.id === current && isActive(x)) || modules.find((x) => x.id === current);
       el.innerHTML = "";
       try {
         m.render(el, params);
@@ -323,8 +323,31 @@
           go: () => open("parts", { tab: "commandes", id: o.id }),
         });
     });
-    (window.MAP_SEARCH ? window.MAP_SEARCH(q) : []).forEach((x) => out.push(x));
+    /* ---- dépannage : missions, véhicules au parc, factures, dépanneurs, bureau ---- */
+    (S.missions || []).forEach((x) => {
+      if (m(x.no, x.vehicle.plate, x.vehicle.make + " " + x.vehicle.model, x.address, x.customer.name, x.mandant, x.ref))
+        out.push({ grp: "Missions", ic: "truck", t: x.no + " · " + x.vehicle.make + " " + x.vehicle.model, s: x.status + " · " + x.kind + " · " + x.address, plate: x.vehicle.plate, go: () => open("missions", { id: x.id }) });
+    });
+    (S.gardes || []).filter((g) => !g.outAt).forEach((g) => {
+      if (m(g.no, g.vehicle.plate, g.vehicle.make + " " + g.vehicle.model, g.mandant, g.ref, g.slot, g.owner && g.owner.name))
+        out.push({ grp: "Parc", ic: "layers", t: g.vehicle.make + " " + g.vehicle.model + " · " + g.slot, s: g.mandant + " · " + (g.step || "") + (g.ref ? " · " + g.ref : ""), plate: g.vehicle.plate, onMap: true, go: () => focus({ type: "garde", id: g.id }) });
+    });
+    (S.dinvoices || []).forEach((i) => {
+      if (m(i.no, i.payer, i.ref, i.plate))
+        out.push({ grp: "Factures", ic: "invoice", t: i.no + " · " + i.payer, s: i.label + " · " + U.chf2(i.ttc) + " · " + i.status, go: () => open("invoices", { id: i.id }) });
+    });
+    (S.drivers || []).forEach((d) => {
+      if (m(d.name, d.first))
+        out.push({ grp: "Équipe", ic: "user", t: d.first, s: "Dépanneur · " + (((S.missions || []).find((x) => x.driverId === d.id && ["Affectée", "En route", "Sur place", "Remorquage"].includes(x.status)) || {}).no || "libre"), go: () => open("fleet", { tab: "chauffeurs" }) });
+    });
+    (S.office || []).forEach((p) => {
+      if (m(p.name, p.title)) out.push({ grp: "Équipe", ic: "users", t: p.name, s: p.title, go: () => open("fleet", { tab: "bureau" }) });
+    });
+    (window.MAP_SEARCH ? window.MAP_SEARCH(q) : []).filter((x) => x.grp !== "Parc" || !out.some((y) => y.grp === "Parc" && y.plate === x.t.split(" · ")[0])).forEach((x) => out.push(x));
     const ord = [
+      "Missions",
+      "Parc",
+      "Camions",
       "Ordres de réparation",
       "Clients",
       "Véhicules",
@@ -346,8 +369,10 @@
     let items = [],
       hl = 0;
     const ph = () => {
-      inp.placeholder =
-        mode === "bo"
+      const dep = CX.activityOn("depannage") && !CX.activityOn("atelier");
+      inp.placeholder = dep
+        ? (mode === "bo" ? "Rechercher une plaque, une mission, un dossier assureur, une facture…" : "Plaque, mission, dossier, camion…")
+        : mode === "bo"
           ? "Rechercher plaque, client, n° OR, devis, sinistre, facture…"
           : "Plaque, client, n° OR, sinistre…";
     };
