@@ -1,7 +1,7 @@
 // Règles métier et persistance du socle v3, issues de l'audit Codex du 15 octobre 2026.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { loadCore, sleep } from "./v3-harness.ts";
+import { loadCore, sleep, KEY } from "./v3-harness.ts";
 
 const fresh = () => loadCore({ sleepless: true }).CX;
 const pickRO = (x: any) => x.S.ros.find((r: any) => !r.claimId && !x.cust(r.customerId).fleet && !x.S.invoices.some((i: any) => i.roId === r.id) && x.roTotals(r).ttc > 0);
@@ -46,7 +46,7 @@ test("conflit 409 : les modifications locales sont mises de côté, pas perdues,
   assert.ok(h.CX.S.customers.some((c: any) => c.id === "C-REMOTE"), "l'écran montre la version serveur");
   assert.ok(h.CX.sync.conflict, "le conflit est signalé");
   assert.ok(JSON.parse(h.CX.sync.conflict.local).customers.some((c: any) => c.id === "C-LOCAL"), "la version locale est conservée");
-  assert.ok(h.values.get("motek-v3:conflict"), "et sauvegardée dans le navigateur");
+  assert.ok(h.values.get(KEY + ":conflict"), "et sauvegardée dans le navigateur");
   h.CX.resolveConflict("local");
   await sleep(400);
   assert.ok(h.remote.state.customers.some((c: any) => c.id === "C-LOCAL"), "reprise : le serveur reçoit la version locale");

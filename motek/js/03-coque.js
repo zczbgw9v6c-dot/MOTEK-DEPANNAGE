@@ -582,7 +582,13 @@
     renderNav();
     initGloves();
     const h = location.hash.slice(1);
-    if (!CX.activityOn("atelier")) document.body.classList.add("no-map");
+    if (!CX.activityOn("atelier")) {
+      document.body.classList.add("no-map");
+      // Sans carte 3D, c'est la coque qui fait vivre l'horloge de l'en-tête.
+      const tick = () => { const c = $("#clock"); if (c) c.textContent = U.hm(U.nowMin()); };
+      tick();
+      setInterval(tick, 15000);
+    }
     if (h.startsWith("bo") || !CX.activityOn("atelier")) {
       current = h.split("/")[1] || "dashboard";
       setMode("bo");

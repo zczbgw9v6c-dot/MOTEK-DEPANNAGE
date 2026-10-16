@@ -4,14 +4,16 @@ import vm from "node:vm";
 import { readFileSync } from "node:fs";
 
 const source = readFileSync(new URL("../motek/js/01-socle-de-donnes-partag.js", import.meta.url), "utf8");
+// Clé de cache déclarée par le socle (diffère entre MOTEK garage et MOTEK Dépannage).
+export const KEY = (source.match(/const KEY = "([^"]+)"/) || [, "motek-v3"])[1];
 
 export type Remote = { state: any; revision: number; conflictOnce?: boolean };
 
 export function loadCore(opts: { cached?: any; revision?: number; remote?: Remote; sleepless?: boolean } = {}) {
   const values = new Map<string, string>();
   if (opts.cached) {
-    values.set("motek-v3", JSON.stringify(opts.cached));
-    values.set("motek-v3:rev", String(opts.revision ?? 0));
+    values.set(KEY, JSON.stringify(opts.cached));
+    values.set(KEY + ":rev", String(opts.revision ?? 0));
   }
   const remote: Remote = opts.remote || { state: null, revision: 0 };
   const posts: any[] = [];
