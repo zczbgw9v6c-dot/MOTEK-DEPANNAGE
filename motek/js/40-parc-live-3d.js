@@ -123,7 +123,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
     box(office, 0.25, 3, OFFICE.d, wallM, OFFICE.x - OFFICE.w / 2, 1.6, OFFICE.z); box(office, 0.25, 3, OFFICE.d, wallM, OFFICE.x + OFFICE.w / 2, 1.6, OFFICE.z);
     box(office, OFFICE.w, 2.2, 0.12, mat(0x9fc3e6, { transparent: true, opacity: 0.35, roughness: 0.1, metalness: 0.2 }), OFFICE.x, 1.3, OFFICE.z + OFFICE.d / 2, false);
     box(office, OFFICE.w + 0.8, 0.25, OFFICE.d + 0.8, mat(0xdde1e6, { transparent: true, opacity: 0.55 }), OFFICE.x, 3.2, OFFICE.z, false);
-    const staff = (CX.S && CX.S.office) || [];
+    const staff = [{first:CX.emp(CX.S.meId)?.first || "Joseph",color:"#121418"},...((CX.S && CX.S.office) || [])];
     [[-4], [0], [4]].forEach(([dx], i) => {
       const x = OFFICE.x + dx, z = OFFICE.z - 1;
       box(office, 2.4, 0.08, 1.2, deskM, x, 0.95, z); for (const [a, b] of [[-1.1, -0.5], [1.1, -0.5], [-1.1, 0.5], [1.1, 0.5]]) box(office, 0.08, 0.9, 0.08, mat(0x5b6670), x + a, 0.5, z + b, false);

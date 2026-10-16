@@ -15,6 +15,10 @@
   const TONE = { 'Émise': 'amber', 'Payée': 'green', 'En retard': 'red', 'Partiel': 'amber', 'Avoir':'purple', 'Soldée par avoir':'green' };
   const nextNo = () => 'FD-' + (Math.max(2026400, ...list().map(i => Number(i.no.replace('FD-', '')) || 0)) + 1);
   const LABELS = {
+    'Remorquage moto': m=>'Remorquage moto / deux-roues — '+m.address+' → '+(m.destination || 'garage'),
+    'Démarrage batterie': ()=>'Démarrage au booster — diagnostic sur place',
+    'Ouverture de porte': ()=>'Ouverture de porte du véhicule',
+    'Dépannage auto': m=>'Dépannage automobile — '+m.address,
     'Remorquage simple': m => 'Remorquage — ' + m.address + ' → ' + (m.destination || 'garage'),
     'Panne batterie': () => 'Dépannage sur place — diagnostic, démarrage ou remplacement de batterie',
     'Crevaison': () => 'Dépannage sur place — roue de secours / réparation crevaison',
@@ -29,6 +33,7 @@
   /** Facture une mission terminée / déposée : une ligne de dépannage + options. */
   function billMission(m) {
     if (!m || !['Terminée', 'Déposée au parc'].includes(m.status)) return null;
+    if(m.serviceId && !m.priceConfirmed){UI.toast('Prix à confirmer','Le montant web est un prix de départ : faites valider le montant dans la mission.','warn');return null;}
     if(m.insurance?.status==='Refusée' && m.mandant!=='Particulier'){UI.toast('Prise en charge refusée','Confirmez le payeur avec le propriétaire et modifiez le mandant avant de facturer.','warn');return null;}
     if (list().some(i => i.kind === 'mission' && i.srcId === m.id)) { UI.toast('Déjà facturée', m.no, 'warn'); return null; }
     const lines = [{ label: (LABELS[m.kind] || (x => x.kind + ' — ' + x.address))(m), qty: 1, price: m.price }];
