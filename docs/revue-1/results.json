@@ -1,0 +1,85 @@
+{
+  "results": [
+    [
+      true,
+      "Parc live 3D : carte par défaut, véhicules gardés et dépôt des camions"
+    ],
+    [
+      true,
+      "Profil dépanneur : navigation sans modules atelier"
+    ],
+    [
+      true,
+      "Tableau de bord : journée du dépanneur et assistant"
+    ],
+    [
+      true,
+      "Missions : création, affectation, sur place, remorquage, dépôt au parc, facturation"
+    ],
+    [
+      true,
+      "Parc : plan des niveaux, statuts selon la durée, sortie avec frais"
+    ],
+    [
+      true,
+      "Flotte et agent IA : camions, chauffeurs, suggestions dépannage"
+    ],
+    [
+      true,
+      "Mandats & assurances : statuts, demande de prise en charge, boîte mail simulée"
+    ],
+    [
+      true,
+      "Facturation dépanneur : libellés métier, facture de mission, encaissement"
+    ],
+    [
+      true,
+      "Commandes fournisseurs : besoin batterie → commande → e-mail au fournisseur → posée"
+    ],
+    [
+      true,
+      "Agent IA : courriels classés, relances, WhatsApp tracé"
+    ],
+    [
+      true,
+      "Prise en main : visite page par page"
+    ],
+    [
+      true,
+      "Persistance : l’état est partagé entre deux pages"
+    ],
+    [
+      true,
+      "Planning : réaffectation tactile et glisser-déposer"
+    ],
+    [
+      true,
+      "Poste chauffeur : téléphone, photo locale, étapes et entrée au parc en un geste"
+    ],
+    [
+      true,
+      "Parc : reçu imprimable et relance groupée sans envoi automatique"
+    ],
+    [
+      true,
+      "Assureurs : synthèse par compagnie et paiement annoncé sans encaissement"
+    ],
+    [
+      true,
+      "Facturation : acompte, avoir, export équilibré et absence de doublon"
+    ],
+    [
+      true,
+      "Compteurs : chaque indicateur ouvre sa liste filtrée"
+    ],
+    [
+      true,
+      "3D : objet conservé sur une note, seul le véhicule modifié est reconstruit"
+    ],
+    [
+      true,
+      "iPad paysage et portrait : carte et panneaux accessibles, sans débordement"
+    ]
+  ],
+  "errors": []
+}

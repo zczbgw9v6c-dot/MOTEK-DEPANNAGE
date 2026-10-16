@@ -16,7 +16,7 @@
   const nextNo = () => 'CB-' + (1040 + list().length + 1);
   const BATT = ['Batterie 12 V 60 Ah L2 (Clio, 208, C3)', 'Batterie 12 V 70 Ah L3 (Golf, 308)', 'Batterie AGM 12 V 80 Ah L4 (start-stop)', 'Batterie EFB 12 V 70 Ah L3', 'Batterie 12 V 95 Ah L5 (utilitaires)', 'Pneu 205/55 R16', 'Pneu 195/65 R15', 'Jerrican 20 L SP95', 'Jerrican 20 L gazole'];
 
-  function setStatus(o, s, text) { o.status = s; o.history.unshift({ at: CX.now(), text: text || s, by: CX.S.meId }); if (s === 'Posée' && o.missionId) { const m = DEP.mission(o.missionId); if (m) m.history.unshift({ at: CX.now(), text: 'Batterie posée : ' + o.item, by: CX.S.meId }); } CX.touch('supply'); }
+  function setStatus(o, s, text) { if (o.status === s) return o; const allowed = { 'À commander': ['Commandée', 'Annulée'], 'Commandée': ['Reçue', 'Annulée'], 'Reçue': ['Posée', 'Annulée'], 'Posée': [], 'Annulée': [] }; if (!(allowed[o.status] || []).includes(s)) { UI.toast('Étape impossible', 'Respectez commande, réception puis pose.', 'warn'); return null; } o.status = s; o.history.unshift({ at: CX.now(), text: text || s, by: CX.S.meId }); if (s === 'Posée' && o.missionId) { const m = DEP.mission(o.missionId); if (m) m.history.unshift({ at: CX.now(), text: 'Batterie posée : ' + o.item, by: CX.S.meId }); } CX.touch('supply'); }
   function orderForm(o, preset = {}) {
     BO.formModal({ title: o ? o.no + ' · ' + o.item : 'Nouvelle commande', wide: true, cols: 'c3',
       fields: [{ k: 'item', label: 'Article', req: true, full: true, list: BATT, ph: 'Batterie 12 V 70 Ah L3…' }, { k: 'qty', label: 'Quantité', type: 'number', min: 1, req: true }, { k: 'price', label: 'Prix unitaire HT (€)', type: 'number', min: 0 }, { k: 'supplierId', label: 'Fournisseur', type: 'select', opts: suppliers().map(s => [s.id, s.name]), req: true }, { k: 'plate', label: 'Véhicule concerné (plaque)' }, { k: 'missionId', label: 'Mission', type: 'select', opts: CX.S.missions.filter(m => !['Facturée'].includes(m.status)).map(m => [m.id, m.no + ' · ' + m.vehicle.plate + ' · ' + m.kind]), empty: '— Stock / aucune —' }, { k: 'notes', label: 'Notes', full: true }],
@@ -52,13 +52,14 @@
   window.DEP = window.DEP || {}; DEP.orders = list; DEP.orderForm = orderForm; DEP.sendOrder = sendOrder; DEP.setOrderStatus = (id, s) => { const o = list().find(x => x.id === id); if (o) setStatus(o, s); };
 
   function render(el, params) {
+    if (params.seg) {st.seg=params.seg; APP.setParams({seg:null});}
     const all = list(), q = st.q.toLowerCase();
     if (params.id) { const id = params.id; APP.setParams({ id: null }); setTimeout(() => { const o = all.find(x => x.id === id); if (o) detail(o); }, 0); }
     if (params.tab === 'new') { APP.setParams({ tab: null }); setTimeout(() => orderForm(null, params.preset || {}), 0); }
     const open = all.filter(o => !['Posée', 'Annulée'].includes(o.status)), toSend = all.filter(o => o.status === 'À commander');
     // besoins non encore transformés en commande : missions « panne batterie » du jour sans commande liée
     const needs = CX.S.missions.filter(m => /batterie/i.test(m.kind) && !['Terminée', 'Facturée'].includes(m.status) && !all.some(o => o.missionId === m.id));
-    let rows = st.seg === 'open' ? open : st.seg === 'send' ? toSend : st.seg === 'done' ? all.filter(o => o.status === 'Posée') : all;
+    let rows = st.seg === 'open' ? open : st.seg === 'send' ? toSend : st.seg==='Commandée' || st.seg==='Reçue' ? all.filter(o=>o.status===st.seg) : st.seg==='month' ? all.filter(o=>/batterie/i.test(o.item) && o.at.slice(0,7)===today().slice(0,7)) : st.seg === 'done' ? all.filter(o => o.status === 'Posée') : all;
     if (q) rows = rows.filter(o => (o.no + ' ' + o.item + ' ' + o.plate + ' ' + (supplier(o.supplierId) || {}).name).toLowerCase().includes(q));
     const bySup = {}; toSend.forEach(o => { (bySup[o.supplierId] = bySup[o.supplierId] || []).push(o); });
     el.innerHTML = `<div class="bo-page">${BO.head('Commandes fournisseurs', `${open.length} commandes en cours · ${toSend.length} à envoyer · ${needs.length} besoin${needs.length > 1 ? 's' : ''} relevé${needs.length > 1 ? 's' : ''} sur les missions`, `<button class="btn pri" data-new>${BO.icon('plus', 15)}Commande</button>`)}

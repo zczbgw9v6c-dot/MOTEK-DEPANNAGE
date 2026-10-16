@@ -94,12 +94,14 @@
 
   /* ---------- modale ---------- */
   let modalSeq = 0;
+  const openModals = new Set();
+  const closeModals = () => [...openModals].forEach(close => close());
   const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
   function modal({ title, body = '', foot = '', wide = false, onMount, onClose }) {
     const bg = document.createElement('div'); bg.className = 'mdl-bg bo';
     const hid = 'mdl-t' + (++modalSeq), opener = document.activeElement;
     bg.innerHTML = `<div class="mdl ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="${hid}" tabindex="-1"><div class="mdl-h"><h3 id="${hid}">${title}</h3><button class="btn ghost sm" data-close aria-label="Fermer">${icon('x', 17)}</button></div><div class="mdl-b">${body}</div>${foot ? `<div class="mdl-f">${foot}</div>` : ''}</div>`;
-    const close = () => { bg.remove(); document.removeEventListener('keydown', onKey, true); if (opener && opener.focus && document.contains(opener)) { try { opener.focus(); } catch (e) {} } onClose && onClose(); };
+    const close = () => { openModals.delete(close); bg.remove(); document.removeEventListener('keydown', onKey, true); if (opener && opener.focus && document.contains(opener)) { try { opener.focus(); } catch (e) {} } onClose && onClose(); };
     const onKey = e => {
       if (e.key === 'Escape') { e.stopPropagation(); close(); return; }
       if (e.key === 'Tab') {
@@ -114,7 +116,7 @@
     bg.addEventListener('mousedown', e => { if (e.target === bg) bg._down = true; });
     bg.addEventListener('click', e => { if ((e.target === bg && bg._down) || e.target.closest('[data-close]')) close(); bg._down = false; });
     document.addEventListener('keydown', onKey, true);
-    document.body.appendChild(bg);
+    document.body.appendChild(bg); openModals.add(close);
     if (onMount) onMount(bg.querySelector('.mdl'), close);
     // Focus initial : premier champ, sinon premier bouton d'action, sinon la boîte elle-même.
     setTimeout(() => { if (!document.contains(bg)) return; const f = bg.querySelector('.mdl-b ' + FOCUSABLE) || bg.querySelector('.mdl-f [data-ok], .mdl-f .btn.pri') || bg.querySelector('.mdl'); try { f.focus({ preventScroll: true }); } catch (e) {} }, 30);
@@ -132,5 +134,5 @@
     }[k];
     return `<svg class="tic" viewBox="0 0 64 60" style="width:${s}px;height:${Math.round(s * 60 / 64)}px" fill="none" stroke="${stroke}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
   };
-  window.UI = { icon, logo, carPic, plate, insChip, av, cav, toast, modal, P, truckIcon };
+  window.UI = { icon, logo, carPic, plate, insChip, av, cav, toast, modal, closeModals, P, truckIcon };
 })();

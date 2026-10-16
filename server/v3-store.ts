@@ -49,6 +49,26 @@ export function validateState(state: unknown): string | null {
     if (typeof i.amount !== "number" || !Number.isFinite(i.amount) || i.amount < 0) return "montant invalide sur " + i.id;
     if (typeof i.paid !== "number" || !Number.isFinite(i.paid) || i.paid < -0.01 || i.paid > i.amount + 0.01) return "règlement incohérent sur " + i.id;
   }
+  // Collections dépannage facultatives pour conserver la compatibilité atelier.
+  for (const key of ["missions", "trucks", "drivers", "gardes", "dinvoices", "supplyOrders", "depDeposits"]) {
+    if (st[key] === undefined) continue;
+    if (!Array.isArray(st[key])) return "collection dépannage invalide : " + key;
+    const ids = new Set<string>();
+    for (const value of st[key] as Record<string, unknown>[]) {
+      if (!value || typeof value !== "object" || typeof value.id !== "string" || ids.has(value.id)) return "identifiant dépannage invalide ou en double : " + key;
+      ids.add(value.id);
+    }
+  }
+  for (const m of (st.missions || []) as { id: string; photos?: {src?: unknown; url?: unknown}[] }[]) {
+    if (m.photos !== undefined && !Array.isArray(m.photos)) return "photos de mission invalides";
+    for (const p of m.photos || []) {
+      if (!p || (p.src !== undefined && (typeof p.src !== "string" || !PHOTO_SRC.test(p.src))) || (p.url !== undefined && (typeof p.url !== "string" || !PHOTO_URL.test(p.url)))) return "photo de mission non reconnue";
+    }
+  }
+  for (const i of (st.dinvoices || []) as {id: string; ht: number; tva: number; ttc: number; paid: number; credited?: number; kind: string}[]) {
+    if (![i.ht,i.tva,i.ttc,i.paid,i.credited ?? 0].every(Number.isFinite)) return "montant dépannage invalide";
+    if (Math.abs(i.ht+i.tva-i.ttc)>.02 || i.paid<0 || (i.credited || 0)<0 || (i.kind!=="avoir" && (i.ttc<0 || i.paid+(i.credited||0)>i.ttc+.01)) || (i.kind==="avoir" && (i.ttc>=0 || i.paid!==0))) return "facture dépannage incohérente : " + i.id;
+  }
   return null;
 }
 

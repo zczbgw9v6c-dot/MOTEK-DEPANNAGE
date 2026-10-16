@@ -52,3 +52,10 @@ test("serveur : les photos sont stockées hors de l'état et servies par identif
   assert.match(validateState(v) || "", /photo/);
   st.close();
 });
+
+
+test("serveur dépannage : règlement, doublons et photos extérieures refusés", () => {
+  const a=valid(); a.missions.push({...a.missions[0]}); assert.match(validateState(a) || '', /double/);
+  const b=valid(); b.missions[0].photos=[{url:'https://example.com/client.jpg'}]; assert.match(validateState(b) || '', /photo de mission/);
+  const c=valid(); c.dinvoices[0].paid=c.dinvoices[0].ttc+10; assert.match(validateState(c) || '', /facture dépannage/);
+});

@@ -39,6 +39,8 @@
   // Un état reçu d’un autre écran rafraîchit le back-office ; la carte 3D, elle, est reconstruite au retour sur l’atelier live.
   let mapStale = false;
   CX.on("remote", () => {
+    // Le parc dépannage écoute remote et met à jour ses objets sans recharger la page.
+    if (CX.S.company.profile === "depannage") { mapStale = false; return; }
     mapStale = true;
     if (mode === "map") location.reload();
   });
