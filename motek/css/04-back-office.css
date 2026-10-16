@@ -802,3 +802,22 @@ body.no-map .coach{top:72px}
   .bo .drv-a{font-size:11.5px}
 }
 @media (max-width:760px){.top .bell,.top .syncpill{display:none!important}.top .user{padding:0}}
+/* planning du jour par dépanneur */
+.bo .tl{padding:6px 16px 4px;overflow-x:auto}
+.bo .tl-row{display:grid;grid-template-columns:170px minmax(0,1fr);gap:10px;align-items:center;min-height:62px;border-top:1px solid var(--line);border-radius:10px}
+.bo .tl-row.over{background:var(--red-soft);outline:2px dashed var(--red)}
+.bo .tl-row.tl-hours{min-height:26px;border-top:0}
+.bo .tl-hours .tl-track{height:22px}
+.bo .tl-hours .tl-track span{position:absolute;top:2px;transform:translateX(-50%);font-size:10.5px;font-weight:700;color:var(--ink3)}
+.bo .tl-who{display:flex;align-items:center;gap:9px;min-width:0}
+.bo .tl-who b{display:block;font-size:13.5px}.bo .tl-who small{display:block;font-size:11px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bo .tl-track{position:relative;height:50px;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(100% / 14 - 1px),var(--line) calc(100% / 14 - 1px),var(--line) calc(100% / 14));border-radius:8px}
+.bo .tl-now{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--red);opacity:.7;pointer-events:none}
+.bo .tlb{position:absolute;top:6px;height:38px;border-radius:9px;padding:4px 8px;color:#fff;overflow:hidden;cursor:pointer;background:#1768ee;box-shadow:0 1px 2px rgba(0,0,0,.12);min-width:0}
+.bo .tlb b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bo .tlb small{display:block;font-size:10px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bo .tlb.st-affectee{background:#b96400;cursor:grab}.bo .tlb.st-demandee{background:#d7261e;cursor:grab}
+.bo .tlb.st-terminee,.bo .tlb.st-deposee-au-parc{background:#1b7f4c}.bo .tlb.st-facturee{background:#2a2e35}
+.bo .tlb.act{box-shadow:0 0 0 2px #fff,0 0 0 4px rgba(23,104,238,.35)}
+.bo .tl-wait .tl-track{background:#fafbfc}
+.bo .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--ink2)}.bo .legend span{display:flex;align-items:center;gap:6px}.bo .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+@media (max-width:760px){.bo .tl-row{grid-template-columns:110px minmax(0,1fr)}.bo .tl-who small{display:none}}

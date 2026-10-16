@@ -48,7 +48,7 @@ Quatre chiffres (missions en cours, dépanneurs libres, véhicules au parc, à e
 Le dépanneur choisit son prénom (mémorisé sur l'appareil ; un téléphone identifié rouvre directement cet écran), voit sa mission : motif, plaque, adresse → itinéraire, destination, consignes, frise, **gros boutons** Je pars / Je suis sur place / Je remorque / Réparé sur place / Livré / Déposé au parc, appel du client, photo, appel du bureau. Les demandes en attente peuvent être prises (« Je prends ») quand il est libre. Même état que le bureau, horodaté.
 
 ### 5. Autres écrans
-- **Missions** : affectation par dépanneur (libres en premier, camion habituel proposé), fiche avec frise, dépanneur et son téléphone, itinéraire, lien vers la facture et la garde. Création d'une mission → proposition d'envoi immédiat si quelqu'un est libre.
+- **Missions** : affectation par dépanneur (libres en premier, camion habituel proposé), fiche avec frise, dépanneur et son téléphone, itinéraire, lien vers la facture et la garde. Création d'une mission → proposition d'envoi immédiat si quelqu'un est libre. **Vue « Journée par dépanneur »** : une ligne par dépanneur, blocs horaires de la journée, ligne du présent, demandes en attente à **glisser** sur un dépanneur libre (refus si déjà en mission), capture `screenshots/depann/planning-journee.png`.
 - **Camions & équipe** : onglet Dépanneurs refondu (statut, mission, missions du jour, appel) ; textes du bureau.
 - **Parc** : relance **groupée** par assureur (un courriel pour tous ses véhicules), **reçu de sortie imprimable** (proposé après la sortie, disponible ensuite dans la fiche).
 - **Assureurs & mandats** : onglet Compagnies = en attente d'accord, à facturer, impayés, délai de paiement constaté (ou convenu), contact modifiable sur place (plus de renvoi vers le CRM garage).
@@ -66,7 +66,7 @@ Nouveaux tests : `tests/depannage-harness.ts` charge le socle **et** les modules
 
 ## Ce qu'il reste à faire (pour Codex, dans l'ordre)
 
-1. **Planning du jour par dépanneur** (vue chronologique, glisser une demande sur Damien/Dylan/Laurent/Trump). Les helpers existent : `DEP.driverMission`, `DEP.freeDrivers`, `DEP.truckOfDriver`, `DEP.assign`.
+1. **Planning du jour** : la vue existe (glisser-déposer HTML5, donc souris et iPad avec Safari 15+) ; à ajouter : déplacer l'heure prévue, vue « demain » pour les rendez-vous planifiés (missions non urgentes), repli tactile sur téléphone (bouton « Envoyer à… ») si le drag ne convient pas.
 2. **Ma tournée hors ligne** : le texte promet que les actions attendent le réseau ; aujourd'hui une action sans réseau remonte « Non enregistré ». File d'attente locale à écrire dans le socle (`push()`), avec rejeu.
 3. **Identification par personne** : `office[].access` est stocké mais pas appliqué ; `S.meId` est toujours Joseph. Un choix d'utilisateur à l'ouverture (mot de passe au déploiement) suffirait pour cacher les modules hors accès.
 4. **Avoir, acompte, export comptable** sur `35-facturation` (l'export CSV actuel est brut).

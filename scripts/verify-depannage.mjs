@@ -103,6 +103,14 @@ await step("Missions : création, affectation d’un dépanneur, sur place, remo
   expect(fac.st === "Facturée" && fac.n === inv0 + 1 && fac.inv && fac.inv.payer === "AXA", "facturée avec une vraie facture : " + JSON.stringify({ st: fac.st, n: fac.n }));
   await ev(() => APP.refresh()); await page.waitForTimeout(400);
   await top(); await shot("02-missions");
+  // Planning du jour : une ligne par dépanneur, les demandes en attente, affectation par dépôt.
+  await ev(() => APP.open("missions", { tab: "journee" })); await page.waitForTimeout(400);
+  const tl = await ev(() => ({ rows: document.querySelectorAll(".tl-row[data-drop]").length, wait: document.querySelectorAll(".tl-wait .tlb").length, blocks: document.querySelectorAll(".tlb").length }));
+  expect(tl.rows === 4 && tl.blocks > tl.wait && tl.wait >= 1, "planning du jour : " + JSON.stringify(tl));
+  const freeD = await ev(() => (DEP.freeDrivers()[0] || {}).id);
+  if (freeD) { const w = await ev(() => CX.S.missions.find((m) => m.status === "Demandée").id); await ev(([mid, did]) => { const tr = DEP.truckOfDriver(did); DEP.assign(mid, tr.id, did); DEP.setMissionStatus(mid, "En route"); }, [w, freeD]); expect((await ev((id) => DEP.mission(id).status, w)) === "En route", "demande envoyée au dépanneur libre depuis le planning"); }
+  await shot("02b-planning-journee");
+  await ev(() => APP.open("missions", { tab: "cards" })); await page.waitForTimeout(300);
 });
 
 await step("Parc : plan des niveaux, statuts selon la durée, sortie avec frais", async () => {
