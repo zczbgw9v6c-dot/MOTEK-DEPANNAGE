@@ -100,7 +100,7 @@ await step(
     await ev(() => PARC3D.select({ kind: "office" }));
     await page.waitForTimeout(400);
     expect(
-      /Nadia|Karim|Sabrina/.test(
+      /Moïse|Florence/.test(
         await ev(() => document.querySelector("#detail").innerText),
       ),
       "fiche du bureau avec les collaborateurs",
@@ -205,6 +205,12 @@ await step("Tableau de bord : journée du dépanneur et assistant", async () => 
     "Gardes à relancer",
   ])
     expect(k.includes(l), "indicateur manquant : " + l);
+  const drv = await ev(() => [...document.querySelectorAll(".drivers .drv .drv-h b")].map((x) => x.textContent.trim()).join());
+  expect(drv === "Dylan,Laurent,Trump", "bandeau « Mes dépanneurs » : " + drv);
+  await page.fill("[data-voice] [data-vq]", "Qui est libre ?");
+  await ev(() => document.querySelector("[data-voice] [data-vgo]").click());
+  await page.waitForTimeout(300);
+  expect(/libre/i.test(await ev(() => document.querySelector("[data-vout]").textContent)), "l’assistant répond sur les dépanneurs");
   const plate = await ev(() => DEP.inPark()[0].vehicle.plate);
   await page.fill("[data-voice] [data-vq]", "Où est la " + plate + " ?");
   await ev(() => document.querySelector("[data-voice] [data-vgo]").click());
@@ -244,6 +250,8 @@ await step(
       set("model", "Clio");
       set("cname", "Test Client");
       set("cphone", "+33 6 00 00 00 00");
+      // Le prix proposé du catalogue doit être accepté explicitement avant facturation.
+      const pc = document.querySelector('[name="priceConfirmed"]'); if (pc) pc.checked = true;
       document.querySelector("[data-ok]").click();
     });
     await page.waitForTimeout(400);
@@ -372,14 +380,14 @@ await step(
     await page.waitForTimeout(300);
     expect(
       (await ev(() => document.querySelectorAll(".techs .techbtn").length)) ===
-        12,
-      "chauffeurs",
+        3,
+      "trois dépanneurs : Dylan, Laurent, Trump",
     );
     await ev(() => APP.open("fleet", { tab: "bureau" }));
     await page.waitForTimeout(300);
     expect(
-      (await ev(() => document.querySelectorAll(".staff").length)) === 4,
-      "bureau : Joseph + 3 collaborateurs avec accès",
+      (await ev(() => document.querySelectorAll(".staff").length)) === 3,
+      "bureau : Joseph, Moïse et Florence",
     );
     await shot("04-flotte");
     await ev(() => APP.open("agent"));
@@ -463,7 +471,7 @@ await step(
     );
     const m = await ev(() =>
       CX.S.missions.find(
-        (x) => x.status === "Terminée" || x.status === "Déposée au parc",
+        (x) => (x.status === "Terminée" || x.status === "Déposée au parc") && (!x.serviceId || x.priceConfirmed),
       ),
     );
     const inv = await ev((id) => {
@@ -790,7 +798,9 @@ await step(
       const m = CX.S.missions.find(
           (m) =>
             ["Terminée", "Déposée au parc"].includes(m.status) &&
-            m.insurance?.status !== "Refusée",
+            m.insurance?.status !== "Refusée" &&
+            (!m.serviceId || m.priceConfirmed) &&
+            !DEP.invoices().some((i) => i.kind === "mission" && i.srcId === m.id),
         ),
         a = DEP.recordDeposit(m.id, 12, CX.util.today(), "AC-TEST"),
         i = DEP.billMission(m),

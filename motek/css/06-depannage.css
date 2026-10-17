@@ -399,3 +399,22 @@
     white-space: nowrap;
   }
 }
+
+/* ---- tableau de bord : « Mes dépanneurs » (bandeau des dépanneurs en ce moment) ---- */
+.bo .drivers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.bo .drv{background:#fff;border:1px solid #e8eaee;border-radius:16px;padding:14px 14px 12px;box-shadow:0 1px 2px rgba(16,18,24,.05),0 6px 20px rgba(16,18,24,.05);cursor:pointer;min-width:0;transition:transform .15s,box-shadow .15s}
+.bo .drv:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.bo .drv.free{background:linear-gradient(180deg,#fff,#f3faf5)}
+.bo .drv.busy{box-shadow:inset 0 0 0 1.5px var(--amber-soft),0 1px 2px rgba(16,18,24,.05),0 6px 20px rgba(16,18,24,.05)}
+.bo .drv-h{display:flex;align-items:center;gap:11px}
+.bo .drv-h > div{min-width:0;flex:1}
+.bo .drv-h .bav{width:46px;height:46px;font-size:15px}
+.bo .drv-h b{display:block;font-size:16px;letter-spacing:-.01em}
+.bo .drv-h small{display:block;font-size:11.5px;color:var(--ink3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bo .drv-call{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:var(--green-soft);color:var(--green);flex:none}
+.bo .drv-m{display:flex;align-items:center;gap:8px;margin-top:12px}
+.bo .drv-since{font-size:11.5px;color:var(--ink3)}
+.bo .drv-k{margin-top:8px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.bo .drv-a{margin-top:5px;font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:1100px){.bo .drivers{grid-template-columns:repeat(3,minmax(0,1fr))}.bo .drv-h .bav{width:38px;height:38px;font-size:13px}}
+@media (max-width:760px){.bo .drivers{grid-template-columns:minmax(0,1fr)}}

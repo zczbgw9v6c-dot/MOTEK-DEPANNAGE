@@ -120,5 +120,5 @@
     el.querySelector('[data-nv]').addEventListener('click', () => vehForm(null));
   }
 
-  APP.register({ id: 'crm', label: 'Clients & véhicules', icon: 'users', group: 'Commercial & assurances', order: 3, render, badge: () => CX.S.reminders.filter(x => x.status === 'À faire' && U.diffDays(today(), x.due) <= 7).length });
+  APP.register({ id: 'crm', label: 'Clients & véhicules', icon: 'users', group: 'Commercial & assurances', order: 3, activity: 'atelier', render, badge: () => CX.S.reminders.filter(x => x.status === 'À faire' && U.diffDays(today(), x.due) <= 7).length });
 })();
