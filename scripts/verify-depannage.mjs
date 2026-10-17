@@ -12,13 +12,26 @@ const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 const results = [];
 const step = async (name, fn) => {
+  if (
+    process.env.VERIFY_DEP_STEP &&
+    !name.includes(process.env.VERIFY_DEP_STEP)
+  )
+    return;
   try {
+    await page.evaluate(() => {
+      UI.closeModals();
+      BO.closeDrawer();
+    });
     await fn();
     results.push([true, name]);
     console.log("✓ " + name);
   } catch (e) {
     results.push([false, name, e.message]);
     console.log("✗ " + name + " " + e.message.split("\n")[0]);
+    await page.screenshot({path:`${out}/failure-${results.length}.png`}).catch(()=>{});
+    await page.mouse.up().catch(()=>{});
+    await page.keyboard.press("Escape").catch(()=>{});
+    await page.setViewportSize({width:1500,height:1000}).catch(()=>{});
   }
 };
 const ev = (fn, arg) => page.evaluate(fn, arg);
@@ -686,9 +699,18 @@ await step("Planning : réaffectation tactile et glisser-déposer", async () => 
   const target = await ev(() =>
     CX.S.trucks.find((t) => t.status === "Disponible"),
   );
-  await page
-    .locator(`[data-drag="${m.id}"]`)
-    .dragTo(page.locator(`[data-truck="${target.id}"]`));
+  // Le déplacement HTML5 est piloté avec le même DataTransfer que le geste.
+  // Un rerendu distant pendant un dragTo physique peut laisser Chromium en
+  // session de drag et bloquer les clics des étapes suivantes.
+  await ev(({id,truckId}) => {
+    const card=document.querySelector(`[data-drag="${id}"]`);
+    const lane=document.querySelector(`[data-truck="${truckId}"]`);
+    const dataTransfer=new DataTransfer();
+    card.dispatchEvent(new DragEvent('dragstart',{bubbles:true,dataTransfer}));
+    lane.dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer}));
+    lane.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer}));
+    card.dispatchEvent(new DragEvent('dragend',{bubbles:true,dataTransfer}));
+  }, {id:m.id,truckId:target.id});
   expect(
     (await ev((id) => DEP.mission(id).truckId, m.id)) === target.id,
     "déplacement entre camions",
@@ -942,6 +964,229 @@ await step(
       await shot(`12-ipad-${w}-chauffeur`);
     }
     await page.setViewportSize({ width: 1500, height: 1000 });
+  },
+);
+
+await step(
+  "Commercial : brouillon 50 €, export local, relevé et prospect distincts",
+  async () => {
+    await ev(() => APP.open("acquisition"));
+    await page.waitForTimeout(300);
+    await page.click("#bo-content [data-campaign]");
+    await page.waitForSelector(".mdl [name=budget]");
+    expect(
+      (await page.inputValue(".mdl [name=budget]")) === "50",
+      "budget total par défaut",
+    );
+    await page.click(".mdl [data-ok]");
+    // L'aperçu s'ouvre désormais automatiquement après la génération.
+    await page.waitForSelector(".drw [data-validate]");
+    const c = await ev(() => CX.S.marketing.campaigns[0]);
+    expect(
+      c.budget === 50 && c.days === 5 && c.metrics === null,
+      "brouillon sans statistiques inventées",
+    );
+    await page.click("[data-validate]");
+    const download = page.waitForEvent("download");
+    await page.click("[data-export]");
+    const exported = await download;
+    expect(
+      exported.suggestedFilename() === c.id + ".json",
+      "export réel du brouillon",
+    );
+    await shot("13-commercial-brouillon");
+    await ev(() => {
+      UI.closeModals();
+      BO.closeDrawer();
+    });
+    await ev(
+      (id) =>
+        DEP.commercial.metrics(
+          CX.S.marketing.campaigns.find((c) => c.id === id),
+          {
+            spend: 12,
+            clicks: 24,
+            source: "Relevé fictif de vérification, saisie manuelle",
+          },
+        ),
+      c.id,
+    );
+    expect(
+      (await ev(() => CX.S.marketing.leads.length)) === 0,
+      "24 clics ne créent pas 24 prospects",
+    );
+    await ev(() => APP.open("acquisition", { tab: "leads" }));
+    await page.click("#bo-content [data-lead]");
+    await page.fill(".mdl [name=name]", "Contact de vérification");
+    await page.fill(".mdl [name=phone]", "0600000000");
+    await page.fill(".mdl [name=source]", "Appel fictif de vérification");
+    await page.click(".mdl [data-ok]");
+    await page.selectOption("[data-stage]", "À rappeler");
+    expect(
+      (await ev(() => CX.S.marketing.leads[0].status)) === "À rappeler",
+      "suivi manuel du prospect",
+    );
+    await shot("14-commercial-prospects");
+  },
+);
+await step("Commercial : catalogue sourcé et lisibilité iPad", async () => {
+  await ev(() => APP.open("acquisition", { tab: "services" }));
+  expect(
+    (await page.locator("#bo-content [data-approve]").count()) === 14,
+    "14 prestations sourcées",
+  );
+  for (const [width, height] of [
+    [1500, 1000],
+    [1180, 820],
+    [820, 1180],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.waitForTimeout(250);
+    expect(
+      await ev(() => document.documentElement.scrollWidth <= innerWidth),
+      "pas de débordement commercial",
+    );
+    await shot("15-commercial-catalogue-" + width);
+  }
+  await page.setViewportSize({ width: 1500, height: 1000 });
+});
+
+await step(
+  "Demandes entrantes : extraction locale, doublon signalé, mission créée et reliée",
+  async () => {
+    await ev(() => APP.open("inbox"));
+    await page.waitForTimeout(400);
+    const t = await ev(() => document.querySelector("#bo-content").innerText);
+    expect(
+      /Connecteurs non raccordés/.test(t) && /exemple[s]? fictif/i.test(t),
+      "l'écran dit que rien n'est raccordé et que les exemples sont fictifs",
+    );
+    expect(
+      (await ev(() => document.querySelectorAll(".intake").length)) >= 3,
+      "exemples de demandes affichés",
+    );
+    expect(
+      /à compléter/i.test(t),
+      "les champs manquants sont signalés à l'écran",
+    );
+    await shot("16-demandes-entrantes");
+    // La demande AXA (complète) devient une mission à confirmer, pré-remplie.
+    const n0 = await ev(() => CX.S.missions.length);
+    await ev(() => document.querySelector('[data-go="RQ1"]').click());
+    await page.waitForTimeout(400);
+    const form = await ev(() => ({
+      plate: document.querySelector('.mdl [name="plate"]')?.value,
+      address: document.querySelector('.mdl [name="address"]')?.value,
+      make: document.querySelector('.mdl [name="make"]')?.value,
+      mandant: document.querySelector('.mdl [name="mandant"]')?.value,
+    }));
+    expect(
+      form.plate === "GH-482-KL" &&
+        /rue de Paradis/.test(form.address || "") &&
+        form.make === "Peugeot" &&
+        form.mandant === "AXA",
+      "formulaire pré-rempli depuis le message : " + JSON.stringify(form),
+    );
+    await shot("17-demande-vers-mission");
+    await ev(() => {
+      const pc = document.querySelector('.mdl [name="priceConfirmed"]');
+      if (pc) pc.checked = true;
+      document.querySelector(".mdl [data-ok]").click();
+    });
+    await page.waitForTimeout(400);
+    const st = await ev(() => ({
+      n: CX.S.missions.length,
+      rq: CX.S.intake.requests.find((r) => r.id === "RQ1").status,
+      origin: CX.S.missions[0].origin,
+      linked: CX.S.intake.requests.find((r) => r.id === "RQ1").missionId === CX.S.missions[0].id,
+    }));
+    expect(
+      st.n === n0 + 1 && st.rq === "Mission créée" && st.linked && st.origin && st.origin.no === "DE-801",
+      "mission créée, demande liée, origine conservée : " + JSON.stringify(st),
+    );
+    // Un message collé avec la même plaque est signalé comme doublon possible.
+    const r2 = await ev(() =>
+      DEP.intakeAdd({ channel: "email", from: "test@exemple.fr", raw: "Panne batterie Peugeot 308 immatriculée GH-482-KL, 18 rue de Paradis, 75010 Paris. 06 44 21 09 77" }),
+    );
+    expect(
+      (await ev((id) => DEP.intakeDuplicates(DEP.intakeExtract ? CX.S.intake.requests.find((r) => r.id === id) : null).length, r2.id)) > 0,
+      "doublon détecté sur la même plaque",
+    );
+    await ev((id) => DEP.intakeDismiss(id, "doublon"), r2.id);
+  },
+);
+
+await step(
+  "À rappeler : propositions sourcées, mise en file, appel et compte rendu",
+  async () => {
+    await ev(() => APP.open("callbacks"));
+    await page.waitForTimeout(400);
+    const t = await ev(() => document.querySelector("#bo-content").innerText);
+    expect(
+      /Aucune intégration téléphonique n’est raccordée|aucun appel automatique/i.test(t),
+      "l'écran dit qu'aucune téléphonie n'est raccordée",
+    );
+    const nProps = await ev(() => document.querySelectorAll("[data-queue]").length);
+    expect(nProps > 0, "des propositions sourcées des dossiers : " + nProps);
+    await shot("18-a-rappeler");
+    const n0 = await ev(() => DEP.callbacks().length);
+    await ev(() => document.querySelector("[data-queue]").click());
+    await page.waitForTimeout(400);
+    expect(
+      (await ev(() => DEP.callbacks().length)) === n0 + 1,
+      "proposition ajoutée à la file",
+    );
+    const c = await ev(() => DEP.callbacks()[0]);
+    expect(!!c.script && !!c.summary && !!c.phone, "résumé, script et téléphone présents");
+    await ev(() => document.querySelector("[data-rep]").click());
+    await page.waitForTimeout(300);
+    await ev(() => {
+      document.querySelector('.mdl [name="outcome"]').value = "Joint — accord";
+      document.querySelector('.mdl [name="note"]').value = "Accord obtenu, dossier à suivre.";
+      document.querySelector(".mdl [data-ok]").click();
+    });
+    await page.waitForTimeout(300);
+    const after = await ev((id) => CX.S.callbacks.find((x) => x.id === id), c.id);
+    expect(
+      after.status === "Fait" && after.attempts.length === 1 && after.attempts[0].outcome === "Joint — accord",
+      "compte rendu enregistré et rappel clos : " + JSON.stringify({ s: after.status, a: after.attempts.length }),
+    );
+    await shot("19-rappel-fait");
+  },
+);
+
+await step(
+  "Assistant de campagne : proposition expliquée, aperçu avant validation, aucun envoi",
+  async () => {
+    await ev(() => APP.open("acquisition"));
+    await page.waitForTimeout(400);
+    await ev(() => document.querySelector("[data-suggest]").click());
+    await page.waitForTimeout(300);
+    const intro = await ev(() => document.querySelector(".mdl")?.innerText || "");
+    expect(/Proposition de MOTEK/.test(intro) && /la plus demandée/.test(intro), "la proposition est expliquée");
+    expect(
+      (await ev(() => document.querySelectorAll('.mdl [name^="asset"]').length)) >= 3,
+      "atouts cochables dans le formulaire",
+    );
+    await shot("20-campagne-proposee");
+    const n0 = await ev(() => CX.S.marketing.campaigns.length);
+    await ev(() => document.querySelector(".mdl [data-ok]").click());
+    await page.waitForTimeout(500);
+    const c = await ev(() => CX.S.marketing.campaigns[0]);
+    expect(
+      (await ev(() => CX.S.marketing.campaigns.length)) === n0 + 1 && c.status === "Brouillon",
+      "brouillon créé, rien n'est diffusé",
+    );
+    expect(Array.isArray(c.why) && c.why.length >= 5 && c.assets.length >= 1, "choix expliqués et atouts retenus");
+    const ap = await ev(() => ({
+      preview: !!document.querySelector(".ad-preview"),
+      txt: document.querySelector(".drw")?.innerText || "",
+    }));
+    expect(ap.preview, "aperçu visuel de la publicité affiché");
+    expect(/Pourquoi ces choix/.test(ap.txt) && /Budget prévu|prévu/.test(ap.txt) && /anonymes/.test(ap.txt), "explications et chiffres distincts à l'écran");
+    await shot("21-campagne-apercu");
+    await ev(() => UI.closeModals());
+    await ev(() => BO.closeDrawer());
   },
 );
 

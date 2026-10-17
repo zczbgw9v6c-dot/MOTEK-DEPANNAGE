@@ -418,3 +418,19 @@
 .bo .drv-a{margin-top:5px;font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:1100px){.bo .drivers{grid-template-columns:repeat(3,minmax(0,1fr))}.bo .drv-h .bav{width:38px;height:38px;font-size:13px}}
 @media (max-width:760px){.bo .drivers{grid-template-columns:minmax(0,1fr)}}
+
+/* ---- demandes entrantes, rappels : texte brut et cartes ---- */
+.bo .intake-raw{white-space:pre-wrap;background:#f6f7f9;border:1px solid var(--line2);border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.55;max-height:260px;overflow:auto;overflow-wrap:anywhere}
+.bo .intake .ta{display:flex;gap:6px;align-items:center}
+/* ---- aperçus publicitaires (simulation locale, aucun rendu officiel) ---- */
+.bo .ad-preview{border:1px solid var(--line2);border-radius:14px;padding:14px 16px;margin:6px 0 10px;background:#fff;max-width:520px}
+.bo .ad-preview .ap-tag{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px}
+.bo .ad-preview.google .ap-spons{font-size:11px;font-weight:800;color:var(--ink)}
+.bo .ad-preview.google .ap-url{font-size:12px;color:#1a6b2f;margin:2px 0}
+.bo .ad-preview.google .ap-title{color:#1a0dab;font-size:17px;font-weight:600;line-height:1.3;margin:2px 0 4px}
+.bo .ad-preview.google .ap-desc{font-size:13px;color:var(--ink2);line-height:1.45}
+.bo .ad-preview.meta .ap-head{display:flex;gap:9px;align-items:center;margin-bottom:8px}
+.bo .ad-preview.meta .ap-head small{display:block;color:var(--ink3);font-size:11px}
+.bo .ad-preview.meta .ap-logo{width:34px;height:34px;border-radius:50%;background:#1768ee;color:#fff;font-weight:800;display:grid;place-items:center;font-size:12px}
+.bo .ad-preview.meta .ap-body{font-size:13.5px;line-height:1.5;color:var(--ink)}
+.bo .ad-preview.meta .ap-cta{margin-top:10px;display:inline-block;background:#e8eaee;border-radius:8px;padding:7px 14px;font-weight:700;font-size:12.5px}

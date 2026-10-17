@@ -394,7 +394,9 @@
   function commercialCatalog() { return [{"id": "depanneuse", "label": "Dépanneuse", "missionKind": "Dépannage auto", "variants": [{"label": "Intervention standard", "fromTtc": 90}, {"label": "Intervention renforcée", "fromTtc": 170}, {"label": "Intervention + contrôle", "fromTtc": 280}], "source": "https://depanneuse.net/depanneuse", "checkedAt": "2026-10-16", "priceType": "from", "issue": "", "approved": false}, {"id": "remorquage-voiture", "label": "Remorquage voiture", "missionKind": "Remorquage simple", "variants": [{"label": "Intervention standard", "fromTtc": 90}, {"label": "Intervention renforcée", "fromTtc": 160}, {"label": "Intervention + contrôle", "fromTtc": 250}], "source": "https://depanneuse.net/remorquage-voiture", "checkedAt": "2026-10-16", "priceType": "from", "issue": "", "approved": false}, {"id": "depannage-moto", "label": "Dépannage moto", "missionKind": "Remorquage moto", "variants": [{"label": "Intervention standard", "fromTtc": 80}, {"label": "Intervention renforcée", "fromTtc": 120}, {"label": "Intervention + contrôle", "fromTtc": 180}], "source": "https://depanneuse.net/depannage-moto", "checkedAt": "2026-10-16", "priceType": "from", "issue": "", "approved": false}, {"id": "depannage-batterie", "label": "Dépannage batterie", "missionKind": "Panne batterie", "variants": [{"label": "Intervention standard", "fromTtc": 70}, {"label": "Intervention renforcée", "fromTtc": 110}, {"label": "Intervention + contrôle", "fromTtc": 160}], "source": "https://depanneuse.net/depannage-batterie", "checkedAt": "2026-10-16", "priceType": "from", "issue": "Tableaux à 70 € TTC, texte et FAQ à 80 € TTC : montant à confirmer avec Joseph.", "approved": false}, {"id": "depannage-crevaison", "label": "Dépannage crevaison", "missionKind": "Crevaison", "variants": [{"label": "Intervention standard", "fromTtc": 90}, {"label": "Intervention renforcée", "fromTtc": 130}, {"label": "Intervention + contrôle", "fromTtc": 190}], "source": "https://depanneuse.net/depannage-crevaison", "checkedAt": "2026-10-16", "priceType": "from", "issue": "", "approved": false}, {"id": "depannage-panne-dessence", "label": "Dépannage panne d’essence", "missionKind": "Panne carburant", "variants": [{"label": "Intervention standard", "fromTtc": 90}, {"label": "Intervention renforcée", "fromTtc": 140}, {"label": "Intervention + contrôle", "fromTtc": 210}], "source": "https://depanneuse.net/depannage-panne-dessence", "checkedAt": "2026-10-16", "priceType": "from", "issue": "", "approved": false}, {"id": "depannage-auto", "label": "Dépannage auto", "missionKind": "Dépannage auto", "variants": [{"label": "Intervention standard", "fromTtc": 90}, {"label": "Intervention renforcée", "fromTtc": 150}, {"label": "Intervention + contrôle", "fromTtc": 240}], "source": "https://depanneuse.net/depannage-auto", "checkedAt": "2026-10-16", "priceType": "from", "issue": "", "approved": false}, {"id": "remorquage-pas-cher", "label": "Remorquage économique", "missionKind": "Remorquage simple", "variants": [{"label": "Intervention standard", "fromTtc": 80}, {"label": "Intervention renforcée", "fromTtc": 130}, {"label": "Intervention + contrôle", "fromTtc": 190}], "source": "https://depanneuse.net/remorquage-pas-cher", "checkedAt": "2026-10-16", "priceType": "from", "issue": "", "approved": false}, {"id": "depannage-autoroute", "label": "Dépannage autoroute", "missionKind": "Dépannage autoroute", "variants": [{"label": "Intervention standard", "fromTtc": 144}, {"label": "Intervention renforcée", "fromTtc": 250}, {"label": "Intervention + contrôle", "fromTtc": 380}], "source": "https://depanneuse.net/depannage-autoroute", "checkedAt": "2026-10-16", "priceType": "from", "issue": "Montant publié sur le site uniquement ; conditions d’intervention et tarif applicable à vérifier avant proposition.", "approved": false}, {"id": "depanneur-voiture", "label": "Dépanneur voiture", "missionKind": "Dépannage auto", "variants": [{"label": "Intervention standard", "fromTtc": 90}, {"label": "Intervention renforcée", "fromTtc": 180}, {"label": "Intervention + contrôle", "fromTtc": 290}], "source": "https://depanneuse.net/depanneur-voiture", "checkedAt": "2026-10-16", "priceType": "from", "issue": "", "approved": false}, {"id": "remorquage-voiture-prix", "label": "Remorquage voiture — page prix", "missionKind": "Remorquage simple", "variants": [{"label": "Intervention standard", "fromTtc": 90}, {"label": "Intervention renforcée", "fromTtc": 190}, {"label": "Intervention + contrôle", "fromTtc": 310}], "source": "https://depanneuse.net/remorquage-voiture-prix", "checkedAt": "2026-10-16", "priceType": "from", "issue": "Tableaux à 90 € TTC ; un paragraphe évoque 80 € TTC : montant à confirmer.", "approved": false}, {"id": "depanneuse-pas-cher", "label": "Dépanneuse économique", "missionKind": "Remorquage simple", "variants": [{"label": "Intervention standard", "fromTtc": 50}, {"label": "Intervention renforcée", "fromTtc": 80}, {"label": "Intervention + contrôle", "fromTtc": 120}], "source": "https://depanneuse.net/depanneuse-pas-cher", "checkedAt": "2026-10-16", "priceType": "from", "issue": "Tableaux à 50 € TTC, texte et FAQ à 80 € TTC : montant à confirmer avec Joseph.", "approved": false}, {"id": "demarrage-voiture", "label": "Démarrage voiture", "missionKind": "Démarrage batterie", "variants": [{"label": "Intervention standard", "fromTtc": 50}, {"label": "Intervention renforcée", "fromTtc": 90}, {"label": "Intervention + contrôle", "fromTtc": 130}], "source": "https://depanneuse.net/demarrage-voiture", "checkedAt": "2026-10-16", "priceType": "from", "issue": "Tableaux à 50 € TTC, texte et FAQ à 80 € TTC : montant à confirmer avec Joseph.", "approved": false}, {"id": "ouverture-de-porte-voiture", "label": "Ouverture de porte voiture", "missionKind": "Ouverture de porte", "variants": [{"label": "Intervention standard", "fromTtc": 80}, {"label": "Intervention renforcée", "fromTtc": 140}, {"label": "Intervention + contrôle", "fromTtc": 220}], "source": "https://depanneuse.net/ouverture-de-porte-voiture", "checkedAt": "2026-10-16", "priceType": "from", "issue": "", "approved": false}]; }
   function migrateCommercial(st) {
     if (!st || !st.missions) return;
+    (st.staff || []).filter(e=>e.first === "Damien" && e.role === "mag").forEach(e=>{e.first="Bureau";e.last="Dan Dépanne";e.name="Bureau Dan Dépanne";e.ini="BD";e.email="";e.phone="";});
     st.serviceCatalog ??= commercialCatalog();
+    st.serviceCatalog.forEach(s=>{s.approvedFromTtc ??= null;s.approvedAt ??= null;s.approvalNote ??= "";});
     st.commercial ??= { version: 1, source: 'https://depanneuse.net/nos-tarifs', checkedAt: '2026-10-16', brand: 'Dan Dépanne', website: 'https://depanneuse.net', departments: [{code:'60',name:'Oise'},{code:'75',name:'Paris'},{code:'77',name:'Seine-et-Marne'},{code:'78',name:'Yvelines'},{code:'91',name:'Essonne'},{code:'92',name:'Hauts-de-Seine'},{code:'93',name:'Seine-Saint-Denis'},{code:'94',name:'Val-de-Marne'},{code:'95',name:'Val-d’Oise'}], identityNote: 'Dan Dépanne confirmé par le gérant du projet ; les autres entreprises et identités du site ne sont pas importées.', storageRateStatus: 'demo-unconfirmed', storageSource: null, history: [] };
     st.marketing ??= { campaigns: [], leads: [], history: [], connections: {google:false,meta:false} };
     if (!st.commercial.teamApplied) {
@@ -411,6 +413,32 @@
     st.company.hours='24h/24 · 7j/7 · Île-de-France et Oise (zones publiées sur le site)';
     (st.gardes || []).forEach(g=>{g.rateStatus ??= 'demo-unconfirmed';});
     st.missions.forEach(m=>{m.serviceId ??= null;m.priceConfirmed ??= !m.serviceId;m.priceSource ??= null;m.priceConfirmation ??= null;m.department ??= '';});
+  }
+  /* ---------- exploitation : demandes entrantes et file d'appels ---------- */
+  // Messages bruts de démonstration (fictifs) : l'extraction est faite à l'écran,
+  // par le module « Demandes entrantes », avec les champs manquants signalés.
+  function demoIntake() {
+    const t = today();
+    return [
+      { id: "RQ1", no: "DE-801", at: t + " " + hm(nowMin() - 42), channel: "email", from: "plateforme-assistance@axa-demo.fr", demo: true, status: "À traiter",
+        raw: "Mission d'assistance AXA\nRéf : SIN-48310\nVéhicule : Peugeot 308 immatriculée GH-482-KL\nPanne batterie, ne démarre plus.\nLieu : 18 rue de Paradis, 75010 Paris\nAssurée : Mme Keller — 06 44 21 09 77\nMerci de confirmer la prise en charge." },
+      { id: "RQ2", no: "DE-802", at: t + " " + hm(nowMin() - 25), channel: "whatsapp", from: "+33 6 52 18 44 30", demo: true, status: "À traiter",
+        raw: "Bonjour, ma voiture est en panne boulevard de Magenta à Paris, une Clio grise. Vous pouvez venir la remorquer ? Je suis joignable au 06 52 18 44 30. Merci" },
+      { id: "RQ3", no: "DE-803", at: t + " " + hm(nowMin() - 8), channel: "form", from: "Formulaire du site depanneuse.net", demo: true, status: "À traiter",
+        raw: "Nom : Karim Benali\nTéléphone : 07 81 220 540\nVille : 93100 Montreuil\nMessage : portière claquée avec les clés à l'intérieur, ouverture de porte possible aujourd'hui ?" },
+    ];
+  }
+  function migrateOps(st) {
+    if (!st || !st.missions) return;
+    // Demandes entrantes : connecteurs non raccordés ; seuls des exemples fictifs sont fournis en démonstration.
+    st.intake ??= { channels: { phone: false, email: false, form: false, whatsapp: false, platform: false }, requests: st.pristine ? demoIntake() : [] };
+    st.intake.requests.forEach((r) => { r.status ??= "À traiter"; r.missionId ??= null; r.fields ??= null; r.history ??= []; });
+    // File « À rappeler » : appels préparés par le bureau, compte rendu saisi à la main.
+    st.callbacks ??= [];
+    st.callbacks.forEach((c) => { c.attempts ??= []; c.status ??= "À rappeler"; });
+    // Atouts mis en avant dans les publicités : déclarés par le bureau, modifiables.
+    if (st.commercial) st.commercial.assets ??= ["Intervention 24h/24 et 7j/7", "Agréé toutes compagnies d'assurance", "Parc de gardiennage sécurisé", "Prise en charge rapide par le bureau"];
+    (st.missions || []).forEach((m) => { m.origin ??= null; });
   }
   function seedDepannage(S) {
     const t = today();
@@ -820,7 +848,8 @@
         skills: ["Ponçage", "Masquage", "Apprêts"],
         color: "#868c96",
       }),
-      E("E7", "Hugo", "Crettenand", "mag", 2018, "+33 69 233 58 90", {
+      E("E7", "Bureau", "Dan Dépanne", "mag", 2018, "", {
+        email: "",
         title: "Magasinier",
         costH: 46,
         skills: ["Commandes", "Inventaire", "Réception livraisons"],
@@ -4507,6 +4536,7 @@
     if (st && st.missions && !st.office) { const d = seedDepannage(st); st.office = d.office; st.depSuppliers = d.depSuppliers; st.supplyOrders = st.supplyOrders || d.supplyOrders; st.waMsgs = st.waMsgs || d.waMsgs; st.dinvoices = st.dinvoices || d.dinvoices; (st.trucks || []).forEach((tr) => { const n = d.trucks.find((x) => x.id === tr.id); if (n && !tr.year) { tr.year = n.year; tr.brand = n.brand; tr.kind = n.kind; tr.name = n.name; } }); (st.gardes || []).forEach((g) => { if (!g.step) g.step = "Expertisé"; }); }
     if (st && st.missions) {
       migrateCommercial(st);
+      migrateOps(st);
       st.missions.forEach(m => { m.durationMin ??= 60; m.photos ??= []; m.history ??= []; });
       (st.gardes || []).forEach(g => { g.adminFee ??= st.parc.adminFee; g.release ??= null; g.history ??= []; });
       (st.dinvoices || []).forEach(i => { i.history ??= []; i.payments ??= i.paid > 0 && i.paidAt ? [{ amount:i.paid, date:i.paidAt, ref:'Règlement historique déclaré' }] : []; i.credited ??= 0; });
