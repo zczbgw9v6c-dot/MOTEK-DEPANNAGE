@@ -1,0 +1,22 @@
+✓ Parc live 3D : carte par défaut, véhicules gardés et dépôt des camions
+✓ Profil dépanneur : navigation sans modules atelier
+✓ Tableau de bord : journée du dépanneur et assistant
+✓ Missions : création, affectation, sur place, remorquage, dépôt au parc, facturation
+✓ Parc : plan des niveaux, statuts selon la durée, sortie avec frais
+✓ Flotte et agent IA : camions, chauffeurs, suggestions dépannage
+✓ Mandats & assurances : statuts, demande de prise en charge, boîte mail simulée
+✓ Facturation dépanneur : libellés métier, facture de mission, encaissement
+✓ Commandes fournisseurs : besoin batterie → commande → e-mail au fournisseur → posée
+✓ Agent IA : courriels classés, relances, WhatsApp tracé
+✓ Prise en main : visite page par page
+✓ Persistance : l’état est partagé entre deux pages
+✓ Planning : réaffectation tactile et glisser-déposer
+✓ Poste chauffeur : téléphone, photo locale, étapes et entrée au parc en un geste
+✓ Parc : reçu imprimable et relance groupée sans envoi automatique
+✓ Assureurs : synthèse par compagnie et paiement annoncé sans encaissement
+✓ Facturation : acompte, avoir, export équilibré et absence de doublon
+✓ Compteurs : chaque indicateur ouvre sa liste filtrée
+✓ 3D : objet conservé sur une note, seul le véhicule modifié est reconstruit
+✓ iPad paysage et portrait : carte et panneaux accessibles, sans débordement
+
+20/20 étapes réussies · captures dans .data/verify-depannage/

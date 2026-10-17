@@ -35,7 +35,10 @@
   BO.mapBtn = (type, id, label = 'Voir dans l’atelier', cls = 'sm') => `<button class="btn ${cls}" data-map="${type}:${id}">${BO.icon('cube', 14)}${label ? esc(label) : ''}</button>`;
   BO.head = (title, sub, actions = '', crumb = '') => `<div class="pg-h"><div class="tt">${crumb}<h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ''}</div><div class="act">${actions}</div></div>`;
   BO.crumb = parts => `<div class="crumb">${parts.map(([l, go]) => go ? `<a data-open="${go}">${esc(l)}</a>` : `<span>${esc(l)}</span>`).join(BO.icon('chevR', 12))}</div>`;
-  BO.kpi = ({ lb, v, s = '', icon = 'trend', cls = '', go = '' }) => `<div class="kpi ${cls} ${go ? 'click' : ''}" ${go ? `data-open="${go}"` : ''}><div class="lb">${esc(lb)}</div><div class="ki">${BO.icon(icon, 15)}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
+  BO.kpi = ({ lb, v, s = '', icon = 'trend', cls = '', go = '' }) => {
+    const route = window.DEP?.kpiRoute?.(APP.current, lb), target = route?.module || go;
+    return `<div class="kpi ${cls} ${target ? 'click' : ''}" ${target ? `role="button" tabindex="0" data-open="${target}" ${route ? `data-open-params="${esc(JSON.stringify(route.params || {}))}"` : ''}` : ''}><div class="lb">${esc(lb)}</div><div class="ki">${BO.icon(icon, 15)}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
+  };
   BO.seg = (name, items, cur) => `<div class="seg" data-seg="${name}">${items.map(([v, l, n]) => `<button data-v="${esc(v)}" class="${String(v) === String(cur) ? 'on' : ''}">${l}${n != null ? `<em>${n}</em>` : ''}</button>`).join('')}</div>`;
   BO.tabs = (items, cur) => `<div class="tabs">${items.map(([v, l, n, cls]) => `<button data-tab="${v}" class="${v === cur ? 'on' : ''}">${l}${n ? `<em class="${cls || ''}">${n}</em>` : ''}</button>`).join('')}</div>`;
   BO.opts = (arr, cur, empty) => (empty != null ? `<option value="">${esc(empty)}</option>` : '') + arr.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(v) === String(cur ?? '') ? 'selected' : ''}>${esc(l)}</option>`; }).join('');
@@ -94,9 +97,9 @@
     const host = document.getElementById('bo-content');
     if (host && e.target.closest('.bo-nav a, [data-open]')) host.classList.remove('live');
     const m = e.target.closest('[data-map]');
-    if (m && m.closest('.bo')) { e.preventDefault(); e.stopPropagation(); const [t, id] = m.dataset.map.split(':'); BO.closeDrawer(); document.querySelectorAll('.mdl-bg').forEach(x => x.remove()); APP.showInMap(t, id); return; }
+    if (m && m.closest('.bo')) { e.preventDefault(); e.stopPropagation(); const [t, id] = m.dataset.map.split(':'); BO.closeDrawer(); UI.closeModals(); APP.showInMap(t, id); return; }
     const o = e.target.closest('[data-open]');
-    if (o && o.closest('.bo')) { e.preventDefault(); e.stopPropagation(); const [mod, id, tab] = o.dataset.open.split(':'); BO.closeDrawer(); document.querySelectorAll('.mdl-bg').forEach(x => x.remove()); APP.open(mod, id ? { id, tab } : (tab ? { tab } : {})); return; }
+    if (o && o.closest('.bo')) { e.preventDefault(); e.stopPropagation(); const [mod, id, tab] = o.dataset.open.split(':'); BO.closeDrawer(); UI.closeModals(); APP.open(mod, o.dataset.openParams ? JSON.parse(o.dataset.openParams) : id ? { id, tab } : (tab ? { tab } : {})); return; }
   }, true);
   BO.bindSearch = (el, cb) => { const q = el.querySelector('[data-q]'); if (!q) return; let tm; q.addEventListener('input', () => { clearTimeout(tm); tm = setTimeout(() => { cb(q.value); APP.refresh(); const n = BO.$('#bo-content [data-q]'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 240); }); };
   BO.bindSeg = (el, cb) => el.querySelectorAll('[data-seg]').forEach(g => g.addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b) cb(g.dataset.seg, b.dataset.v); }));

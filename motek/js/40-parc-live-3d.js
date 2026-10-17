@@ -29,10 +29,10 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
   host.appendChild(renderer.domElement);
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xeef1f4);
-  scene.fog = new THREE.Fog(0xeef1f4, 170, 320);
+  scene.fog = new THREE.Fog(0xeef1f4, 360, 650);
   const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 700);
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI / 2.15; controls.minDistance = 8; controls.maxDistance = 220;
+  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI / 2.15; controls.minDistance = 8; controls.maxDistance = 420;
   controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
   controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
   scene.add(new THREE.HemisphereLight(0xffffff, 0xb9c2cc, 1.0));
@@ -52,7 +52,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
   const amberM = mat(0xff8c00, { emissive: 0xff8c00, emissiveIntensity: 0.9 }), orangeM = mat(0xe8650a, { roughness: 0.5 });
 
   /* ---------- étiquettes (sprites texte, haute définition) ---------- */
-  const labelCache = new Map();
+  const labelCache = new Map(), labelRefs = new Map();
   function label(text, opts = {}) {
     const key = text + JSON.stringify(opts);
     if (!labelCache.has(key)) {
@@ -64,7 +64,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
       const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.minFilter = THREE.LinearMipmapLinearFilter;
       labelCache.set(key, new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false }));
     }
-    const s = new THREE.Sprite(labelCache.get(key)); const W = opts.w || 3.6; s.scale.set(W, W * 180 / 640, 1); s.renderOrder = 5; return s;
+    labelRefs.set(key,(labelRefs.get(key)||0)+1); const s = new THREE.Sprite(labelCache.get(key)); s.userData.labelKey=key; const W = opts.w || 3.6; s.scale.set(W, W * 180 / 640, 1); s.renderOrder = 5; return s;
   }
 
   /* ---------- plan du site ----------
@@ -114,10 +114,6 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
   // lampadaires
   const lampM = mat(0x3a3f47, { metalness: 0.4, roughness: 0.5 });
   for (const [x, z] of [[-66, -36], [-66, 36], [8, -36], [8, 36], [26, -30], [26, 32], [62, -30], [62, 32]]) { box(scene, 0.25, 7, 0.25, lampM, x, 3.5, z); box(scene, 1.6, 0.18, 0.5, mat(0xffffff, { emissive: 0xfff4d6, emissiveIntensity: 1.2 }), x, 7, z, false); }
-  // arbres autour du site
-  const treeM = mat(0x8fd0a0), trunkM = mat(0x8b6b4a);
-  for (let i = 0; i < 22; i++) { const a = (i / 22) * Math.PI * 2, r = 100 + (i % 3) * 8, x = Math.cos(a) * r, z = Math.sin(a) * r * 0.6; if (Math.abs(x) < 80 && Math.abs(z) < 44) continue; box(scene, 0.4, 1.6, 0.4, trunkM, x, 0.8, z); const c = new THREE.Mesh(new THREE.SphereGeometry(1.8 + (i % 3) * 0.3, 12, 9), treeM); c.position.set(x, 2.8, z); c.castShadow = true; scene.add(c); }
-
   /* ---------- bureau : trois collaborateurs ---------- */
   const office = new THREE.Group(); scene.add(office);
   (function buildOffice() {
@@ -127,7 +123,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
     box(office, 0.25, 3, OFFICE.d, wallM, OFFICE.x - OFFICE.w / 2, 1.6, OFFICE.z); box(office, 0.25, 3, OFFICE.d, wallM, OFFICE.x + OFFICE.w / 2, 1.6, OFFICE.z);
     box(office, OFFICE.w, 2.2, 0.12, mat(0x9fc3e6, { transparent: true, opacity: 0.35, roughness: 0.1, metalness: 0.2 }), OFFICE.x, 1.3, OFFICE.z + OFFICE.d / 2, false);
     box(office, OFFICE.w + 0.8, 0.25, OFFICE.d + 0.8, mat(0xdde1e6, { transparent: true, opacity: 0.55 }), OFFICE.x, 3.2, OFFICE.z, false);
-    const staff = (CX.S && CX.S.office) || [];
+    const staff = [{first:CX.emp(CX.S.meId)?.first || "Joseph",color:"#121418"},...((CX.S && CX.S.office) || [])];
     [[-4], [0], [4]].forEach(([dx], i) => {
       const x = OFFICE.x + dx, z = OFFICE.z - 1;
       box(office, 2.4, 0.08, 1.2, deskM, x, 0.95, z); for (const [a, b] of [[-1.1, -0.5], [1.1, -0.5], [-1.1, 0.5], [1.1, 0.5]]) box(office, 0.08, 0.9, 0.08, mat(0x5b6670), x + a, 0.5, z + b, false);
@@ -225,38 +221,55 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
   /* ---------- placement dynamique ---------- */
   const dyn = new THREE.Group(); scene.add(dyn);
   const pick = [];
+  const objects = new Map();
+  function disposeObject(object) {
+    object.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.isSprite && o.userData.labelKey) { const key=o.userData.labelKey, refs=(labelRefs.get(key)||1)-1; if(refs>0)labelRefs.set(key,refs);else { o.material.map?.dispose();o.material.dispose();labelCache.delete(key);labelRefs.delete(key); } } });
+  }
   function build() {
-    dyn.clear(); pick.length = 0;
     const S = CX.S; if (!S || !S.gardes) return;
-    if (window.DEP && DEP.refreshGardeStatus) DEP.refreshGardeStatus();
-    const parked = S.gardes.filter((g) => !g.outAt);
+    DEP.refreshGardeStatus();
+    const seen = new Set(); pick.length = 0;
+    const keep = (key, signature, create) => {
+      seen.add(key); let item = objects.get(key);
+      if (!item || item.signature !== signature) {
+        if (item) { dyn.remove(item.object); disposeObject(item.object); }
+        const object = create(); dyn.add(object); item = {signature,object}; objects.set(key,item);
+      }
+      pick.push(item.object); return item.object;
+    };
     LEVELS.forEach((L, li) => {
-      parked.filter((g) => g.level === L.id).sort((a, b) => (a.since < b.since ? -1 : 1)).slice(0, LEVEL_SLOTS).forEach((g, k) => {
-        const p = slotPos(li, k), c = car(g.vehicle.hex); c.position.set(p.x, 0, p.z); c.rotation.y = p.row ? Math.PI : 0;
+      S.gardes.filter(g => !g.outAt && g.level === L.id).forEach(g => {
+        const k = Number(g.slot.split('-')[1])-1;
+        if (k < 0 || k >= (S.parc.levels.find(l=>l.id===L.id)?.slots || LEVEL_SLOTS)) return;
         const days = DEP.gardeDays(g);
-        const tone = g.status === "Abandon présumé" ? "rgba(215,38,30,.96)" : g.status === "Relance à faire" ? "rgba(185,100,0,.96)" : g.step === "Non traité" ? "rgba(124,58,237,.96)" : "rgba(255,255,255,.94)";
-        const s = label(g.vehicle.plate + "  ·  " + days + " j", { bg: tone, fg: tone.startsWith("rgba(255,255") ? "#121418" : "#fff", size: 30, w: 4.2 }); s.position.set(0, 2.5, 0); c.add(s);
-        c.userData = { kind: "garde", id: g.id }; dyn.add(c); pick.push(c);
+        keep('g:'+g.id, JSON.stringify([g.slot,g.vehicle.hex,g.vehicle.plate,days,g.status,g.step]), () => {
+          const p=slotPos(li,k), c=car(g.vehicle.hex);c.position.set(p.x,0,p.z);c.rotation.y=p.row?Math.PI:0;
+          const tone=g.status==='Abandon présumé'?'rgba(215,38,30,.96)':g.status==='Relance à faire'?'rgba(185,100,0,.96)':g.step==='Non traité'?'rgba(124,58,237,.96)':'rgba(255,255,255,.96)';
+          const tag=label(g.vehicle.plate+' · '+days+' j',{bg:tone,fg:tone.startsWith('rgba(255,255')?'#121418':'#fff',size:34,w:4.5});tag.position.set(0,2.5,0);c.add(tag);c.userData={kind:'garde',id:g.id};return c;
+        });
       });
     });
-    S.trucks.slice(0, 12).forEach((t, i) => {
-      const p = bayPos(i);
-      if (t.status === "En mission") { const s = label(t.name + " · en mission", { bg: "rgba(255,140,0,.22)", fg: "#b96400", size: 28, w: 5.4 }); s.position.set(p.x, 0.7, p.z); s.userData = { kind: "truck", id: t.id }; dyn.add(s); pick.push(s); return; }
-      const tr = truck(t, TONE[t.status] || 0x1b9a55); tr.position.set(p.x, 0, p.z); tr.rotation.y = p.row ? 0 : Math.PI;
-      const s = label(t.name + (t.kind === "Panier" ? " · Hilux" : ""), { size: 32, w: 5 }); s.position.set(0, 4.4, 0); tr.add(s);
-      if (t.status === "Entretien") { const cone = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.9, 10), mat(0xff6a00)); cone.position.set(p.x + 2.6, 0.45, p.z + (p.row ? -6 : 6)); dyn.add(cone); }
-      tr.userData = { kind: "truck", id: t.id }; dyn.add(tr); pick.push(tr);
-    });
-    pick.push(office);
-    kpis();
+    S.trucks.slice(0,12).forEach((t,i)=>keep('t:'+t.id,JSON.stringify([t.status,t.name,t.brand,t.kind,i]),()=>{
+      const p=bayPos(i), group=new THREE.Group();group.userData={kind:'truck',id:t.id};
+      if(t.status==='En mission'){const tag=label(t.name+' · en mission',{bg:'rgba(255,255,255,.95)',fg:'#9a5000',size:30,w:5.4});tag.position.set(p.x,.7,p.z);group.add(tag);return group;}
+      const tr=truck(t,TONE[t.status]||0x1b9a55);tr.position.set(p.x,0,p.z);tr.rotation.y=p.row?0:Math.PI;
+      const tag=label(t.name+(t.kind==='Panier'?' · Hilux':''),{size:32,w:5});tag.position.set(0,4.4,0);tr.add(tag);group.add(tr);
+      if(t.status==='Entretien'){const cone=new THREE.Mesh(new THREE.ConeGeometry(.35,.9,10),mat(0xff6a00));cone.position.set(p.x+2.6,.45,p.z+(p.row?-6:6));group.add(cone);}
+      return group;
+    }));
+    for(const [key,item] of objects)if(!seen.has(key)){dyn.remove(item.object);disposeObject(item.object);objects.delete(key);}
+    pick.push(office); kpis();
   }
+
   function kpis() {
     const S = CX.S, parked = S.gardes.filter((g) => !g.outAt), free = S.trucks.filter((t) => t.status === "Disponible"), onRoad = S.trucks.filter((t) => t.status === "En mission"), maint = S.trucks.filter((t) => t.status === "Entretien");
     const set = (card, l, v, d, s) => { if (!card) return; card.style.display = ""; card.querySelector(".l").textContent = l; card.querySelector(".v b").textContent = v; card.querySelector(".v .d").textContent = d; card.querySelector(".s").textContent = s; };
     const cards = view.querySelectorAll(".kpis .kpi");
     set(cards[0], "Véhicules sur site", parked.length, parked.filter((g) => g.step === "Non traité").length + " non traités", LEVELS.map((L) => L.name.replace("Niveau ", "N") + " " + parked.filter((g) => g.level === L.id).length).join(" · "));
-    set(cards[1], "Camions disponibles", free.length + "/" + S.trucks.length, onRoad.length + " sur la route", free.filter((t) => t.kind === "Panier").length + " paniers · " + free.filter((t) => t.kind !== "Panier").length + " plateaux / porte-voitures");
+    set(cards[1], "Camions disponibles", free.length + "/" + S.trucks.length, onRoad.length + " affectés ou en intervention", free.filter((t) => t.kind === "Panier").length + " paniers · " + free.filter((t) => t.kind !== "Panier").length + " plateaux / porte-voitures");
     set(cards[2], "En entretien", maint.length, maint.length ? maint.map((t) => t.name).join(", ") : "aucun", parked.filter((g) => g.status !== "En garde").length + " véhicules à relancer");
+    const routes=[['parc',{seg:'all'}],['fleet',{seg:'Disponible'}],['fleet',{seg:'Entretien'}]];
+    cards.forEach((card,i)=>{card.tabIndex=0;card.setAttribute('role','button');card.onclick=()=>APP.open(routes[i][0],routes[i][1]);card.onkeydown=e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();card.click();}};});
   }
 
   /* ---------- fiche latérale ---------- */
@@ -304,26 +317,27 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
     const from = { p: camera.position.clone(), t: controls.target.clone() };
     const to = { t: new THREE.Vector3(target.x, 0, target.z) };
     to.p = new THREE.Vector3(to.t.x + dist * Math.sin(pol) * Math.sin(az), dist * Math.cos(pol), to.t.z + dist * Math.sin(pol) * Math.cos(az));
-    anim = { from, to, t0: performance.now(), dur: dur * 1000 };
+    anim = { from, to, t0: performance.now(), dur: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : dur * 1000 };
   }
   // cadre un rectangle au sol quelle que soit la taille de la fenêtre
   function fitRect(r, az = 0.5, pol = 0.78, margin = 1.0) {
     const vFov = THREE.MathUtils.degToRad(camera.fov), hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
     const diag = Math.hypot(r.w, r.d) * margin;
-    const dist = Math.max(diag / 2 / Math.tan(hFov / 2), diag / 2 / Math.tan(vFov / 2) * 0.9);
-    flyTo({ x: r.x, z: r.z }, Math.min(dist, 215), az, pol);
+    const usable = Math.max(.45, (host.clientHeight - (innerWidth <= 1100 ? 210 : 160)) / host.clientHeight);
+    const dist = Math.max(diag / 2 / Math.tan(hFov / 2), diag / 2 / Math.tan(vFov / 2) / usable);
+    flyTo({ x: r.x, z: r.z }, Math.min(dist, 400), az, pol);
   }
   const SITE = { x: 4, z: -2, w: 146, d: 86 };
   const VIEWS = {
     ALL: () => fitRect(SITE, 0.16, 0.8),
     PARC: () => fitRect(PARC, 0.12, 0.8),
-    N1: () => fitRect({ x: LEVEL_X, z: LEVELS[0].z, w: LEVEL_W, d: LEVEL_D + 6 }, 0.3, 0.86),
-    N2: () => fitRect({ x: LEVEL_X, z: LEVELS[1].z, w: LEVEL_W, d: LEVEL_D + 6 }, 0.3, 0.86),
-    N3: () => fitRect({ x: LEVEL_X, z: LEVELS[2].z, w: LEVEL_W, d: LEVEL_D + 6 }, 0.3, 0.86),
+    N1: () => fitRect({ x: LEVEL_X - 4, z: LEVELS[0].z, w: LEVEL_W + 16, d: LEVEL_D + 10 }, 0.3, 0.86, 1.10),
+    N2: () => fitRect({ x: LEVEL_X - 4, z: LEVELS[1].z, w: LEVEL_W + 16, d: LEVEL_D + 10 }, 0.3, 0.86, 1.10),
+    N3: () => fitRect({ x: LEVEL_X - 4, z: LEVELS[2].z, w: LEVEL_W + 16, d: LEVEL_D + 10 }, 0.3, 0.86, 1.10),
     DEPOT: () => fitRect(DEPOT, 0.25, 0.85, 1.05),
     OFFICE: () => flyTo({ x: OFFICE.x, z: OFFICE.z }, 30, 0.2, 1.0),
   };
-  const PLACES = [["ALL", "cube", "Site", "Parc, dépôt et bureau"], ["PARC", "layers", "Parc", "Trois niveaux de gardiennage"], ["DEPOT", "truck", "Camions", "Dépôt : paniers, plateaux, porte-voitures"], ["OFFICE", "users", "Bureau", "Accueil, sinistres, facturation"]];
+  const PLACES = [["N1", "layers", "N−1", "Niveau -1"], ["N2", "layers", "N−2", "Niveau -2"], ["N3", "layers", "N−3", "Niveau -3"], ["ALL", "cube", "Site", "Parc, dépôt et bureau"], ["PARC", "layers", "Parc", "Trois niveaux de gardiennage"], ["DEPOT", "truck", "Camions", "Dépôt : paniers, plateaux, porte-voitures"], ["OFFICE", "users", "Bureau", "Accueil, sinistres, facturation"]];
   const ctl = view.querySelector(".ctl");
   const zt = $("#zt"), zs = $("#zs"), ztag = $("#ztag"), zbtn = $("#zbtn"), zmenu = $("#zmenu");
   const TAGS = { ALL: "SITE", PARC: "PARC", DEPOT: "DEP", OFFICE: "BUR" };
@@ -438,7 +452,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
   let lastClock = "";
   function frame(now) {
     requestAnimationFrame(frame);
-    if (anim) { const k = Math.min(1, (now - anim.t0) / anim.dur), e = 1 - Math.pow(1 - k, 3); camera.position.lerpVectors(anim.from.p, anim.to.p, e); controls.target.lerpVectors(anim.from.t, anim.to.t, e); if (k >= 1) anim = null; }
+    if (anim) { const k = anim.dur === 0 ? 1 : Math.min(1, (now - anim.t0) / anim.dur), e = 1 - Math.pow(1 - k, 3); camera.position.lerpVectors(anim.from.p, anim.to.p, e); controls.target.lerpVectors(anim.from.t, anim.to.t, e); if (k >= 1) anim = null; }
     controls.update();
     if (clock) { const c = U.hm(U.nowMin()); if (c !== lastClock) { clock.textContent = c; lastClock = c; } }
     if (view.classList.contains("on")) renderer.render(scene, camera);
@@ -449,5 +463,5 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
   CX.on("change", rebuild); CX.on("remote", rebuild); CX.on("reset", rebuild);
   const intro = $("#intro"); if (intro) setTimeout(() => intro.classList.add("off"), 600);
   const hint = $("#hint"); if (hint) setTimeout(() => hint.classList.add("off"), 9000);
-  window.PARC3D = { build, select, flyTo, setPlace, scene, camera, counts: () => ({ cars: pick.filter((o) => o.userData.kind === "garde").length, trucks: pick.filter((o) => o.userData.kind === "truck").length }) };
+  window.PARC3D = { objectFor: key => objects.get(key)?.object, build, select, flyTo, setPlace, scene, camera, counts: () => ({ cars: pick.filter((o) => o.userData.kind === "garde").length, trucks: pick.filter((o) => o.userData.kind === "truck").length }) };
 })();
