@@ -414,6 +414,32 @@
     (st.gardes || []).forEach(g=>{g.rateStatus ??= 'demo-unconfirmed';});
     st.missions.forEach(m=>{m.serviceId ??= null;m.priceConfirmed ??= !m.serviceId;m.priceSource ??= null;m.priceConfirmation ??= null;m.department ??= '';});
   }
+  /* ---------- exploitation : demandes entrantes et file d'appels ---------- */
+  // Messages bruts de démonstration (fictifs) : l'extraction est faite à l'écran,
+  // par le module « Demandes entrantes », avec les champs manquants signalés.
+  function demoIntake() {
+    const t = today();
+    return [
+      { id: "RQ1", no: "DE-801", at: t + " " + hm(nowMin() - 42), channel: "email", from: "plateforme-assistance@axa-demo.fr", demo: true, status: "À traiter",
+        raw: "Mission d'assistance AXA\nRéf : SIN-48310\nVéhicule : Peugeot 308 immatriculée GH-482-KL\nPanne batterie, ne démarre plus.\nLieu : 18 rue de Paradis, 75010 Paris\nAssurée : Mme Keller — 06 44 21 09 77\nMerci de confirmer la prise en charge." },
+      { id: "RQ2", no: "DE-802", at: t + " " + hm(nowMin() - 25), channel: "whatsapp", from: "+33 6 52 18 44 30", demo: true, status: "À traiter",
+        raw: "Bonjour, ma voiture est en panne boulevard de Magenta à Paris, une Clio grise. Vous pouvez venir la remorquer ? Je suis joignable au 06 52 18 44 30. Merci" },
+      { id: "RQ3", no: "DE-803", at: t + " " + hm(nowMin() - 8), channel: "form", from: "Formulaire du site depanneuse.net", demo: true, status: "À traiter",
+        raw: "Nom : Karim Benali\nTéléphone : 07 81 220 540\nVille : 93100 Montreuil\nMessage : portière claquée avec les clés à l'intérieur, ouverture de porte possible aujourd'hui ?" },
+    ];
+  }
+  function migrateOps(st) {
+    if (!st || !st.missions) return;
+    // Demandes entrantes : connecteurs non raccordés ; seuls des exemples fictifs sont fournis en démonstration.
+    st.intake ??= { channels: { phone: false, email: false, form: false, whatsapp: false, platform: false }, requests: st.pristine ? demoIntake() : [] };
+    st.intake.requests.forEach((r) => { r.status ??= "À traiter"; r.missionId ??= null; r.fields ??= null; r.history ??= []; });
+    // File « À rappeler » : appels préparés par le bureau, compte rendu saisi à la main.
+    st.callbacks ??= [];
+    st.callbacks.forEach((c) => { c.attempts ??= []; c.status ??= "À rappeler"; });
+    // Atouts mis en avant dans les publicités : déclarés par le bureau, modifiables.
+    if (st.commercial) st.commercial.assets ??= ["Intervention 24h/24 et 7j/7", "Agréé toutes compagnies d'assurance", "Parc de gardiennage sécurisé", "Prise en charge rapide par le bureau"];
+    (st.missions || []).forEach((m) => { m.origin ??= null; });
+  }
   function seedDepannage(S) {
     const t = today();
     const mkT = (i, v) => Object.assign({ id: "T" + (i + 1), status: "Disponible", driverId: null, km: 0, ct: addDays(t, 200), notes: "" }, v);
@@ -4510,6 +4536,7 @@
     if (st && st.missions && !st.office) { const d = seedDepannage(st); st.office = d.office; st.depSuppliers = d.depSuppliers; st.supplyOrders = st.supplyOrders || d.supplyOrders; st.waMsgs = st.waMsgs || d.waMsgs; st.dinvoices = st.dinvoices || d.dinvoices; (st.trucks || []).forEach((tr) => { const n = d.trucks.find((x) => x.id === tr.id); if (n && !tr.year) { tr.year = n.year; tr.brand = n.brand; tr.kind = n.kind; tr.name = n.name; } }); (st.gardes || []).forEach((g) => { if (!g.step) g.step = "Expertisé"; }); }
     if (st && st.missions) {
       migrateCommercial(st);
+      migrateOps(st);
       st.missions.forEach(m => { m.durationMin ??= 60; m.photos ??= []; m.history ??= []; });
       (st.gardes || []).forEach(g => { g.adminFee ??= st.parc.adminFee; g.release ??= null; g.history ??= []; });
       (st.dinvoices || []).forEach(i => { i.history ??= []; i.payments ??= i.paid > 0 && i.paidAt ? [{ amount:i.paid, date:i.paidAt, ref:'Règlement historique déclaré' }] : []; i.credited ??= 0; });

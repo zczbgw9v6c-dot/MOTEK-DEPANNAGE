@@ -979,12 +979,13 @@ await step(
       "budget total par défaut",
     );
     await page.click(".mdl [data-ok]");
+    // L'aperçu s'ouvre désormais automatiquement après la génération.
+    await page.waitForSelector(".drw [data-validate]");
     const c = await ev(() => CX.S.marketing.campaigns[0]);
     expect(
       c.budget === 50 && c.days === 5 && c.metrics === null,
       "brouillon sans statistiques inventées",
     );
-    await page.click('#bo-content [data-campaign-detail="' + c.id + '"]');
     await page.click("[data-validate]");
     const download = page.waitForEvent("download");
     await page.click("[data-export]");
@@ -1049,6 +1050,145 @@ await step("Commercial : catalogue sourcé et lisibilité iPad", async () => {
   }
   await page.setViewportSize({ width: 1500, height: 1000 });
 });
+
+await step(
+  "Demandes entrantes : extraction locale, doublon signalé, mission créée et reliée",
+  async () => {
+    await ev(() => APP.open("inbox"));
+    await page.waitForTimeout(400);
+    const t = await ev(() => document.querySelector("#bo-content").innerText);
+    expect(
+      /Connecteurs non raccordés/.test(t) && /exemple[s]? fictif/i.test(t),
+      "l'écran dit que rien n'est raccordé et que les exemples sont fictifs",
+    );
+    expect(
+      (await ev(() => document.querySelectorAll(".intake").length)) >= 3,
+      "exemples de demandes affichés",
+    );
+    expect(
+      /à compléter/i.test(t),
+      "les champs manquants sont signalés à l'écran",
+    );
+    await shot("16-demandes-entrantes");
+    // La demande AXA (complète) devient une mission à confirmer, pré-remplie.
+    const n0 = await ev(() => CX.S.missions.length);
+    await ev(() => document.querySelector('[data-go="RQ1"]').click());
+    await page.waitForTimeout(400);
+    const form = await ev(() => ({
+      plate: document.querySelector('.mdl [name="plate"]')?.value,
+      address: document.querySelector('.mdl [name="address"]')?.value,
+      make: document.querySelector('.mdl [name="make"]')?.value,
+      mandant: document.querySelector('.mdl [name="mandant"]')?.value,
+    }));
+    expect(
+      form.plate === "GH-482-KL" &&
+        /rue de Paradis/.test(form.address || "") &&
+        form.make === "Peugeot" &&
+        form.mandant === "AXA",
+      "formulaire pré-rempli depuis le message : " + JSON.stringify(form),
+    );
+    await shot("17-demande-vers-mission");
+    await ev(() => {
+      const pc = document.querySelector('.mdl [name="priceConfirmed"]');
+      if (pc) pc.checked = true;
+      document.querySelector(".mdl [data-ok]").click();
+    });
+    await page.waitForTimeout(400);
+    const st = await ev(() => ({
+      n: CX.S.missions.length,
+      rq: CX.S.intake.requests.find((r) => r.id === "RQ1").status,
+      origin: CX.S.missions[0].origin,
+      linked: CX.S.intake.requests.find((r) => r.id === "RQ1").missionId === CX.S.missions[0].id,
+    }));
+    expect(
+      st.n === n0 + 1 && st.rq === "Mission créée" && st.linked && st.origin && st.origin.no === "DE-801",
+      "mission créée, demande liée, origine conservée : " + JSON.stringify(st),
+    );
+    // Un message collé avec la même plaque est signalé comme doublon possible.
+    const r2 = await ev(() =>
+      DEP.intakeAdd({ channel: "email", from: "test@exemple.fr", raw: "Panne batterie Peugeot 308 immatriculée GH-482-KL, 18 rue de Paradis, 75010 Paris. 06 44 21 09 77" }),
+    );
+    expect(
+      (await ev((id) => DEP.intakeDuplicates(DEP.intakeExtract ? CX.S.intake.requests.find((r) => r.id === id) : null).length, r2.id)) > 0,
+      "doublon détecté sur la même plaque",
+    );
+    await ev((id) => DEP.intakeDismiss(id, "doublon"), r2.id);
+  },
+);
+
+await step(
+  "À rappeler : propositions sourcées, mise en file, appel et compte rendu",
+  async () => {
+    await ev(() => APP.open("callbacks"));
+    await page.waitForTimeout(400);
+    const t = await ev(() => document.querySelector("#bo-content").innerText);
+    expect(
+      /Aucune intégration téléphonique n’est raccordée|aucun appel automatique/i.test(t),
+      "l'écran dit qu'aucune téléphonie n'est raccordée",
+    );
+    const nProps = await ev(() => document.querySelectorAll("[data-queue]").length);
+    expect(nProps > 0, "des propositions sourcées des dossiers : " + nProps);
+    await shot("18-a-rappeler");
+    const n0 = await ev(() => DEP.callbacks().length);
+    await ev(() => document.querySelector("[data-queue]").click());
+    await page.waitForTimeout(400);
+    expect(
+      (await ev(() => DEP.callbacks().length)) === n0 + 1,
+      "proposition ajoutée à la file",
+    );
+    const c = await ev(() => DEP.callbacks()[0]);
+    expect(!!c.script && !!c.summary && !!c.phone, "résumé, script et téléphone présents");
+    await ev(() => document.querySelector("[data-rep]").click());
+    await page.waitForTimeout(300);
+    await ev(() => {
+      document.querySelector('.mdl [name="outcome"]').value = "Joint — accord";
+      document.querySelector('.mdl [name="note"]').value = "Accord obtenu, dossier à suivre.";
+      document.querySelector(".mdl [data-ok]").click();
+    });
+    await page.waitForTimeout(300);
+    const after = await ev((id) => CX.S.callbacks.find((x) => x.id === id), c.id);
+    expect(
+      after.status === "Fait" && after.attempts.length === 1 && after.attempts[0].outcome === "Joint — accord",
+      "compte rendu enregistré et rappel clos : " + JSON.stringify({ s: after.status, a: after.attempts.length }),
+    );
+    await shot("19-rappel-fait");
+  },
+);
+
+await step(
+  "Assistant de campagne : proposition expliquée, aperçu avant validation, aucun envoi",
+  async () => {
+    await ev(() => APP.open("acquisition"));
+    await page.waitForTimeout(400);
+    await ev(() => document.querySelector("[data-suggest]").click());
+    await page.waitForTimeout(300);
+    const intro = await ev(() => document.querySelector(".mdl")?.innerText || "");
+    expect(/Proposition de MOTEK/.test(intro) && /la plus demandée/.test(intro), "la proposition est expliquée");
+    expect(
+      (await ev(() => document.querySelectorAll('.mdl [name^="asset"]').length)) >= 3,
+      "atouts cochables dans le formulaire",
+    );
+    await shot("20-campagne-proposee");
+    const n0 = await ev(() => CX.S.marketing.campaigns.length);
+    await ev(() => document.querySelector(".mdl [data-ok]").click());
+    await page.waitForTimeout(500);
+    const c = await ev(() => CX.S.marketing.campaigns[0]);
+    expect(
+      (await ev(() => CX.S.marketing.campaigns.length)) === n0 + 1 && c.status === "Brouillon",
+      "brouillon créé, rien n'est diffusé",
+    );
+    expect(Array.isArray(c.why) && c.why.length >= 5 && c.assets.length >= 1, "choix expliqués et atouts retenus");
+    const ap = await ev(() => ({
+      preview: !!document.querySelector(".ad-preview"),
+      txt: document.querySelector(".drw")?.innerText || "",
+    }));
+    expect(ap.preview, "aperçu visuel de la publicité affiché");
+    expect(/Pourquoi ces choix/.test(ap.txt) && /Budget prévu|prévu/.test(ap.txt) && /anonymes/.test(ap.txt), "explications et chiffres distincts à l'écran");
+    await shot("21-campagne-apercu");
+    await ev(() => UI.closeModals());
+    await ev(() => BO.closeDrawer());
+  },
+);
 
 await browser.close();
 const failed = results.filter((r) => !r[0]);

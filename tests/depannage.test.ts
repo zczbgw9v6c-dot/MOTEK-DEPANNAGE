@@ -23,6 +23,8 @@ function fixture() {
     "35-facturation-depannage",
     "36-commandes-fournisseurs",
     "39-commercial-depannage",
+    "41-reception-demandes",
+    "42-rappels",
   ])
     vm.runInContext(
       readFileSync(
@@ -422,4 +424,100 @@ test("commercial : contact valide, suivi manuel et tarif validé sans modifier l
   });
   assert.ok(c.social.includes("95 € TTC"));
   assert.ok(c.social.includes("selon conditions"));
+});
+
+test("demandes entrantes : extraction locale fidèle, rien d'inventé, champs manquants signalés", () => {
+  const { CX, D } = fixture();
+  const rq = CX.S.intake.requests;
+  assert.equal(rq.length, 3, "trois exemples fictifs en démonstration");
+  const f1 = D.intakeExtract(rq[0].raw);
+  assert.equal(f1.plate, "GH-482-KL");
+  assert.equal(f1.ref, "SIN-48310");
+  assert.equal(f1.serviceId, "depannage-batterie");
+  assert.equal(f1.mandant, "AXA");
+  assert.equal(f1.make, "Peugeot");
+  assert.equal(f1.model, "308");
+  assert.equal(f1.department, "75");
+  assert.ok(f1.phone && f1.address && f1.name, "téléphone, adresse et nom lus dans le message");
+  assert.equal(D.intakeMissing(f1).length, 0, "demande complète");
+  const f2 = D.intakeExtract(rq[1].raw);
+  assert.equal(f2.plate, undefined, "plaque absente : rien d'inventé");
+  assert.equal(f2.make, undefined, "« une Clio grise » sans marque : rien d'inventé");
+  const miss = D.intakeMissing(f2);
+  assert.ok(miss.includes("immatriculation") && miss.includes("adresse") && miss.includes("mandant"));
+  assert.equal(f2.serviceId, "remorquage-voiture");
+  const f3 = D.intakeExtract(rq[2].raw);
+  assert.equal(f3.serviceId, "ouverture-de-porte-voiture");
+  assert.equal(f3.department, "93");
+  assert.equal(f3.name, "Karim Benali");
+});
+
+test("demandes entrantes : doublons détectés, ajout contrôlé, lien demande → mission", () => {
+  const { CX, D } = fixture();
+  assert.equal(D.intakeAdd({ channel: "email", raw: "court" }), null, "message trop court refusé");
+  const m = CX.S.missions.find((x: any) => D.activeMission(x));
+  const r = D.intakeAdd({ channel: "whatsapp", from: "+33 6 00 00 00 99", raw: "Bonjour, panne batterie pour ma voiture immatriculée " + m.vehicle.plate + ", 10 rue de Lancry, 75010 Paris. 06 12 34 56 78" });
+  assert.ok(r && r.status === "À traiter");
+  const dups = D.intakeDuplicates(r);
+  assert.ok(dups.some((d: any) => d.kind === "mission" && d.id === m.id), "la mission en cours sur la même plaque est signalée");
+  const created = { id: "M-TEST", no: "MI-9999" };
+  D.intakeLink(r.id, created);
+  assert.equal(r.status, "Mission créée");
+  assert.equal(r.missionId, "M-TEST");
+  assert.ok(r.history[0].text.includes("MI-9999"));
+  const r2 = CX.S.intake.requests.find((x: any) => x.id === "RQ1");
+  D.intakeDismiss(r2.id, "doublon");
+  assert.equal(r2.status, "Écartée (doublon)");
+  assert.equal(D.intakeDismiss(r2.id), null, "une demande écartée ne se rééca rte pas");
+});
+
+test("à rappeler : propositions sourcées des dossiers, anti-doublon, compte rendu obligatoire et historisé", () => {
+  const { CX, D } = fixture();
+  const props = D.callbackProposals();
+  assert.ok(props.length > 0, "des propositions existent dans la démo");
+  for (const p of props) assert.ok(p.kind && p.name && p.phone && p.summary && p.script, "dossier, motif, contact, résumé et script présents");
+  assert.ok(props.some((p: any) => p.kind === "Demande à confirmer"), "les missions demandées sont proposées au rappel");
+  const p0 = props.find((p: any) => p.targetType && p.targetId);
+  const c = D.callbackAdd(p0);
+  assert.ok(c && c.status === "À rappeler");
+  assert.equal(D.callbackAdd(p0), null, "même dossier + même motif : refusé (anti-doublon)");
+  assert.ok(!D.callbackProposals().some((p: any) => p.targetType === p0.targetType && p.targetId === p0.targetId && p.kind === p0.kind), "la proposition disparaît une fois dans la file");
+  assert.equal(D.callbackReport(c.id, { outcome: "n'importe quoi" }), null, "résultat d'appel contrôlé");
+  D.callbackReport(c.id, { outcome: "Répondeur, message laissé", note: "rappeler demain" });
+  assert.equal(c.status, "À rappeler", "un répondeur ne clôt pas le rappel");
+  assert.equal(c.attempts.length, 1);
+  D.callbackReport(c.id, { outcome: "Joint — accord", close: true });
+  assert.equal(c.status, "Fait");
+  assert.equal(c.attempts.length, 2, "chaque appel reste dans l'historique");
+  assert.equal(D.callbackReport(c.id, { outcome: "Joint — accord" }), null, "un rappel clos ne se modifie plus");
+  assert.equal(D.callbackAdd({ name: "X", phone: "pas un numéro" }), null, "téléphone contrôlé");
+});
+
+test("assistant de campagne : atouts déclarés seulement, explication des choix, aperçu sans diffusion", () => {
+  const { CX, D } = fixture();
+  const C = D.commercial;
+  const c = C.draft({ serviceId: "depannage-batterie", department: "75", channel: "meta", budget: 50, days: 5, goal: "call", assets: ["Agréé toutes compagnies d'assurance", "Atout inventé par personne"] });
+  assert.deepEqual(Array.from(c.assets), ["Agréé toutes compagnies d'assurance"], "un atout non déclaré par le bureau est écarté");
+  assert.ok(c.social.includes("Agréé toutes compagnies"), "l'atout retenu apparaît dans le texte");
+  assert.ok(c.social.includes(CX.S.company.phone), "objectif appels : le numéro du bureau est dans le texte");
+  assert.ok(Array.isArray(c.why) && c.why.length >= 5, "les choix sont expliqués");
+  assert.ok(c.why.some((w: string) => w.includes("Prix sur devis")), "tarif non validé : l'explication le dit");
+  assert.ok(c.descriptions.every((x: string) => x.length <= 90));
+  assert.equal(c.status, "Brouillon", "rien n'est diffusé : brouillon à valider");
+  const cf = C.draft({ serviceId: "depannage-batterie", department: "75", channel: "google", budget: 50, days: 5, goal: "form", assets: [] });
+  assert.ok(cf.why.some((w: string) => w.includes("formulaire")), "objectif formulaire expliqué");
+});
+
+test("migration : une base réelle gagne les demandes entrantes et la file d'appels, sans exemples fictifs injectés", () => {
+  const seed = loadCore({ sleepless: true }).CX.S;
+  const old = JSON.parse(JSON.stringify(seed));
+  old.pristine = false;
+  delete old.intake;
+  delete old.callbacks;
+  const migrated = loadCore({ cached: old, sleepless: true }).CX.S;
+  assert.ok(migrated.intake && Array.isArray(migrated.intake.requests));
+  assert.equal(migrated.intake.requests.length, 0, "pas de fausses demandes dans des données réelles");
+  assert.deepEqual(Array.from(migrated.callbacks), []);
+  assert.ok(Array.isArray(migrated.commercial.assets) && migrated.commercial.assets.length > 0, "atouts par défaut disponibles");
+  assert.ok(Object.values(migrated.intake.channels).every((v: any) => v === false), "aucun canal déclaré raccordé");
 });
