@@ -69,6 +69,52 @@ export function validateState(state: unknown): string | null {
     if (![i.ht,i.tva,i.ttc,i.paid,i.credited ?? 0].every(Number.isFinite)) return "montant dépannage invalide";
     if (Math.abs(i.ht+i.tva-i.ttc)>.02 || i.paid<0 || (i.credited || 0)<0 || (i.kind!=="avoir" && (i.ttc<0 || i.paid+(i.credited||0)>i.ttc+.01)) || (i.kind==="avoir" && (i.ttc>=0 || i.paid!==0))) return "facture dépannage incohérente : " + i.id;
   }
+  if (st.intake !== undefined) {
+    const intake = st.intake as any;
+    if (!intake || !Array.isArray(intake.requests))
+      return "Demandes entrantes invalides";
+    const ids = new Set();
+    for (const r of intake.requests) {
+      if (
+        !r ||
+        typeof r.id !== "string" ||
+        !r.id ||
+        ids.has(r.id) ||
+        typeof r.raw !== "string"
+      )
+        return "Demande entrante invalide ou en double";
+      ids.add(r.id);
+      if (r.transport != null) {
+        const t = r.transport;
+        if (
+          t.provider !== "imap" ||
+          !/^[a-f0-9]{64}$/.test(t.key) ||
+          !/^[a-f0-9]{64}$/.test(t.account) ||
+          (t.fingerprint !== null && !/^[a-f0-9]{64}$/.test(t.fingerprint)) ||
+          !Number.isSafeInteger(t.uid) ||
+          t.uid < 1 ||
+          !/^\d+$/.test(t.uidValidity)
+        )
+          return "Origine IMAP invalide";
+      }
+    }
+    if (intake.imap != null) {
+      const accounts = intake.imap.accounts;
+      if (!accounts || typeof accounts !== "object" || Array.isArray(accounts))
+        return "Curseurs IMAP invalides";
+      for (const [key, c] of Object.entries(accounts) as [string, any][]) {
+        if (
+          !/^[a-f0-9]{64}$/.test(key) ||
+          !c ||
+          typeof c.validity !== "string" ||
+          !/^\d+$/.test(c.validity) ||
+          !Number.isSafeInteger(c.uid) ||
+          c.uid < 0
+        )
+          return "Curseur IMAP invalide";
+      }
+    }
+  }
   return null;
 }
 

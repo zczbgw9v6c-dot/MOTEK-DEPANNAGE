@@ -233,3 +233,8 @@ Mode production local : `npm run build` puis `AUTOHUB_DB=.data/prod.sqlite MOTEK
 - **Agent IA** : suggestions du jour, courriels assureurs classés (payé / accordé / pièces / refus) appliqués sur clic, relances à faire, messages **WhatsApp** aux propriétaires (ouverture de WhatsApp sur l'appareil avec le texte prêt, envoi tracé). Mode simulé tant qu'aucune boîte mail ni WhatsApp Business n'est raccordé.
 - **Prise en main** page par page (12 étapes), ouverte une seule fois puis depuis le bouton « œil ».
 - Société : Dan Dépann, 25 avenue Claude Vellefaux, 75010 Paris (informations publiques) ; téléphone et adresses e-mail fictifs ; utilisateur Joseph.
+
+
+### Courriel entrant IMAP
+
+Réception manuelle en lecture seule vers les demandes entrantes, désactivée sans configuration privée. Voir [la configuration et les limites](docs/CONNECTEUR_IMAP.md) et [la revue avec tests et captures](docs/REVUE_3_IMAP.md). Aucune boîte réelle fournie ou activée dans ce lot.

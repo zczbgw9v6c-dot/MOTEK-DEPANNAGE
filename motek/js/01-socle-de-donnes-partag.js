@@ -418,13 +418,13 @@
   // Messages bruts de démonstration (fictifs) : l'extraction est faite à l'écran,
   // par le module « Demandes entrantes », avec les champs manquants signalés.
   function demoIntake() {
-    const t = today();
+    const before = minutes => {const total=nowMin()-minutes;return addDays(today(),Math.floor(total/1440))+" "+hm((total%1440+1440)%1440);};
     return [
-      { id: "RQ1", no: "DE-801", at: t + " " + hm(nowMin() - 42), channel: "email", from: "plateforme-assistance@axa-demo.fr", demo: true, status: "À traiter",
+      { id: "RQ1", no: "DE-801", at: before(42), channel: "email", from: "plateforme-assistance@axa-demo.fr", demo: true, status: "À traiter",
         raw: "Mission d'assistance AXA\nRéf : SIN-48310\nVéhicule : Peugeot 308 immatriculée GH-482-KL\nPanne batterie, ne démarre plus.\nLieu : 18 rue de Paradis, 75010 Paris\nAssurée : Mme Keller — 06 44 21 09 77\nMerci de confirmer la prise en charge." },
-      { id: "RQ2", no: "DE-802", at: t + " " + hm(nowMin() - 25), channel: "whatsapp", from: "+33 6 52 18 44 30", demo: true, status: "À traiter",
+      { id: "RQ2", no: "DE-802", at: before(25), channel: "whatsapp", from: "+33 6 52 18 44 30", demo: true, status: "À traiter",
         raw: "Bonjour, ma voiture est en panne boulevard de Magenta à Paris, une Clio grise. Vous pouvez venir la remorquer ? Je suis joignable au 06 52 18 44 30. Merci" },
-      { id: "RQ3", no: "DE-803", at: t + " " + hm(nowMin() - 8), channel: "form", from: "Formulaire du site depanneuse.net", demo: true, status: "À traiter",
+      { id: "RQ3", no: "DE-803", at: before(8), channel: "form", from: "Formulaire du site depanneuse.net", demo: true, status: "À traiter",
         raw: "Nom : Karim Benali\nTéléphone : 07 81 220 540\nVille : 93100 Montreuil\nMessage : portière claquée avec les clés à l'intérieur, ouverture de porte possible aujourd'hui ?" },
     ];
   }
@@ -432,6 +432,9 @@
     if (!st || !st.missions) return;
     // Demandes entrantes : connecteurs non raccordés ; seuls des exemples fictifs sont fournis en démonstration.
     st.intake ??= { channels: { phone: false, email: false, form: false, whatsapp: false, platform: false }, requests: st.pristine ? demoIntake() : [] };
+    st.intake.imap ??= {accounts:{},lastRun:null};
+    st.intake.imap.accounts ??= {};st.intake.imap.lastRun ??= null;
+    st.intake.requests.forEach(r=>{r.transport ??= null;});
     st.intake.requests.forEach((r) => { r.status ??= "À traiter"; r.missionId ??= null; r.fields ??= null; r.history ??= []; });
     // File « À rappeler » : appels préparés par le bureau, compte rendu saisi à la main.
     st.callbacks ??= [];
