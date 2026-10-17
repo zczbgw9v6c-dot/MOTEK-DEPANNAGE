@@ -15,6 +15,8 @@ const names = [
   "tesseract.js",
   "tesseract.js-core",
   "qrcode",
+  "imapflow",
+  "postal-mime",
 ];
 await mkdir("public/licenses", { recursive: true });
 const entries = [];

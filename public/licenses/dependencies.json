@@ -70,5 +70,21 @@
     "files": [
       "/licenses/qrcode-license"
     ]
+  },
+  {
+    "name": "imapflow",
+    "version": "2.5.2",
+    "license": "MIT",
+    "files": [
+      "/licenses/imapflow-LICENSE.txt"
+    ]
+  },
+  {
+    "name": "postal-mime",
+    "version": "4.0.8",
+    "license": "MIT-0",
+    "files": [
+      "/licenses/postal-mime-LICENSE.txt"
+    ]
   }
 ]

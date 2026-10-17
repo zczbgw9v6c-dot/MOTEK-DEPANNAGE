@@ -6,6 +6,12 @@ const execute = promisify(execFile);
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Store } from "./store.ts";
 import { V3Store } from "./v3-store.ts";
+import {
+  ImapIntake,
+  operatorAllowed,
+  readImap,
+  imapConfig,
+} from "./imap-intake.ts";
 import { proposeVoice } from "../src/voice-domain.ts";
 type Handler = ((
   req: IncomingMessage,
@@ -16,10 +22,12 @@ type Handler = ((
 /** Gestionnaire HTTP de l’API (état, SSE, changements, voix) partagé entre Vite et le serveur de production. */
 export function createApiHandler(
   databaseFile = process.env.AUTOHUB_DB || ".data/autohub.sqlite",
+  incoming: { read?: typeof readImap; config?: typeof imapConfig } = {},
 ): Handler {
   mkdirSync(".data", { recursive: true });
   const store = new Store(databaseFile);
   const v3 = new V3Store(databaseFile);
+  const imap = new ImapIntake(v3, incoming.read, incoming.config);
   const clients = new Set<ServerResponse>();
   const v3clients = new Set<ServerResponse>();
   const v3broadcast = (snapshot: { revision: number }) => {
@@ -49,6 +57,34 @@ export function createApiHandler(
         new URL(req.headers.origin).host !== req.headers.host
       )
         return json(403, { error: "Origine non autorisée." });
+      if (path === "/api/v3/intake/imap/status" && req.method === "GET")
+        return json(200, {
+          ...imap.status(),
+          lastRun: (v3.read().state as any)?.intake?.imap?.lastRun || null,
+        });
+      if (path === "/api/v3/intake/imap/sync") {
+        if (req.method !== "POST")
+          return json(405, { error: "Réception : POST requis." });
+        if (!imap.status().configured)
+          return json(503, {
+            error: "Courriel entrant non configuré sur le serveur.",
+          });
+        if (!operatorAllowed(req.headers.authorization, imap.config().token))
+          return json(401, { error: "Code opérateur requis ou incorrect." });
+        try {
+          const { snapshot, report } = await imap.sync();
+          v3broadcast(snapshot);
+          return json(200, { revision: snapshot.revision, ...report });
+        } catch (error) {
+          const status = (error as any).status;
+          return json(status === 409 ? 409 : 503, {
+            error:
+              status === 409
+                ? "Une réception est déjà en cours ou les données ont changé. Actualisez puis relancez."
+                : "Réception indisponible. Vérifiez la configuration, TLS et les accès côté serveur ; aucun identifiant n’est exposé.",
+          });
+        }
+      }
       if (path === "/api/speech/capabilities" && req.method === "GET")
         return json(200, {
           available:
@@ -66,7 +102,12 @@ export function createApiHandler(
         const id = path.slice("/api/v3/photos/".length);
         const b = /^[0-9a-f]{32}$/.test(id) ? v3.getBlob(id) : null;
         if (!b) return json(404, { error: "Photo introuvable." });
-        res.writeHead(200, { "Content-Type": b.mime, "Content-Length": b.bytes.length, "Cache-Control": "private, max-age=31536000, immutable", "Content-Security-Policy": "sandbox" });
+        res.writeHead(200, {
+          "Content-Type": b.mime,
+          "Content-Length": b.bytes.length,
+          "Cache-Control": "private, max-age=31536000, immutable",
+          "Content-Security-Policy": "sandbox",
+        });
         res.end(Buffer.from(b.bytes));
         return;
       }
@@ -112,7 +153,9 @@ export function createApiHandler(
       }
       const bytesBuffer = Buffer.concat(chunks);
       if (path === "/api/v3/photos") {
-        const mime = String(req.headers["content-type"] || "").split(";")[0].trim();
+        const mime = String(req.headers["content-type"] || "")
+          .split(";")[0]
+          .trim();
         const saved = v3.putBlob(mime, new Uint8Array(bytesBuffer));
         return json(200, saved);
       }
@@ -157,15 +200,22 @@ export function createApiHandler(
       }
       if (path === "/api/v3/reset") {
         // Réservé à la démonstration : interdit en production sauf MOTEK_ALLOW_RESET=1.
-        if (process.env.NODE_ENV === "production" && process.env.MOTEK_ALLOW_RESET !== "1")
-          return json(403, { error: "Réinitialisation désactivée sur ce serveur (MOTEK_ALLOW_RESET)." });
+        if (
+          process.env.NODE_ENV === "production" &&
+          process.env.MOTEK_ALLOW_RESET !== "1"
+        )
+          return json(403, {
+            error:
+              "Réinitialisation désactivée sur ce serveur (MOTEK_ALLOW_RESET).",
+          });
         v3.reset();
         json(200, { revision: 0 });
         v3broadcast({ revision: 0 });
         return;
       }
       if (path === "/api/v3/restore") {
-        if (!Number.isInteger(body.revision)) return json(400, { error: "Révision requise." });
+        if (!Number.isInteger(body.revision))
+          return json(400, { error: "Révision requise." });
         const snapshot = v3.restore(body.revision);
         json(200, { revision: snapshot.revision });
         v3broadcast(snapshot);

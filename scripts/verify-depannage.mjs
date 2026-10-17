@@ -1058,8 +1058,8 @@ await step(
     await page.waitForTimeout(400);
     const t = await ev(() => document.querySelector("#bo-content").innerText);
     expect(
-      /Connecteurs non raccordés/.test(t) && /exemple[s]? fictif/i.test(t),
-      "l'écran dit que rien n'est raccordé et que les exemples sont fictifs",
+      /Courriel IMAP non raccordé/.test(t) && /exemple[s]? fictif/i.test(t),
+      "l'écran décrit le raccordement IMAP absent et les exemples fictifs",
     );
     expect(
       (await ev(() => document.querySelectorAll(".intake").length)) >= 3,
@@ -1189,6 +1189,96 @@ await step(
     await ev(() => BO.closeDrawer());
   },
 );
+
+await step(
+  "Courriel IMAP : non configuré, aucun secret et réception refusée sans compte",
+  async () => {
+    const status = await page.request.get(base + "/api/v3/intake/imap/status");
+    expect(status.ok(), "état du connecteur disponible");
+    const state = await status.json();
+    expect(
+      state.configured === false && state.readOnly === true,
+      "connecteur réellement non configuré",
+    );
+    expect(
+      !("host" in state) && !("pass" in state) && !("token" in state),
+      "aucun identifiant exposé",
+    );
+    const rejected = await page.request.post(
+      base + "/api/v3/intake/imap/sync",
+      { data: {} },
+    );
+    expect(rejected.status() === 503, "réception non configurée refusée");
+    const before = await ev(() => CX.S.intake.requests.length);
+    for (const [width, height] of [
+      [1500, 1000],
+      [1180, 820],
+      [820, 1180],
+    ]) {
+      await page.setViewportSize({ width, height });
+      await ev(() => APP.open("inbox"));
+      await page.waitForFunction(() =>
+        document
+          .querySelector("[data-imap-status]")
+          ?.textContent.includes("non raccordé"),
+      );
+      expect(
+        await page.locator("[data-imap]").isDisabled(),
+        "relevé désactivé sans configuration",
+      );
+      expect(
+        await page.locator("[data-paste]").isEnabled(),
+        "collage manuel conservé",
+      );
+      expect(
+        await ev(() => document.documentElement.scrollWidth <= innerWidth),
+        "pas de débordement IMAP",
+      );
+      await shot("19-imap-inbox-" + width);
+    }
+    expect(
+      (await ev(() => CX.S.intake.requests.length)) === before,
+      "aucune demande inventée",
+    );
+    await page.setViewportSize({ width: 1500, height: 1000 });
+  },
+);
+
+await step("Courriel IMAP simulé : code opérateur, demande reçue, doublon signalé, confirmation humaine", async () => {
+  const token='code-fictif-test-non-conserve';let report=null;let calls=0;
+  await page.route('**/api/v3/intake/imap/status',route=>route.fulfill({json:{configured:true,enabled:true,busy:false,readOnly:true,lastRun:report}}));
+  await page.route('**/api/v3/intake/imap/sync',async route=>{
+    expect(route.request().headers().authorization==='Bearer '+token,'code transmis pour ce seul relevé');
+    calls++;
+    const snap=await (await page.request.get(base+'/api/v3/state')).json();
+    const st=snap.state,plate=st.gardes.find(g=>!g.outAt).vehicle.plate;
+    st.intake.requests.unshift({id:'RQimapfixture',no:'DE-IMAP-TEST',at:new Date().toISOString(),channel:'email',from:'exemple@courriel.invalid',demo:true,status:'À traiter',missionId:null,fields:null,
+      raw:'Objet : Exemple fictif IMAP — batterie AXA\nClient : Exemple fictif\nTéléphone : 0600000000\nRenault Clio '+plate+'\n10 rue Exemple, 75010 Paris',
+      transport:{provider:'imap',account:'a'.repeat(64),key:'b'.repeat(64),fingerprint:'c'.repeat(64),uid:42,uidValidity:'77',attachmentsIgnored:1},history:[]});
+    const saved=await page.request.post(base+'/api/v3/state',{data:{state:st,revision:snap.revision}});
+    expect(saved.ok(),'état du test de réception persisté');const revision=(await saved.json()).revision;
+    report={at:new Date().toISOString(),imported:1,duplicates:0,skipped:[],more:false};
+    await route.fulfill({json:{revision,...report}});
+  });
+  try {
+    await page.waitForFunction(()=>!CX.sync.dirty && !CX.sync.pushing);
+    const count=await ev(()=>CX.S.missions.length);
+    await ev(()=>APP.open('inbox'));await page.waitForFunction(()=>!document.querySelector('[data-imap]').disabled);
+    await page.click('[data-imap]');await page.fill('.mdl [name=token]',token);await page.click('.mdl [data-ok]');
+    await page.waitForFunction(()=>!!CX.S.intake.requests.find(r=>r.id==='RQimapfixture'));
+    expect(calls===1,'un relevé sur clic');expect(await ev(()=>CX.S.missions.length)===count,'aucune mission créée automatiquement');
+    expect(!(await ev(()=>JSON.stringify(CX.S))).includes(token),'code absent de l’état partagé');
+    expect(!(await ev(()=>JSON.stringify({...localStorage}))).includes(token),'code absent du stockage local');
+    const dup=await ev(()=>DEP.intakeDuplicates(CX.S.intake.requests.find(r=>r.id==='RQimapfixture')).length);
+    expect(dup>0,'doublon métier conservé pour le courriel importé');
+    await shot('20-imap-import-fictif');
+    await page.click('[data-go="RQimapfixture"]');
+    expect((await page.locator('.mdl').innerText()).includes('Doublon possible'),'confirmation explicite du bureau');
+    await ev(()=>UI.closeModals());
+  } finally {
+    await page.unroute('**/api/v3/intake/imap/status');await page.unroute('**/api/v3/intake/imap/sync');
+  }
+});
 
 await browser.close();
 const failed = results.filter((r) => !r[0]);

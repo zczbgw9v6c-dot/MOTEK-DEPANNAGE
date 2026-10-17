@@ -1,7 +1,7 @@
 /* ==========================================================================
    BO · Demandes entrantes : la boîte d'arrivée du bureau. Les canaux
-   (téléphone, courriel, formulaire, WhatsApp, plateformes de mission) ne sont
-   PAS raccordés : l'écran le dit, et le bureau peut coller un message reçu
+   (téléphone, formulaire, WhatsApp, plateformes de mission) restent à raccorder.
+   Le courriel IMAP se relève sur clic si le serveur est configuré. Le bureau peut aussi coller un message reçu
    pour que MOTEK en extraie les informations utiles, localement et sans rien
    inventer. Champs manquants signalés, doublons détectés, puis création d'une
    mission à confirmer par le bureau — jamais automatique.
@@ -11,6 +11,10 @@
   const st = { seg: 'todo' };
   const S = () => CX.S;
   const reqs = () => S().intake.requests;
+  const displayDate = value => {
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {const date=new Date(value);if(Number.isFinite(date.getTime()))return date.toLocaleString('fr-FR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});}
+    return BO.dt(value);
+  };
   const req = (id) => reqs().find((r) => r.id === id);
   const plateNorm = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   const phoneNorm = (s) => String(s || '').replace(/\D/g, '').replace(/^33/, '0');
@@ -106,21 +110,126 @@
     const f = fieldsOf(r), miss = missing(f), dups = duplicates(r);
     const m = r.missionId ? DEP.mission(r.missionId) : null;
     UI.modal({ title: esc(r.no) + ' · ' + esc(CHANNELS[r.channel] || r.channel), wide: true,
-      body: `<div class="row wrap" style="gap:8px">${BO.chip(r.status, r.status === 'À traiter' ? 'amber' : r.status === 'Mission créée' ? 'green' : '', true)}${r.demo ? BO.chip('Exemple fictif', 'line') : ''}<span class="xs-t muted">${esc(BO.dt(r.at))}${r.from ? ' · ' + esc(r.from) : ''}</span></div>
+      body: `<div class="row wrap" style="gap:8px">${BO.chip(r.status, r.status === 'À traiter' ? 'amber' : r.status === 'Mission créée' ? 'green' : '', true)}${r.demo ? BO.chip('Exemple fictif', 'line') : ''}<span class="xs-t muted">${esc(displayDate(r.at))}${r.from ? ' · ' + esc(r.from) : ''}</span></div>
         <div class="g g2 mt"><div><h4 class="sm-t" style="margin-bottom:6px">Message reçu (texte brut)</h4><div class="intake-raw">${esc(r.raw)}</div></div>
         <div><h4 class="sm-t" style="margin-bottom:6px">Lecture de MOTEK <span class="muted xs-t">· extraction locale, rien n’est inventé</span></h4><dl class="kv">${MISSING.map(([k, l]) => `<dt>${esc(l[0].toUpperCase() + l.slice(1))}</dt><dd>${f[k] ? (k === 'serviceId' ? esc((S().serviceCatalog.find((x) => x.id === f[k]) || {}).label || f[k]) : esc(f[k])) : '<span class="chip amber">à compléter</span>'}</dd>`).join('')}${f.ref ? `<dt>Référence</dt><dd>${esc(f.ref)}</dd>` : ''}${f.department ? `<dt>Département</dt><dd>${esc(f.department)}</dd>` : ''}</dl>
         ${dups.length ? `<div class="form-note warn mt">${BO.icon('alert', 15)}<div><b>Doublon possible :</b><br>${dups.map((d) => esc(d.label)).join('<br>')}</div></div>` : ''}
+        ${r.transport?.provider==='imap' ? '<div class="form-note mt">Reçu par IMAP en lecture seule · '+esc(r.transport.attachmentsIgnored || 0)+' pièce(s) jointe(s) ignorée(s), à consulter dans la boîte originale.</div>' : ''}
         ${m ? `<div class="form-note ok mt">${BO.icon('check', 15)}<div>Mission <a class="lnk" data-open="missions:${m.id}">${esc(m.no)}</a> créée depuis cette demande · ${esc(m.status)}</div></div>` : ''}</div></div>
-        ${(r.history || []).length ? `<ul class="hist mt">${r.history.slice(0, 5).map((h) => `<li><b>${esc(h.text)}</b><small>${esc(BO.dt(h.at))}</small></li>`).join('')}</ul>` : ''}`,
+        ${(r.history || []).length ? `<ul class="hist mt">${r.history.slice(0, 5).map((h) => `<li><b>${esc(h.text)}</b><small>${esc(displayDate(h.at))}</small></li>`).join('')}</ul>` : ''}`,
       foot: `<button class="btn" data-close>Fermer</button><span class="sp"></span>${r.status === 'À traiter' ? `<button class="btn" data-dismiss>Écarter</button><button class="btn pri" data-mission>${BO.icon('truck', 14)}Créer la mission (à confirmer)</button>` : ''}`,
       onMount: (el, close) => {
         const d = el.querySelector('[data-dismiss]'); if (d) d.addEventListener('click', () => { DEP.intakeDismiss(r.id, dups.length ? 'doublon' : ''); close(); BO.now(); });
         const c = el.querySelector('[data-mission]'); if (c) c.addEventListener('click', () => { close(); confirmMission(r); });
       } });
   }
+  function receiveEmail() {
+    if (CX.sync.dirty || CX.sync.pushing || CX.sync.conflict) {
+      UI.toast(
+        "Enregistrement en cours",
+        "Attendez la synchronisation des modifications avant de relever les courriels.",
+        "warn",
+      );
+      return;
+    }
+    BO.formModal({
+      title: "Relever les courriels entrants",
+      intro:
+        "Lecture seule de la boîte configurée sur le serveur. Aucun message marqué comme lu, déplacé ou supprimé. Les pièces jointes restent dans la boîte. Les demandes devront être confirmées par le bureau.",
+      fields: [
+        {
+          k: "token",
+          label: "Code opérateur de réception",
+          type: "password",
+          req: true,
+        },
+      ],
+      submit: "Relever les nouveaux courriels",
+      onSubmit: (x, close, el) => {
+        const token = x.token;
+        el.querySelector("[name=token]").value = "";
+        close();
+        const button = document.querySelector("[data-imap]");
+        if (button) button.disabled = true;
+        fetch("/api/v3/intake/imap/sync", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token,
+          },
+          body: "{}",
+        })
+          .then(async (response) => {
+            const result = await response.json();
+            if (!response.ok)
+              throw Error(result.error || "Réception indisponible.");
+            await CX.pull();
+            BO.now();
+            UI.toast(
+              "Courriels relevés",
+              result.imported +
+                " demande(s) reçue(s) · " +
+                result.duplicates +
+                " déjà importée(s) · " +
+                result.skipped.length +
+                " non importée(s)" +
+                (result.more ? " · autre lot disponible" : ""),
+              "ok",
+            );
+          })
+          .catch((error) => {
+            UI.toast("Réception interrompue", error.message, "warn");
+            BO.now();
+          });
+        return false;
+      },
+    });
+  }
+  function emailStatus(el) {
+    fetch("/api/v3/intake/imap/status")
+      .then((r) => {
+        if (!r.ok) throw Error();
+        return r.json();
+      })
+      .then((status) => {
+        if (!el.isConnected) return;
+        const label = el.querySelector("[data-imap-status]"),
+          button = el.querySelector("[data-imap]");
+        button.disabled = !status.configured || status.busy;
+        label.textContent = status.configured
+          ? status.busy
+            ? "Courriel IMAP : réception en cours."
+            : "Courriel IMAP configuré : réception manuelle en lecture seule."
+          : "Courriel IMAP non raccordé : configuration serveur requise. Aucun compte fictif connecté.";
+        const run = status.lastRun;
+        if (run) {
+          const report = el.querySelector("[data-imap-report]");
+          report.hidden = false;report.style.display="flex";
+          report.textContent =
+            "Dernier relevé : " +
+            displayDate(run.at) +
+            " · " +
+            run.imported +
+            " importée(s), " +
+            run.duplicates +
+            " déjà reçue(s), " +
+            run.skipped.length +
+            " non importée(s)." +
+            (run.more
+              ? " Autres courriels disponibles : relancez un relevé."
+              : "") +
+            (run.skipped.length ? " " + run.skipped.join(" · ") : "");
+        }
+      })
+      .catch(() => {
+        if (el.isConnected)
+          el.querySelector("[data-imap-status]").textContent =
+            "État de la réception indisponible. Le collage manuel reste disponible.";
+      });
+  }
   function pasteForm() {
     BO.formModal({ title: 'Coller un message reçu', wide: true,
-      intro: `<div class="form-note">${BO.icon('mail', 16)}<div>Les canaux ne sont pas encore raccordés : en attendant, collez ici un courriel, un SMS ou un message WhatsApp reçu. MOTEK lit le texte <b>localement</b>, propose une mission et signale ce qui manque. Rien ne part, rien n’est inventé.</div></div>`,
+      intro: `<div class="form-note">${BO.icon('mail', 16)}<div>Collez ici un courriel, un SMS ou un message WhatsApp reçu. Le relevé IMAP est disponible séparément si une boîte a été configurée sur le serveur. MOTEK lit le texte <b>localement</b>, propose une mission et signale ce qui manque. Rien ne part, rien n’est inventé.</div></div>`,
       fields: [{ k: 'channel', label: 'Canal d’origine', type: 'select', opts: Object.entries(CHANNELS).map(([k, l]) => [k, l]), req: true }, { k: 'from', label: 'Expéditeur (tel qu’affiché)', ph: 'adresse, numéro…' }, { k: 'raw', label: 'Message reçu', type: 'textarea', rows: 8, req: true, full: true }],
       values: { channel: 'email' }, submit: 'Analyser la demande',
       onSubmit: (x) => { const r = DEP.intakeAdd(x); if (!r) return false; BO.now(); setTimeout(() => detail(r), 120); } });
@@ -130,14 +239,15 @@
     const all = reqs(), todo = all.filter((r) => r.status === 'À traiter');
     const rows = st.seg === 'todo' ? todo : st.seg === 'done' ? all.filter((r) => r.status !== 'À traiter') : all;
     const ch = S().intake.channels;
-    el.innerHTML = `<div class="bo-page">${BO.head('Demandes entrantes', `${todo.length} à traiter · ${all.filter((r) => r.status === 'Mission créée').length} transformées en mission`, `<button class="btn pri" data-paste>${BO.icon('plus', 15)}Coller un message reçu</button>`)}
-      <div class="form-note warn mb">${BO.icon('alert', 16)}<div><b>Connecteurs non raccordés.</b> ${Object.entries(CHANNELS).map(([k, l]) => l + (ch[k] ? '' : ' (à raccorder)')).join(' · ')}. L’objectif : que les demandes de ces canaux arrivent ici toutes seules. Aujourd’hui, le bureau colle le message et MOTEK prépare la mission ; les exemples affichés sont fictifs.</div></div>
-      <div class="row wrap mb" style="gap:10px">${BO.seg('seg', [['todo', 'À traiter', todo.length], ['done', 'Traitées', all.length - todo.length], ['all', 'Toutes', all.length]], st.seg)}</div>
+    el.innerHTML = `<div class="bo-page">${BO.head('Demandes entrantes', `${todo.length} à traiter · ${all.filter((r) => r.status === 'Mission créée').length} transformées en mission`, `<button class="btn" data-imap disabled>Relever les courriels</button><button class="btn pri" data-paste>${BO.icon('plus', 15)}Coller un message reçu</button>`)}
+      <div class="form-note warn mb">${BO.icon('alert', 16)}<div><b>Réception des demandes.</b> <span data-imap-status>Courriel IMAP : vérification du raccordement…</span><br> ${Object.entries(CHANNELS).filter(([k])=>k!=='email').map(([,l])=>l+' (à raccorder)').join(' · ')}. L’objectif : que les demandes de ces canaux arrivent ici toutes seules. Le bureau confirme toujours la mission. Les exemples sont explicitement marqués fictifs.</div></div>
+      <div class="form-note mb" data-imap-report hidden style="display:none"></div><div class="row wrap mb" style="gap:10px">${BO.seg('seg', [['todo', 'À traiter', todo.length], ['done', 'Traitées', all.length - todo.length], ['all', 'Toutes', all.length]], st.seg)}</div>
       <div class="g">${rows.map((r) => { const f = fieldsOf(r), miss = missing(f), dups = duplicates(r); const svc = f.serviceId ? (S().serviceCatalog.find((x) => x.id === f.serviceId) || {}).label : null; return `<div class="card intake" data-r="${r.id}"><div class="card-b"><div class="row" style="gap:10px;align-items:flex-start"><span class="tic ${r.status === 'À traiter' ? 'mid' : 'low'}" style="width:34px;height:34px;border-radius:10px;display:grid;place-items:center">${BO.icon(CH_IC[r.channel] || 'mail', 16)}</span>
-        <div style="flex:1;min-width:0"><div class="row wrap" style="gap:8px"><b>${esc(r.no)}</b><span class="chip line">${esc(CHANNELS[r.channel] || r.channel)}</span>${r.demo ? '<span class="chip line">exemple fictif</span>' : ''}${BO.chip(r.status, r.status === 'À traiter' ? 'amber' : r.status === 'Mission créée' ? 'green' : '', true)}<span class="xs-t muted">${esc(BO.dt(r.at))}</span></div>
+        <div style="flex:1;min-width:0"><div class="row wrap" style="gap:8px"><b>${esc(r.no)}</b><span class="chip line">${esc(CHANNELS[r.channel] || r.channel)}</span>${r.demo ? '<span class="chip line">exemple fictif</span>' : ''}${BO.chip(r.status, r.status === 'À traiter' ? 'amber' : r.status === 'Mission créée' ? 'green' : '', true)}<span class="xs-t muted">${esc(displayDate(r.at))}</span></div>
         <div class="sm-t mt1">${svc ? '<b>' + esc(svc) + '</b> · ' : ''}${f.address ? esc(f.address) : '<span class="muted">adresse à compléter</span>'}${f.plate ? ' · ' + esc(f.plate) : ''}${f.name ? ' · ' + esc(f.name) : ''}</div>
         <div class="xs-t mt1">${miss.length ? `<span class="warn-t">${BO.icon('alert', 12)} À compléter : ${esc(miss.join(', '))}</span>` : '<span class="ok-t">Informations complètes</span>'}${dups.length ? ` · <span class="bad-t">${esc(dups.length + ' doublon' + (dups.length > 1 ? 's' : '') + ' possible' + (dups.length > 1 ? 's' : ''))}</span>` : ''}</div></div>
         <div class="ta" style="flex:none">${r.status === 'À traiter' ? `<button class="btn sm pri" data-go="${r.id}">Créer la mission</button>` : r.missionId ? `<button class="btn sm" data-open="missions:${r.missionId}">Ouvrir ${esc((DEP.mission(r.missionId) || {}).no || 'la mission')}</button>` : ''}</div></div></div></div>`; }).join('') || `<div class="card"><div class="card-b">${BO.empty('check', st.seg === 'todo' ? 'Aucune demande à traiter' : 'Rien ici', st.seg === 'todo' ? 'Collez un message reçu pour préparer une mission.' : '', '', true)}</div></div>`}</div></div>`;
+    emailStatus(el);el.querySelector('[data-imap]').addEventListener('click',receiveEmail);
     BO.bindSeg(el, (n, v) => { st.seg = v; APP.refresh(); });
     el.querySelector('[data-paste]').addEventListener('click', pasteForm);
     el.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); confirmMission(req(b.dataset.go)); }));
