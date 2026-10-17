@@ -14,3 +14,4 @@ public/ocr/worker.min.js
 
 # Archives locales de livraison ; le code est publié dans son arborescence.
 livrables/*.zip
+node_modules
