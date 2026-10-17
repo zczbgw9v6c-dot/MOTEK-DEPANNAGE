@@ -325,8 +325,26 @@
           go: () => open("parts", { tab: "commandes", id: o.id }),
         });
     });
+    /* ---- dépannage : missions, véhicules au parc, factures, dépanneurs, bureau ---- */
+    (S.missions || []).forEach((x) => {
+      if (m(x.no, x.vehicle && x.vehicle.plate, x.vehicle && x.vehicle.make + " " + x.vehicle.model, x.address, x.customer && x.customer.name, x.mandant, x.ref))
+        out.push({ grp: "Missions", ic: "truck", t: x.no + " · " + x.vehicle.make + " " + x.vehicle.model, s: x.status + " · " + x.kind + " · " + x.address, plate: x.vehicle.plate, go: () => open("missions", { id: x.id }) });
+    });
+    (S.dinvoices || []).forEach((i) => {
+      if (m(i.no, i.payer, i.ref, i.plate))
+        out.push({ grp: "Factures", ic: "invoice", t: i.no + " · " + i.payer, s: (i.label || "") + " · " + U.chf2(i.ttc) + " · " + i.status, go: () => open("invoices", { id: i.id }) });
+    });
+    (S.drivers || []).forEach((d) => {
+      if (m(d.name, d.first)) out.push({ grp: "Équipe", ic: "user", t: d.first, s: d.title || "Dépanneur", go: () => open("chauffeur") });
+    });
+    (S.office || []).forEach((p) => {
+      if (m(p.name, p.title)) out.push({ grp: "Équipe", ic: "users", t: p.name, s: p.title || "Bureau", go: () => open("fleet", { tab: "bureau" }) });
+    });
     (window.MAP_SEARCH ? window.MAP_SEARCH(q) : []).forEach((x) => out.push(x));
     const ord = [
+      "Missions",
+      "Parc",
+      "Camions",
       "Ordres de réparation",
       "Clients",
       "Véhicules",
@@ -348,8 +366,10 @@
     let items = [],
       hl = 0;
     const ph = () => {
-      inp.placeholder =
-        mode === "bo"
+      const dep = CX.activityOn("depannage") && !CX.activityOn("atelier");
+      inp.placeholder = dep
+        ? (mode === "bo" ? "Rechercher une plaque, une mission, un dossier assureur, une facture…" : "Plaque, mission, dossier, camion…")
+        : mode === "bo"
           ? "Rechercher plaque, client, n° OR, devis, sinistre, facture…"
           : "Plaque, client, n° OR, sinistre…";
     };

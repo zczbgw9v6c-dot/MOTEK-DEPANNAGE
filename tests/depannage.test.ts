@@ -286,3 +286,34 @@ test("dépannage : un refus de prise en charge ne facture pas automatiquement l�
   m.mandant = "Particulier";
   assert.ok(D.billMission(m));
 });
+
+test("équipe : trois dépanneurs (Dylan, Laurent, Trump), Moïse et Florence au bureau, aucun Damien", () => {
+  const { CX } = fixture(), s = CX.S;
+  assert.equal(s.drivers.map((d: any) => d.first).join(), "Dylan,Laurent,Trump");
+  assert.equal(s.office.map((p: any) => p.first).join(), "Moïse,Florence");
+  assert.ok(!JSON.stringify(s).includes("Damien"), "plus aucun Damien dans les données");
+});
+
+test("tableau de bord : l'assistant répond sur un dépanneur et sur « qui est libre ? »", () => {
+  const { CX, D } = fixture();
+  const ctx: any = { CX, DEP: D, console, APP: { register() {}, open() {} }, UI: {}, BO: {} };
+  ctx.window = ctx; vm.createContext(ctx);
+  vm.runInContext(readFileSync(new URL("../motek/js/33-tableau-de-bord-depannage.js", import.meta.url), "utf8"), ctx);
+  const s = CX.S, busy = ["Affectée", "En route", "Sur place", "Remorquage"];
+  const free = s.drivers.filter((d: any) => !s.missions.some((m: any) => m.driverId === d.id && busy.includes(m.status)));
+  const r = D.ask("qui est libre ?");
+  assert.equal(D.freeDrivers().length, free.length);
+  if (free.length) assert.match(r.reply, new RegExp(free[0].first));
+  else assert.match(r.reply, /Personne/);
+  const dylan = D.ask("où est Dylan ?");
+  assert.match(dylan.reply, /^Dylan/);
+  assert.ok(D.ask("où est Damien ?").warnings.length, "un prénom inconnu n'est pas inventé");
+});
+
+test("réinitialisation de la démo : le catalogue des prestations et l'équipe sont rétablis", async () => {
+  const { CX } = loadCore({ sleepless: true });
+  assert.equal(await CX.reset(), true);
+  assert.ok(Array.isArray(CX.S.serviceCatalog) && CX.S.serviceCatalog.length > 0, "catalogue présent après réinitialisation");
+  assert.ok(CX.S.commercial, "champs commerciaux présents");
+  assert.equal(CX.S.drivers.map((d: any) => d.first).join(), "Dylan,Laurent,Trump");
+});

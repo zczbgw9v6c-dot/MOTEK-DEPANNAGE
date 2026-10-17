@@ -820,7 +820,7 @@
         skills: ["Ponçage", "Masquage", "Apprêts"],
         color: "#868c96",
       }),
-      E("E7", "Damien", "Crettenand", "mag", 2018, "+33 69 233 58 90", {
+      E("E7", "Hugo", "Crettenand", "mag", 2018, "+33 69 233 58 90", {
         title: "Magasinier",
         costH: 46,
         skills: ["Commandes", "Inventaire", "Réception livraisons"],
@@ -4574,6 +4574,8 @@
     if (!ok) { emit("sync", { online: sync.online, revision: sync.revision, error: msg || "Réinitialisation refusée" }); return false; }
     S = seed();
     S.day = today();
+    // Comme au chargement : catalogue des prestations, équipe et champs commerciaux.
+    migrate(S);
     sync.revision = 0;
     sync.conflict = null;
     cache();

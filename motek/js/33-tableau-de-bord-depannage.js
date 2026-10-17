@@ -7,6 +7,12 @@
   const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const plateNorm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   const activeM = () => CX.S.missions.filter(m => DEP.activeMission(m));
+  const BUSY = ['Affectée', 'En route', 'Sur place', 'Remorquage'];
+  /** Mission en cours d'un dépanneur (affectée, en route, sur place ou en remorquage). */
+  const driverMission = id => CX.S.missions.find(m => m.driverId === id && BUSY.includes(m.status)) || null;
+  const driverTruck = id => { const m = driverMission(id); return (m && m.truckId && DEP.truck(m.truckId)) || CX.S.trucks.find(t => t.driverId === id) || null; };
+  const freeDrivers = () => CX.S.drivers.filter(d => !driverMission(d.id));
+  const tel = p => 'tel:' + String(p || '').replace(/\s/g, '');
 
   /** Assistant dépannage : questions sur les missions, les camions et le parc ; actions confirmées. */
   function ask(text) {
@@ -15,6 +21,9 @@
     DEP.refreshGardeStatus();
     const P = t.replace(/[^a-z0-9]/g, '').toUpperCase();
     const g = DEP.inPark().find(x => P.includes(plateNorm(x.vehicle.plate))), m = S.missions.find(x => P.includes(plateNorm(x.vehicle.plate)));
+    const drv = S.drivers.find(d => d.first && new RegExp('\\b' + norm(d.first) + '\\b').test(t));
+    if (drv && !g && !m) { const cur = driverMission(drv.id), tr = driverTruck(drv.id); out.reply = cur ? `${drv.first} : ${cur.status.toLowerCase()} · ${cur.no} · ${cur.kind} · ${cur.address}${tr ? ' · ' + tr.name : ''}.` : `${drv.first} est libre${tr ? ' (' + tr.name + ')' : ''}.`; if (cur) out.actions.push({ label: 'Ouvrir ' + cur.no, run: () => APP.open('missions', { id: cur.id }) }); else if (S.missions.some(x => x.status === 'Demandée')) out.actions.push({ label: 'Ouvrir le planning pour envoyer ' + drv.first, run: () => APP.open('planning-dep') }); return out; }
+    if (/qui.*(libre|dispo)|depanneur.*(libre|dispo)|(libre|dispo).*depanneur|chauffeur.*(libre|dispo)/.test(t)) { const f = freeDrivers(); out.reply = f.length ? f.map(d => d.first).join(', ') + (f.length > 1 ? ' sont libres.' : ' est libre.') : 'Personne n’est libre : ' + S.drivers.map(d => d.first + ' ' + driverMission(d.id).status.toLowerCase()).join(', ') + '.'; return out; }
     if (/ou (est|se trouve)|localise|place/.test(t) && (g || m)) {
       if (g) { out.reply = `${g.vehicle.make} ${g.vehicle.model} (${g.vehicle.plate}) : parc ${g.level}, place ${g.slot.split('-')[1]}, en garde depuis ${DEP.gardeDays(g)} j (${chf(DEP.gardeFees(g))} de frais).`; out.actions.push({ label: 'Ouvrir la garde ' + g.no, run: () => APP.open('parc', { id: g.id }) }); return out; }
       const tr = m.truckId ? DEP.truck(m.truckId) : null; out.reply = `${m.vehicle.make} ${m.vehicle.model} (${m.vehicle.plate}) : mission ${m.no}, ${m.status.toLowerCase()}${tr ? ', ' + tr.name + ' · ' + ((DEP.driver(m.driverId) || {}).first || '') : ''} · ${m.address}.`; out.actions.push({ label: 'Ouvrir la mission ' + m.no, run: () => APP.open('missions', { id: m.id }) }); return out;
@@ -25,12 +34,12 @@
     if (/factur/.test(t)) { const f = S.missions.filter(x => ['Déposée au parc', 'Terminée'].includes(x.status)); out.reply = f.length + ' mission' + (f.length > 1 ? 's' : '') + ' à facturer : ' + chf(f.reduce((a, x) => a + x.price, 0)) + ' HT.'; if (f.length) out.actions.push({ label: 'Voir les missions à facturer', run: () => APP.open('missions') }); return out; }
     if (/relance|abandon/.test(t)) { const r = DEP.inPark().filter(x => x.status !== 'En garde'); out.reply = r.length + ' véhicule' + (r.length > 1 ? 's' : '') + ' à relancer ou en abandon présumé.'; if (r.length) out.actions.push({ label: 'Ouvrir le parc', run: () => APP.open('parc') }); return out; }
     if (m && /(termin|fini|sur place|arriv|remorqu|parti)/.test(t)) { const next = /sur place|arriv/.test(t) ? 'Sur place' : /remorqu/.test(t) ? 'Remorquage' : /parti|route/.test(t) ? 'En route' : 'Terminée'; out.actions.push({ label: `Passer ${m.no} en « ${next} »`, run: () => DEP.setMissionStatus(m.id, next) }); out.reply = out.actions[0].label; return out; }
-    out.warnings.push('Non compris. Exemples : « où est la Clio AB-123-CD ? », « camions disponibles », « missions en attente », « véhicules au parc », « à facturer », « la AB-123-CD est sur place ».');
+    out.warnings.push('Non compris. Exemples : « où est la Clio AB-123-CD ? », « qui est libre ? », « où est Dylan ? », « camions disponibles », « missions en attente », « véhicules au parc », « à facturer », « la AB-123-CD est sur place ».');
     return out;
   }
   function widget(host) {
-    const ex = ['Missions en attente', 'Camions disponibles', 'Véhicules au parc', 'À facturer'];
-    host.innerHTML = `<div class="vw"><div class="row" style="gap:8px;align-items:stretch"><input class="inp" data-vq placeholder="Demandez : « où est la AB-123-CD ? », « camions disponibles », « à relancer »…">${BO.micBtn('data-vmic', 'Parler')}<button class="btn pri" data-vgo>${BO.icon('arrowR', 15)}</button></div><div class="row mt1" style="gap:6px;flex-wrap:wrap">${ex.map(x => `<button class="btn sm" data-vex="${esc(x)}">${esc(x)}</button>`).join('')}</div><div class="mt1" data-vout></div></div>`;
+    const ex = ['Qui est libre ?', 'Missions en attente', 'Véhicules au parc', 'À facturer'];
+    host.innerHTML = `<div class="vw"><div class="row" style="gap:8px;align-items:stretch"><input class="inp" data-vq placeholder="Demandez : « où est la AB-123-CD ? », « qui est libre ? », « où est Dylan ? »…">${BO.micBtn('data-vmic', 'Parler')}<button class="btn pri" data-vgo>${BO.icon('arrowR', 15)}</button></div><div class="row mt1" style="gap:6px;flex-wrap:wrap">${ex.map(x => `<button class="btn sm" data-vex="${esc(x)}">${esc(x)}</button>`).join('')}</div><div class="mt1" data-vout></div></div>`;
     const inp = host.querySelector('[data-vq]'), out = host.querySelector('[data-vout]');
     const run = () => { if (!inp.value.trim()) return; const p = ask(inp.value); out.innerHTML = `<div class="form-note ${p.actions.length || p.reply ? 'ok' : 'warn'}">${BO.icon(p.actions.length ? 'check' : 'msg', 16)}<div><b>${esc(p.reply || p.warnings[0] || '')}</b>${p.actions.length ? `<div class="row mt1" style="gap:6px;flex-wrap:wrap">${p.actions.map((a, i) => `<button class="btn sm pri" data-vact="${i}">${esc(a.label)}</button>`).join('')}<button class="btn sm" data-vcancel>Annuler</button></div>` : ''}</div></div>`; out.querySelectorAll('[data-vact]').forEach(b => b.addEventListener('click', () => { p.actions[+b.dataset.vact].run(); out.innerHTML = ''; inp.value = ''; BO.now(); })); const c = out.querySelector('[data-vcancel]'); if (c) c.addEventListener('click', () => { out.innerHTML = ''; }); };
     host.querySelector('[data-vgo]').addEventListener('click', run);
@@ -38,7 +47,7 @@
     host.querySelectorAll('[data-vex]').forEach(b => b.addEventListener('click', () => { inp.value = b.dataset.vex; run(); }));
     host.querySelector('[data-vmic]').addEventListener('click', () => BO.dictate(inp, host.querySelector('[data-vmic]'), () => run()));
   }
-  window.DEP = window.DEP || {}; DEP.ask = ask; DEP.widget = widget;
+  window.DEP = window.DEP || {}; DEP.ask = ask; DEP.widget = widget; DEP.driverMission = DEP.driverMission || driverMission; DEP.freeDrivers = DEP.freeDrivers || freeDrivers;
 
   function render(el) {
     DEP.refreshGardeStatus();
@@ -66,6 +75,8 @@
         ${BO.kpi({ lb: 'Terminées aujourd’hui', v: todayDone, s: toBill.length + ' à facturer · ' + chf(toBill.reduce((a, m) => a + m.price, 0)) + ' HT', icon: 'check', cls: 'click', go: 'missions' })}
         ${BO.kpi({ lb: 'Gardes à relancer', v: toRemind.length, s: parked.filter(g => g.status === 'Abandon présumé').length + ' abandon' + (parked.filter(g => g.status === 'Abandon présumé').length > 1 ? 's' : '') + ' présumé' + (parked.filter(g => g.status === 'Abandon présumé').length > 1 ? 's' : ''), icon: 'send', cls: 'click ' + (toRemind.length ? 'warn' : ''), go: 'parc' })}
       </div>
+      <h2 class="sec">${BO.icon('users', 16)}Mes dépanneurs <small>· en ce moment</small><span class="r"><a class="lnk sm-t" data-open="planning-dep">Planning →</a></span></h2>
+      <div class="drivers">${S.drivers.map(d => { const cm = driverMission(d.id), tr = driverTruck(d.id), since = cm ? (cm.history || []).find(x => x.text === 'Statut : ' + cm.status) : null; return `<div class="drv ${cm ? 'busy' : 'free'}" data-open="${cm ? 'missions:' + cm.id : 'planning-dep'}"><div class="drv-h">${UI.av(d, 46)}<div><b>${esc(d.first)}</b><small>${tr ? esc(tr.name) + ' · ' + esc(tr.kind) : 'sans camion attitré'}</small></div>${d.phone ? `<a class="drv-call" href="${tel(d.phone)}" title="Appeler ${esc(d.first)}" onclick="event.stopPropagation()">${BO.icon('phone', 16)}</a>` : ''}</div>${cm ? `<div class="drv-m">${BO.chip(cm.status, DEP.TONE[cm.status], true)}<span class="drv-since">${since ? 'depuis ' + esc(U.tOf(since.at)) : ''}</span></div><div class="drv-k">${esc(cm.kind)} · ${BO.plate(cm.vehicle.plate)}</div><div class="drv-a">${BO.icon('pin', 12)} ${esc(cm.address)}</div>` : `<div class="drv-m">${BO.chip('Libre', 'green', true)}</div><div class="drv-k muted">${waiting.length ? waiting.length + ' demande' + (waiting.length > 1 ? 's' : '') + ' en attente : à envoyer depuis le planning' : 'Disponible pour la prochaine demande'}</div>`}</div>`; }).join('')}</div>
       <div class="card mb"><div class="card-h"><h3>${BO.icon('phone', 16)}Demander à MOTEK <small>· où est un véhicule, camions disponibles, missions en attente, à facturer…</small></h3></div><div class="card-b" data-voice></div></div>
       <div class="g g-main">
         <div class="card"><div class="card-h"><h3>${BO.icon('alert', 16)}À traiter maintenant <small>· ${todo.length} dossiers, les 8 premiers affichés</small></h3></div><div>${todo.length ? todo.slice(0, 8).map((a, i) => `<div class="todo"><span class="tic ${a.lvl}">${BO.icon(a.ic, 16)}</span><div class="tx"><b>${esc(a.t)}</b><span>${esc(a.s)}</span></div><div class="ta"><button class="btn sm ${a.lvl === 'high' ? 'pri' : ''}" data-todo="${i}">${esc(a.act)}</button></div></div>`).join('') : BO.empty('check', 'Rien à traiter', '', '', true)}</div></div>
