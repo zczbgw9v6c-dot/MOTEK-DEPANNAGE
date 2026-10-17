@@ -1,5 +1,7 @@
 # Revue 1 — MOTEK Dépann
 
+> Mise à jour du 17 octobre : lire [REVUE_17_OCTOBRE.md](REVUE_17_OCTOBRE.md). Module commercial local ajouté ; validation finale : 102 tests et 22 parcours navigateur réussis. Le contenu initial ci-dessous est historique.
+
 Branche `codex/revue-1`, destinée uniquement à `zczbgw9v6c-dot/MOTEK-DEPANNAGE`. Le dépôt MOTEK n’a pas été modifié. Version de départ : `00ef942`.
 
 ## Résultat pour Joseph et ses chauffeurs

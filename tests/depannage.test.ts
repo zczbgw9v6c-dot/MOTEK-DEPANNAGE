@@ -7,6 +7,8 @@ function fixture() {
   const { CX } = loadCore({ sleepless: true });
   const ctx: any = {
     CX,
+    URL,
+    URLSearchParams,
     console,
     UI: { toast: () => {} },
     BO: { now: () => {} },
@@ -20,6 +22,7 @@ function fixture() {
     "34-mandats-assurances",
     "35-facturation-depannage",
     "36-commandes-fournisseurs",
+    "39-commercial-depannage",
   ])
     vm.runInContext(
       readFileSync(
@@ -285,4 +288,122 @@ test("dépannage : un refus de prise en charge ne facture pas automatiquement l�
   assert.equal(D.billMission(m), null);
   m.mandant = "Particulier";
   assert.ok(D.billMission(m));
+});
+
+test("équipe confirmée : trois dépanneurs, deux administratifs et aucun Damien", () => {
+  const { CX } = fixture();
+  assert.deepEqual(
+    Array.from(CX.S.drivers, (d: any) => d.first),
+    ["Dylan", "Laurent", "Trump"],
+  );
+  assert.deepEqual(
+    Array.from(CX.S.office, (d: any) => d.first),
+    ["Moïse", "Florence"],
+  );
+  assert.ok(!CX.S.staff.some((e: any) => e.first === "Damien"));
+  const old = JSON.parse(JSON.stringify(CX.S));
+  old.staff.find((e: any) => e.role === "mag").first = "Damien";
+  const migrated = loadCore({ cached: old, sleepless: true }).CX.S;
+  assert.ok(!migrated.staff.some((e: any) => e.first === "Damien"));
+});
+
+test("catalogue : prix TTC sourcés et confirmation obligatoire avant facturation", () => {
+  const { CX, D } = fixture();
+  assert.equal(CX.S.serviceCatalog.length, 14);
+  const battery = CX.S.serviceCatalog.find(
+    (s: any) => s.id === "depannage-batterie",
+  );
+  assert.equal(battery.variants[0].fromTtc, 70);
+  assert.ok(battery.issue.includes("80"));
+  assert.equal(CX.S.commercial.departments.length, 9);
+  const m = CX.S.missions.find((m: any) => m.status === "Terminée");
+  m.priceConfirmed = false;
+  const before = CX.S.dinvoices.length;
+  assert.equal(D.billMission(m), null);
+  assert.equal(CX.S.dinvoices.length, before);
+});
+
+test("réinitialisation : le catalogue et les migrations sont disponibles immédiatement", async () => {
+  const { CX } = loadCore({ sleepless: true });
+  await CX.reset();
+  assert.equal(CX.S.serviceCatalog.length, 14);
+  assert.equal(CX.S.office.length, 2);
+  assert.ok(CX.S.marketing);
+  assert.ok(CX.S.gardes.every((g: any) => g.rateStatus === "demo-unconfirmed"));
+});
+
+test("commercial : brouillon sans chiffres inventés, budget total, validation et export distincts", () => {
+  const { CX, D } = fixture(),
+    C = D.commercial;
+  const c = C.draft({
+    serviceId: "depannage-batterie",
+    department: "75",
+    channel: "google",
+    budget: 50,
+    days: 5,
+  });
+  assert.equal(c.dailyPlan, 10);
+  assert.equal(c.metrics, null);
+  assert.equal(c.status, "Brouillon");
+  assert.ok(c.social.includes("Prix sur devis"));
+  assert.ok(c.headlines.every((h: string) => h.length <= 30));
+  assert.ok(c.descriptions.every((h: string) => h.length <= 90));
+  assert.equal(new URL(c.url).searchParams.get("utm_campaign"), c.id);
+  assert.throws(() =>
+    C.draft({
+      serviceId: c.serviceId,
+      department: "99",
+      channel: "meta",
+      budget: 50,
+      days: 5,
+    }),
+  );
+  assert.throws(() => C.draft({ ...c, budget: Infinity }));
+  C.validate(c);
+  assert.equal(c.status, "Validé pour export");
+  C.metrics(c, {
+    spend: 65,
+    clicks: 22,
+    source: "Relevé Google du 17 octobre",
+  });
+  assert.equal(c.metrics.spend, 65); // conserver un dépassement réel, sans le masquer
+  assert.equal(CX.S.marketing.leads.length, 0); // les clics ne sont pas des contacts identifiés
+});
+
+test("commercial : contact valide, suivi manuel et tarif validé sans modifier les missions", () => {
+  const { CX, D } = fixture(),
+    C = D.commercial;
+  assert.throws(() =>
+    C.addLead({
+      name: "Test",
+      serviceId: "depannage-batterie",
+      department: "75",
+      source: "Appel",
+    }),
+  );
+  const l = C.addLead({
+    name: "Contact test",
+    phone: "0600000000",
+    serviceId: "depannage-batterie",
+    department: "75",
+    source: "Appel reçu",
+  });
+  C.leadStage(l, "À rappeler");
+  assert.equal(l.status, "À rappeler");
+  assert.throws(() => C.leadStage(l, "Contacté automatiquement"));
+  const prices = JSON.stringify(CX.S.missions.map((m: any) => m.price));
+  C.approveService(CX.S.serviceCatalog[0], {
+    amount: 95,
+    note: "Validé par Joseph pour intervention standard ; hors accès difficile.",
+  });
+  assert.equal(JSON.stringify(CX.S.missions.map((m: any) => m.price)), prices);
+  const c = C.draft({
+    serviceId: CX.S.serviceCatalog[0].id,
+    department: "75",
+    channel: "meta",
+    budget: 50,
+    days: 5,
+  });
+  assert.ok(c.social.includes("95 € TTC"));
+  assert.ok(c.social.includes("selon conditions"));
 });

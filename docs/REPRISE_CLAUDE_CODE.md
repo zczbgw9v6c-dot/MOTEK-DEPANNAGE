@@ -1,5 +1,7 @@
 # Reprise — 16 octobre 2026
 
+> Mise à jour du 17 octobre : lire [REVUE_17_OCTOBRE.md](REVUE_17_OCTOBRE.md). Module commercial local ajouté ; validation finale : 102 tests et 22 parcours navigateur réussis. Le contenu initial ci-dessous est historique.
+
 ## Dépôt et branche
 
 - Dépôt : `zczbgw9v6c-dot/MOTEK-DEPANNAGE` exclusivement.
@@ -45,3 +47,7 @@ Préparer des brouillons sans dépense, avec validation humaine et connexion ult
 ## Livrable attendu à terme
 
 Compléter la PR nº 1 avec bugs corrigés, ajouts/retraits, résultats des tests et du navigateur, captures desktop/iPad et recommandations. Le lot actuel est une transmission de travail en cours pour l'audit, pas une validation finale du produit.
+
+## Mise à jour du 17 octobre 2026
+
+L'état des travaux ci-dessus est historique : lire désormais `docs/REVUE_17_OCTOBRE.md` pour la correction du reset, le retrait du nom Damien, les validations actualisées et le module commercial local ajouté après la vérification initiale. Aucune branche Claude fusionnée. « Mes dépanneurs », assistant et recherche globale restent réservés au portage de Claude après fusion de la PR nº 1.
